@@ -24,10 +24,10 @@ enum struct OpenFlags : u8 {
     /// Open the file for appending. Implies 'Create'.
     Append = 0b1000,
 
-    /// Open the file for reading and writing. Implies 'Create.'
+    /// Open the file for reading and writing.
     ReadWrite = Read | Write,
 
-    /// Open the file for reading and appending. Implies 'Create.'
+    /// Open the file for reading and appending.
     ReadAppend = Read | Append,
 };
 

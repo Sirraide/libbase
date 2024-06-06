@@ -19,11 +19,11 @@ protected:
     explicit FileImpl() = default;
 
     auto open(PathRef path, OpenFlags flags) noexcept -> Result<>;
-    auto read(std::span<char> into) noexcept -> Result<usz>;
+    auto read(std::span<std::byte> into) noexcept -> Result<usz>;
     void rewind() noexcept;
     auto size() noexcept -> usz;
-    auto write(std::span<const char> data) noexcept -> Result<>;
-    auto writev(std::span<const std::span<const char>> data) noexcept -> Result<>;
+    auto write(std::span<const std::byte> data) noexcept -> Result<>;
+    auto writev(std::span<const std::span<const std::byte>> data) noexcept -> Result<>;
 
     static auto Delete(PathRef path, bool recursive) -> Result<>;
 };

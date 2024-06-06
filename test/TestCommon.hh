@@ -9,7 +9,7 @@ template <typename Ty>
 struct Catch::StringMaker<base::Result<Ty>> {
     static std::string convert(const base::Result<Ty>& res) {
         if (not res) return std::format("<Error> {}", res.error());
-        return std::format("{}", *res);
+        return std::format("{}", res.value());
     }
 };
 

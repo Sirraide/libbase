@@ -81,6 +81,17 @@ TEST_CASE("File::size()") {
     CHECK(File::Open(__FILE__).value().size() == ThisFile().size());
 }
 
+TEST_CASE("File::write()") {
+    auto f = File::Open(TPath, OpenFlags::ReadWrite).value();
+    auto s1 = "foobarbaz\n"sv;
+    auto s2 = "quxquux\n"sv;
+    f.write({reinterpret_cast<const std::byte*>(s1.data()), s1.size()}).value();
+    f.write({reinterpret_cast<const std::byte*>(s2.data()), s2.size()}).value();
+    f.rewind();
+    CHECK(File::Read(TPath).value() == "foobarbaz\nquxquux\n");
+    CHECK(f.size() == 18);
+}
+
 TEST_CASE("File::Read") {
     CHECK(File::Read(__FILE__).value() == ThisFile());
 }

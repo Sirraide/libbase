@@ -36,7 +36,8 @@ public:
     /// Print to the file.
     template <typename ...Args>
     auto print(std::format_string<Args...> fmt, Args&&... args) noexcept -> Result<> {
-        return write(std::format(fmt, std::forward<Args>(args)...));
+        auto str = std::format(fmt, std::forward<Args>(args)...);
+        return write(std::span{reinterpret_cast<const std::byte*>(str.data()), str.size()});
     }
 
     /// Read from the file.
@@ -56,10 +57,10 @@ public:
     auto size() noexcept -> usz;
 
     /// Write to the file.
-    auto write(std::span<const char> data) noexcept -> Result<>;
+    auto write(std::span<const std::byte> data) noexcept -> Result<>;
 
     /// Write to the file using scatter/gather I/O.
-    auto writev(std::span<const std::span<const char>> data) noexcept -> Result<>;
+    auto writev(std::span<const std::span<const std::byte>> data) noexcept -> Result<>;
 
     /// Delete a file or directory.
     static auto Delete(PathRef path, bool recursive = false) -> Result<>;
@@ -98,7 +99,7 @@ public:
     }
 
     /// Write data to a file on disk.
-    static auto Write(PathRef path, std::span<const char> data) noexcept -> Result<>;
+    static auto Write(PathRef path, std::span<const std::byte> data) noexcept -> Result<>;
 };
 } // namespace base
 

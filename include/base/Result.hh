@@ -1,6 +1,7 @@
 #ifndef LIBBASE_RESULT_HH_
 #define LIBBASE_RESULT_HH_
 
+#include <base/Utils.hh>
 #include <expected>
 #include <format>
 #include <string>
@@ -31,21 +32,21 @@
 /// (Yes, I know this macro is an abomination, but this is what happens
 /// if you don’t have access to this as a language feature...)
 // clang-format off
-#define Try(x, ...) ({                                       \
-    auto _res = x;                                           \
-    if (not _res) {                                          \
-        return std::unexpected(                              \
-            __VA_OPT__(                                      \
-                [&]([[maybe_unused]] std::string $) {        \
-                    return __VA_ARGS__;                      \
-                }                                            \
-            ) __VA_OPT__(LIBBASE_LPAREN_)                    \
-                std::move(_res.error())                      \
-            __VA_OPT__(LIBBASE_RPAREN_)                      \
-        );                                                   \
-    }                                                        \
-    using NonRef = std::remove_reference_t<decltype(*_res)>; \
-    static_cast<std::add_rvalue_reference_t<NonRef>>(*_res); \
+#define Try(x, ...) ({                                                       \
+    auto _res = x;                                                           \
+    if (not _res) {                                                          \
+        return std::unexpected(                                              \
+            __VA_OPT__(                                                      \
+                [&]([[maybe_unused]] std::string $) {                        \
+                    return __VA_ARGS__;                                      \
+                }                                                            \
+            ) __VA_OPT__(LIBBASE_LPAREN_)                                    \
+                std::move(_res.error())                                      \
+            __VA_OPT__(LIBBASE_RPAREN_)                                      \
+        );                                                                   \
+    }                                                                        \
+    using NonRef = std::remove_reference_t<decltype(_res._unsafe_unwrap())>; \
+    static_cast<std::add_rvalue_reference_t<NonRef>>(_res._unsafe_unwrap()); \
 })
 // clang-format on
 
@@ -102,8 +103,34 @@ namespace base {
 ///
 /// Result<T&> is valid and is handled correctly.
 template <typename T = void>
-struct [[nodiscard]] Result : detail::ResultImpl<T>::type {
+class [[nodiscard]] Result : public detail::ResultImpl<T>::type {
+    using Base = detail::ResultImpl<T>::type;
+
+public:
     using detail::ResultImpl<T>::type::type;
+
+    /// Disallow unchecked operations.
+    auto operator*() = delete;
+    auto operator->() = delete;
+
+    /// Get the value or throw the error.
+    template <typename Self>
+    decltype(auto) value(this Self&& self) {
+        if (self.has_value()) return std::forward<Self>(self).Base::value();
+        utils::ThrowOrAbort(std::forward<Self>(self).error());
+    }
+
+    /// DO NOT USE. This is used to implement Try().
+    auto _unsafe_unwrap() noexcept(std::is_nothrow_move_constructible_v<T>)
+        -> std::add_rvalue_reference_t<T>
+    requires (not std::is_void_v<T>)
+    {
+        return std::move(this->value());
+    }
+
+    void _unsafe_unwrap() noexcept
+    requires std::is_void_v<T>
+    {}
 };
 
 /// Create an error message.
