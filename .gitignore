@@ -1,0 +1,10 @@
+## IDE and editor files.
+.idea/
+.vscode/
+.cache/
+
+## Build files.
+/out/
+
+## Valgrind.
+callgrind.out.*
