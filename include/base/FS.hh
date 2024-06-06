@@ -36,8 +36,7 @@ public:
     /// Print to the file.
     template <typename ...Args>
     auto print(std::format_string<Args...> fmt, Args&&... args) noexcept -> Result<> {
-        auto str = std::format(fmt, std::forward<Args>(args)...);
-        return write(std::span{reinterpret_cast<const std::byte*>(str.data()), str.size()});
+        return write(std::format(fmt, std::forward<Args>(args)...));
     }
 
     /// Read from the file.
@@ -48,7 +47,7 @@ public:
     ///         error if the file could not be read from. A short read
     ///         is not an error and can happen if the file is smaller
     ///         than the buffer.
-    auto read(std::span<char> into) noexcept -> Result<usz>;
+    auto read(OutputView into) noexcept -> Result<usz>;
 
     /// Rewind the file to the beginning.
     void rewind() noexcept;
@@ -56,14 +55,20 @@ public:
     /// Get the size of this file.
     auto size() noexcept -> usz;
 
+    /// Truncate or extend the file to a given size.
+    auto resize(usz size) noexcept -> Result<>;
+
     /// Write to the file.
-    auto write(std::span<const std::byte> data) noexcept -> Result<>;
+    auto write(InputView data) noexcept -> Result<>;
 
     /// Write to the file using scatter/gather I/O.
-    auto writev(std::span<const std::span<const std::byte>> data) noexcept -> Result<>;
+    auto writev(InputVector data) noexcept -> Result<>;
 
     /// Delete a file or directory.
-    static auto Delete(PathRef path, bool recursive = false) -> Result<>;
+    static auto Delete(PathRef path, bool recursive = false) -> Result<bool>;
+
+    /// Check if a file exists.
+    static auto Exists(PathRef path) noexcept -> bool;
 
     /// Open a file.
     ///
@@ -99,7 +104,7 @@ public:
     }
 
     /// Write data to a file on disk.
-    static auto Write(PathRef path, std::span<const std::byte> data) noexcept -> Result<>;
+    static auto Write(PathRef path, InputView data) noexcept -> Result<>;
 };
 } // namespace base
 

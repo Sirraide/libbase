@@ -12,8 +12,12 @@
 
 using namespace base;
 
-auto File::Delete(PathRef path, bool recursive) -> Result<> {
+auto File::Delete(PathRef path, bool recursive) -> Result<bool> {
     return FileImpl::Delete(path, recursive);
+}
+
+auto File::Exists(PathRef path) noexcept -> bool {
+    return FileImpl::Exists(path);
 }
 
 auto File::Open(PathRef path, OpenFlags flags) noexcept -> Result<File> {
@@ -22,30 +26,34 @@ auto File::Open(PathRef path, OpenFlags flags) noexcept -> Result<File> {
     return f;
 }
 
-auto File::Write(PathRef path, std::span<const std::byte> data) noexcept -> Result<> {
+auto File::Write(PathRef path, InputView data) noexcept -> Result<> {
     auto f = Try(Open(path, OpenFlags::Write | OpenFlags::Create));
     return f.write(data);
 }
 
-auto File::read(std::span<char> into) noexcept -> Result<usz> {
+auto File::read(OutputView into) noexcept -> Result<usz> {
     if (not (open_flags & OpenFlags::Read)) return Error("File is not open for reading");
-    return FileImpl::read(std::span{reinterpret_cast<std::byte*>(into.data()), into.size()});
+    return FileImpl::read(into);
 }
 
 void File::rewind() noexcept {
     FileImpl::rewind();
 }
 
+auto File::resize(usz size) noexcept -> Result<> {
+    return FileImpl::resize(size);
+}
+
 auto File::size() noexcept -> usz {
     return FileImpl::size();
 }
 
-auto File::write(std::span<const std::byte> data) noexcept -> Result<> {
+auto File::write(InputView data) noexcept -> Result<> {
     if (not (open_flags & OpenFlags::Write)) return Error("File is not open for writing");
     return FileImpl::write(data);
 }
 
-auto File::writev(std::span<const std::span<const std::byte>> data) noexcept -> Result<> {
+auto File::writev(InputVector data) noexcept -> Result<> {
     if (not (open_flags & OpenFlags::Write)) return Error("File is not open for writing");
     return FileImpl::writev(data);
 }

@@ -14,18 +14,21 @@ public:
 
 private:
     std::unique_ptr<FILE, decltype(&std::fclose)> handle{nullptr, std::fclose};
+    Path abs_path; // Hack so we can truncate the file.
 
 protected:
     explicit FileImpl() = default;
 
     auto open(PathRef path, OpenFlags flags) noexcept -> Result<>;
-    auto read(std::span<std::byte> into) noexcept -> Result<usz>;
+    auto read(OutputView into) noexcept -> Result<usz>;
     void rewind() noexcept;
     auto size() noexcept -> usz;
-    auto write(std::span<const std::byte> data) noexcept -> Result<>;
-    auto writev(std::span<const std::span<const std::byte>> data) noexcept -> Result<>;
+    auto resize(usz size) noexcept -> Result<>;
+    auto write(InputView data) noexcept -> Result<>;
+    auto writev(InputVector data) noexcept -> Result<>;
 
-    static auto Delete(PathRef path, bool recursive) -> Result<>;
+    static auto Delete(PathRef path, bool recursive) -> Result<bool>;
+    static auto Exists(PathRef path) noexcept -> bool;
 };
 } // namespace base
 

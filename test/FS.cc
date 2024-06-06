@@ -1,7 +1,7 @@
 #include "TestCommon.hh"
 
-#include <base/FS.hh>
 #include <base/Base.hh>
+#include <base/FS.hh>
 #include <fstream>
 
 using namespace base;
@@ -19,24 +19,69 @@ auto ThisFile() -> std::string_view {
     return file_contents;
 }
 
+TEST_CASE("File::Delete, File::Exists") {
+    CHECK(File::Exists(__FILE__));
+    File::Open(TPath, OpenFlags::ReadWrite).value();
+    CHECK(File::Exists(TPath));
+    CHECK(File::Delete(TPath, false).value());
+    CHECK(not File::Exists(TPath));
+    CHECK(not File::Delete(TPath, false).value());
+    CHECK(not File::Delete("this-file-does-not-exist", false).value());
+    CHECK(not File::Exists("this-file-does-not-exist"));
+}
+
+TEST_CASE("File::Delete (Recursive)") {
+    File::Delete(TPath, false).value();
+    std::filesystem::create_directories(TPath / "a" / "b" / "c");
+
+    CHECK(File::Exists(TPath / "a" / "b" / "c"));
+    CHECK(File::Delete(TPath, false).error() == std::format("Could not delete path '{}': Directory not empty", TPath.string()));
+    CHECK(File::Delete(TPath, true).value());
+    CHECK(not File::Exists(TPath));
+}
+
 TEST_CASE("File::Open") {
-    CHECK(File::Open(TPath, OpenFlags::Create).has_value());
-    CHECK(File::Open(TPath, OpenFlags::Read).has_value());
-    CHECK(File::Open(TPath, OpenFlags::Write).has_value());
-    CHECK(File::Open(TPath, OpenFlags::ReadWrite).has_value());
-    CHECK(File::Open(TPath, OpenFlags::Append).has_value());
+    File::Open(TPath, OpenFlags::Create).value();
+    File::Open(TPath, OpenFlags::Read).value();
+    File::Open(TPath, OpenFlags::Write).value();
+    File::Open(TPath, OpenFlags::ReadWrite).value();
+    File::Open(TPath, OpenFlags::Append).value();
     CHECK(not File::Open("this-file-does-not-exist", OpenFlags::Read));
     CHECK(File::Open(TPath, OpenFlags(0)).error() == "No access mode specified");
     CHECK(File::Open(TPath, OpenFlags::Append | OpenFlags::Write).error() == "'Append' and 'Write' are exclusive");
     CHECK(File::Open(TPath, OpenFlags(134'124'134'134)).error() == "Invalid flags specified");
 }
 
-TEST_CASE("File::flags()") {
+TEST_CASE("File::ReadInto") {
+    std::string a;
+    File::ReadInto(__FILE__, a).value();
+    CHECK(a == ThisFile());
+    File::ReadInto(__FILE__, a).value();
+    CHECK(a == std::string{ThisFile()} + std::string{ThisFile()});
+
+    std::vector<char> b;
+    File::ReadInto(__FILE__, b).value();
+    CHECK(std::string_view{b.data(), b.size()} == ThisFile());
+}
+
+TEST_CASE("File::Read") {
+    CHECK(File::Read(__FILE__).value() == ThisFile());
+}
+
+TEST_CASE("File::Write") {
+    File::Write(TPath, "foobarbaz\n"sv).value();
+    CHECK(File::Read(TPath).value() == "foobarbaz\n");
+
+    File::Write(TPath, ThisFile()).value();
+    CHECK(File::Read(TPath).value() == ThisFile());
+}
+
+TEST_CASE("File::flags") {
     CHECK(File::Open(TPath, OpenFlags::Create).value().flags() == OpenFlags::Create);
     CHECK(File::Open(TPath, OpenFlags::ReadWrite).value().flags() == OpenFlags::ReadWrite);
 }
 
-TEST_CASE("File::read()") {
+TEST_CASE("File::read") {
     auto f = File::Open(__FILE__).value();
     std::vector<char> into;
     f.read(into).value();
@@ -59,7 +104,7 @@ TEST_CASE("File::read()") {
     CHECK(std::string_view{into.data(), into.size()} == ThisFile().substr(40));
 }
 
-TEST_CASE("File::rewind()") {
+TEST_CASE("File::rewind") {
     auto f = File::Open(__FILE__).value();
     std::vector<char> into;
     into.resize(20);
@@ -77,21 +122,37 @@ TEST_CASE("File::rewind()") {
     CHECK(std::string_view{into.data(), into.size()} == ThisFile().substr(0, 40));
 }
 
-TEST_CASE("File::size()") {
+TEST_CASE("File::size") {
     CHECK(File::Open(__FILE__).value().size() == ThisFile().size());
 }
 
-TEST_CASE("File::write()") {
+TEST_CASE("File::resize, File::write") {
     auto f = File::Open(TPath, OpenFlags::ReadWrite).value();
-    auto s1 = "foobarbaz\n"sv;
-    auto s2 = "quxquux\n"sv;
-    f.write({reinterpret_cast<const std::byte*>(s1.data()), s1.size()}).value();
-    f.write({reinterpret_cast<const std::byte*>(s2.data()), s2.size()}).value();
+
+    f.resize(0).value();
+    CHECK(f.size() == 0);
+
+    f.write("foobarbaz\n").value();
+    f.write("quxquux\n"sv).value();
     f.rewind();
     CHECK(File::Read(TPath).value() == "foobarbaz\nquxquux\n");
     CHECK(f.size() == 18);
+
+    f.resize(10).value();
+    CHECK(f.size() == 10);
+
+    f.resize(0).value();
+    CHECK(f.size() == 0);
 }
 
-TEST_CASE("File::Read") {
-    CHECK(File::Read(__FILE__).value() == ThisFile());
+TEST_CASE("File::writev") {
+    auto f = File::Open(TPath, OpenFlags::ReadWrite).value();
+    InputView input[]{"foobarbaz\n"sv, "quxquux\n"};
+
+    f.resize(0).value();
+    CHECK(f.size() == 0);
+    f.writev(input).value();
+    f.rewind();
+    CHECK(File::Read(TPath).value() == "foobarbaz\nquxquux\n");
+    CHECK(f.size() == 18);
 }
