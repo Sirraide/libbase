@@ -81,7 +81,6 @@ TEST_CASE("File::mode") {
 
 TEST_CASE("File::print") {
     auto f = File::Open(TPath, OpenMode::ReadWrite).value();
-    f.resize(0).value();
     f.print("foobarbaz\n").value();
     f.print("{}\n", "quxquux").value();
     f.print("{}:{}\n", 47, 74).value();
