@@ -27,11 +27,11 @@ namespace base {
 /// etc.
 class File : FileImpl {
     friend FileImpl;
-    OpenFlags open_flags;
+    OpenMode open_mode;
 
 public:
-    /// Get the open flags for the file.
-    [[nodiscard]] auto flags() const noexcept -> OpenFlags { return open_flags; }
+    /// Get the open mode of the file.
+    [[nodiscard]] auto mode() const noexcept -> OpenMode { return open_mode; }
 
     /// Print to the file.
     template <typename ...Args>
@@ -73,19 +73,16 @@ public:
     /// Open a file.
     ///
     /// \param path The path to the file.
-    /// \param flags The flags to open the file with.
+    /// \param mode The mode to open the file with.
     /// \return A `Result` containing the opened file, or an error if
     ///         it could not be opened, for whatever reason.
-    static auto Open(
-        PathRef path,
-        OpenFlags flags = OpenFlags::Read | OpenFlags::Create
-    ) noexcept -> Result<File>;
+    static auto Open(PathRef path, OpenMode mode = OpenMode::Read) noexcept -> Result<File>;
 
     /// Read an entire file into a string.
     template <CharBuffer Buffer>
     static auto ReadInto(PathRef path, Buffer& buffer) noexcept -> Result<> {
         auto sz = buffer.size();
-        auto f = Try(Open(path, OpenFlags::Read));
+        auto f = Try(Open(path, OpenMode::Read));
         buffer.resize(sz + f.size());
 
         // A short read is possible here if the file is being resized by

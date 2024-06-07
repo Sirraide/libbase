@@ -21,7 +21,7 @@ auto ThisFile() -> std::string_view {
 
 TEST_CASE("File::Delete, File::Exists") {
     CHECK(File::Exists(__FILE__));
-    File::Open(TPath, OpenFlags::ReadWrite).value();
+    File::Open(TPath, OpenMode::ReadWrite).value();
     CHECK(File::Exists(TPath));
     CHECK(File::Delete(TPath, false).value());
     CHECK(not File::Exists(TPath));
@@ -41,15 +41,13 @@ TEST_CASE("File::Delete (Recursive)") {
 }
 
 TEST_CASE("File::Open") {
-    File::Open(TPath, OpenFlags::Create).value();
-    File::Open(TPath, OpenFlags::Read).value();
-    File::Open(TPath, OpenFlags::Write).value();
-    File::Open(TPath, OpenFlags::ReadWrite).value();
-    File::Open(TPath, OpenFlags::Append).value();
-    CHECK(not File::Open("this-file-does-not-exist", OpenFlags::Read));
-    CHECK(File::Open(TPath, OpenFlags(0)).error() == "No access mode specified");
-    CHECK(File::Open(TPath, OpenFlags::Append | OpenFlags::Write).error() == "'Append' and 'Write' are exclusive");
-    CHECK(File::Open(TPath, OpenFlags(134'124'134'134)).error() == "Invalid flags specified");
+    File::Open(TPath, OpenMode::Write).value();
+    File::Open(TPath, OpenMode::Read).value();
+    File::Open(TPath, OpenMode::ReadWrite).value();
+    File::Open(TPath, OpenMode::Append).value();
+    CHECK(not File::Open("this-file-does-not-exist", OpenMode::Read));
+    CHECK(File::Open(TPath, OpenMode(0)).error() == "Invalid open mode '0'");
+    CHECK(File::Open(TPath, OpenMode(134)).error() == "Invalid open mode '134'");
 }
 
 TEST_CASE("File::ReadInto") {
@@ -76,9 +74,19 @@ TEST_CASE("File::Write") {
     CHECK(File::Read(TPath).value() == ThisFile());
 }
 
-TEST_CASE("File::flags") {
-    CHECK(File::Open(TPath, OpenFlags::Create).value().flags() == OpenFlags::Create);
-    CHECK(File::Open(TPath, OpenFlags::ReadWrite).value().flags() == OpenFlags::ReadWrite);
+TEST_CASE("File::mode") {
+    CHECK(File::Open(TPath, OpenMode::Read).value().mode() == OpenMode::Read);
+    CHECK(File::Open(TPath, OpenMode::ReadWrite).value().mode() == OpenMode::ReadWrite);
+}
+
+TEST_CASE("File::print") {
+    auto f = File::Open(TPath, OpenMode::ReadWrite).value();
+    f.resize(0).value();
+    f.print("foobarbaz\n").value();
+    f.print("{}\n", "quxquux").value();
+    f.print("{}:{}\n", 47, 74).value();
+    f.rewind();
+    CHECK(File::Read(TPath).value() == "foobarbaz\nquxquux\n47:74\n");
 }
 
 TEST_CASE("File::read") {
@@ -127,7 +135,7 @@ TEST_CASE("File::size") {
 }
 
 TEST_CASE("File::resize, File::write") {
-    auto f = File::Open(TPath, OpenFlags::ReadWrite).value();
+    auto f = File::Open(TPath, OpenMode::ReadWrite).value();
 
     f.resize(0).value();
     CHECK(f.size() == 0);
@@ -146,7 +154,7 @@ TEST_CASE("File::resize, File::write") {
 }
 
 TEST_CASE("File::writev") {
-    auto f = File::Open(TPath, OpenFlags::ReadWrite).value();
+    auto f = File::Open(TPath, OpenMode::ReadWrite).value();
     InputView input[]{"foobarbaz\n"sv, "quxquux\n"};
 
     f.resize(0).value();
@@ -155,4 +163,12 @@ TEST_CASE("File::writev") {
     f.rewind();
     CHECK(File::Read(TPath).value() == "foobarbaz\nquxquux\n");
     CHECK(f.size() == 18);
+}
+
+TEST_CASE("Opening in Write mode should truncate") {
+    File::Write(TPath, "foo").value();
+    CHECK(File::Open(TPath, OpenMode::Write).value().size() == 0);
+
+    File::Write(TPath, "foo").value();
+    CHECK(File::Open(TPath, OpenMode::ReadWrite).value().size() == 0);
 }

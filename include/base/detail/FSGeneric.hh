@@ -19,7 +19,7 @@ private:
 protected:
     explicit FileImpl() = default;
 
-    auto open(PathRef path, OpenFlags flags) noexcept -> Result<>;
+    auto open(PathRef path, OpenMode mode) noexcept -> Result<>;
     auto read(OutputView into) noexcept -> Result<usz>;
     void rewind() noexcept;
     auto size() noexcept -> usz;

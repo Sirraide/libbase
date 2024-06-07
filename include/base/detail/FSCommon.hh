@@ -22,6 +22,13 @@ struct InputView : std::span<const std::byte> {
               sv.size()
           ) {}
 
+    // Allow construction from char buffer.
+    constexpr InputView(const CharBuffer auto& buf)
+        : std::span<const std::byte>(
+              reinterpret_cast<const std::byte*>(buf.data()),
+              buf.size()
+          ) {}
+
     // Allow wrapping a compile-time constant char array.
     template <usz N>
     constexpr InputView(const char (&arr)[N])
@@ -52,27 +59,25 @@ struct OutputView : std::span<std::byte> {
 
 using InputVector = std::span<const InputView>;
 
-enum struct OpenFlags : u8 {
-    /// Create the file if it doesn’t exist.
-    Create = 0b1,
+/// Do NOT use this as a bitmask! Only ever supply at most one of
+/// these. The values of the enumerators are an implementation detail.
+enum struct OpenMode : u8 {
+    /// Open the file for reading. The file must exist.
+    Read = 1,
 
-    /// Open the file for reading.
-    Read = 0b10,
+    /// Open the file for writing. Truncates the file if it
+    /// exists, creates it if it does not.
+    Write = 2,
 
-    /// Open the file for writing. Implies 'Create'.
-    Write = 0b100,
-
-    /// Open the file for appending. Implies 'Create'.
-    Append = 0b1000,
+    /// Same as Write, but does not perform truncation.
+    Append = 4,
 
     /// Open the file for reading and writing.
     ReadWrite = Read | Write,
 
     /// Open the file for reading and appending.
-    ReadAppend = Read | Append,
+    ReadAppend = Read | Write | Append,
 };
-
-LIBBASE_DEFINE_FLAG_ENUM(OpenFlags);
 } // namespace base
 
 #endif // LIBBASE_FS_COMMON_HH_

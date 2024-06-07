@@ -22,64 +22,28 @@ auto FileImpl::Exists(PathRef path) noexcept -> bool {
     return std::filesystem::exists(path, ec);
 }
 
-auto FileImpl::open(PathRef path, OpenFlags flags) noexcept -> Result<> {
-    using enum OpenFlags;
-    static constexpr OpenFlags AllModes = Read | Write | Append;
-    static constexpr OpenFlags All = AllModes | Create;
+auto FileImpl::open(PathRef path, OpenMode mode) noexcept -> Result<> {
+    std::string mode_str;
 
-    // Save the flags before adjusting them; this way, we can
-    // still disallow writing to the file in read+create mode.
-    static_cast<File*>(this)->open_flags = flags;
-
-    // If the user specified Create only, also open it for writing;
-    // there is no other good way of doing this with just fopen().
-    if (flags == Create) flags = Append | Create;
-
-    // Check for invalid flags.
-    if ((+flags & +All) != +flags) return Error("Invalid flags specified");
-    if (flags & Append and flags & Write) return Error("'Append' and 'Write' are exclusive");
-    if (not(flags & AllModes)) return Error("No access mode specified");
-    std::string mode;
-
-    // We map combinations of flags to the closest representation
-    // that 'fopen()' happens to support.
-    //
-    // Honour lack of Create in Read mode only.
-    //
-    //   CRWA
-    //   0100 = R  -> "r"
-    //   0110 = RW -> "r+"
-    if (flags == Read or flags == ReadWrite) mode = flags == Read ? "r" : "r+";
-
-    // Ignore Create after this. It is always implied. Not all modes
-    // listed below are legal, but we’ve already checked for those.
-    //
-    //   CRWA
-    //   X001 = A   -> "a"
-    //   X010 = W   -> "w"
-    //   X011 = WA  ->  !
-    //   X100 = R   -> "a+"
-    //   X101 = RA  -> "a+"
-    //   X110 = RW  -> "w+"
-    //   X111 = RWA ->  !
-    else {
-        flags = OpenFlags(+flags & ~+Create);
-        mode = flags == Append     ? "a"
-             : flags == Write      ? "w"
-             : flags == Read       ? "a+"
-             : flags == ReadAppend ? "a+"
-             : flags == ReadWrite  ? "w+"
-                                   : "";
+    switch (mode) {
+        default: return Error("Invalid open mode '{}'", +mode);
+        case OpenMode::Read: mode_str = "r"; break;
+        case OpenMode::Write: mode_str = "w"; break;
+        case OpenMode::Append: mode_str = "a"; break;
+        case OpenMode::ReadWrite: mode_str = "w+"; break;
+        case OpenMode::ReadAppend: mode_str = "a+"; break;
     }
 
     // Always use binary mode.
-    mode += 'b';
-
+    mode_str += 'b';
 
     // Dew it.
-    auto ptr = std::fopen(path.c_str(), mode.c_str());
+    auto ptr = std::fopen(path.c_str(), mode_str.c_str());
     if (not ptr) return Error("Could not open file: {}", std::strerror(errno));
     handle.reset(ptr);
+
+    // Save the flags.
+    static_cast<File*>(this)->open_mode = mode;
 
     // Save the path.
     std::error_code ec;
