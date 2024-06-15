@@ -32,7 +32,7 @@ auto File::Write(PathRef path, InputView data) noexcept -> Result<> {
 }
 
 auto File::read(OutputView into) noexcept -> Result<usz> {
-    if (+open_mode & +OpenMode::Read == 0) return Error("File is not open for reading");
+    if ((+open_mode & +OpenMode::Read) == 0) return Error("File is not open for reading");
     return FileImpl::read(into);
 }
 
@@ -49,11 +49,11 @@ auto File::size() noexcept -> usz {
 }
 
 auto File::write(InputView data) noexcept -> Result<> {
-    if (+open_mode & + OpenMode::Write == 0) return Error("File is not open for writing");
+    if ((+open_mode & + OpenMode::Write) == 0) return Error("File is not open for writing");
     return FileImpl::write(data);
 }
 
 auto File::writev(InputVector data) noexcept -> Result<> {
-    if (+open_mode & + OpenMode::Write == 0) return Error("File is not open for writing");
+    if ((+open_mode & + OpenMode::Write) == 0) return Error("File is not open for writing");
     return FileImpl::writev(data);
 }
