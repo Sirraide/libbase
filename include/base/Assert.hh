@@ -8,9 +8,9 @@
 #    define __builtin_expect_with_probability(x, y, z) __builtin_expect(x, y)
 #endif
 
-#define Assert(cond, ...)      LIBASSERT_ASSERT(cond __VA_OPT__(, fmt::format(__VA_ARGS__)))
+#define Assert(cond, ...)      LIBASSERT_ASSERT(cond __VA_OPT__(, std::format(__VA_ARGS__)))
 #define DebugAssert(cond, ...) LIBASSERT_DEBUG_ASSERT(AK_DebugAssert, cond __VA_OPT__(, __VA_ARGS__))
-#define Unreachable(...)       LIBASSERT_UNREACHABLE(__VA_OPT__(fmt::format(__VA_ARGS__)))
+#define Unreachable(...)       LIBASSERT_UNREACHABLE(__VA_OPT__(std::format(__VA_ARGS__)))
 #define Todo(...)              Unreachable("Todo" __VA_OPT__(": " __VA_ARGS__))
 
 #endif // LIBBASE_ASSERT_HH_
