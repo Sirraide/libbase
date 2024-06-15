@@ -60,8 +60,8 @@ TEST_CASE("Parse<i64>") {
     OK(Parse<i64>, 0);
     OK(Parse<i64>, 1);
     OK(Parse<i64>, -1);
-    OK(Parse<i64>, 9223372036854775807);
-    OK(Parse<i64>, -9223372036854775808);
+    CHECK(Parse<i64>("9223372036854775807").value() == L<i64>::max());
+    CHECK(Parse<i64>("-9223372036854775808").value() == L<i64>::min());
     ERR(Parse<i64>, "9223372036854775808", "Numerical result out of range");
     ERR(Parse<i64>, "-9223372036854775809", "Numerical result out of range");
     ERR(Parse<i64>, "foo", "Invalid argument");
@@ -97,7 +97,7 @@ TEST_CASE("Parse<u32>") {
 TEST_CASE("Parse<u64>") {
     OK(Parse<u64>, 0);
     OK(Parse<u64>, 1);
-    OK(Parse<u64>, 18446744073709551615);
+    CHECK(Parse<u64>("18446744073709551615").value() == L<u64>::max());
     ERR(Parse<u64>, "18446744073709551616", "Numerical result out of range");
     ERR(Parse<u64>, "-1", "Invalid argument");
     ERR(Parse<u64>, "foo", "Invalid argument");
