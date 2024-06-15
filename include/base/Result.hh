@@ -60,6 +60,11 @@ public:
     operator Ty&() const { return *ptr; }
     auto operator&() const -> Ty* { return ptr; }
     auto operator->() const -> Ty* { return ptr; }
+
+    auto operator=(std::convertible_to<Ty> auto&& val) -> ReferenceWrapper {
+        *ptr = std::forward<decltype(val)>(val);
+        return *this;
+    }
 };
 
 template <typename Ty>
@@ -123,9 +128,16 @@ public:
     /// DO NOT USE. This is used to implement Try().
     auto _unsafe_unwrap() noexcept(std::is_nothrow_move_constructible_v<T>)
         -> std::add_rvalue_reference_t<T>
-    requires (not std::is_void_v<T>)
+    requires (not std::is_void_v<T> and not std::is_reference_v<T>)
     {
         return std::move(this->value());
+    }
+
+    auto _unsafe_unwrap() noexcept
+        -> detail::ReferenceWrapper<std::remove_reference_t<T>>
+    requires std::is_reference_v<T>
+    {
+        return this->value();
     }
 
     void _unsafe_unwrap() noexcept
