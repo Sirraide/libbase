@@ -4,7 +4,7 @@
 #include <utility>
 
 #define defer ::base::detail::DeferImpl _ = [&]
-#define tempset auto _ = ::srcc::detail::Tempset{}->*
+#define tempset auto _ = ::base::detail::Tempset{}->*
 
 namespace base::detail {
 template <typename Callable>
