@@ -118,7 +118,7 @@ public:
     requires (not std::same_as<std::remove_cvref_t<size>, char_type>)
     constexpr auto
     drop(size n = 1) noexcept -> basic_stream& {
-        if constexpr (not std::unsigned_integral<size>) LIBSTREAM_ASSERT(
+        if constexpr (not std::unsigned_integral<size>) Assert(
             n >= 0,
             "Cannot drop a negative number of characters"
         );
