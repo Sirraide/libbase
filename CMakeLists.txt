@@ -145,6 +145,11 @@ else ()
     )
 endif ()
 
+## Finally, apply user-specified flags.
+if (DEFINED LIBBASE_CXXFLAGS)
+    target_compile_options(libbase PUBLIC ${LIBBASE_CXXFLAGS})
+endif()
+
 ## ============================================================================
 ##  Dependencies
 ## ============================================================================
