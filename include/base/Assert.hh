@@ -3,7 +3,7 @@
 
 #include <libassert/assert.hpp>
 
-// Some IDE’s don’t know about __builtin_expect_with_probability, for some reason.
+// Some IDEs don’t know about __builtin_expect_with_probability, for some reason.
 #if !__has_builtin(__builtin_expect_with_probability)
 #    define __builtin_expect_with_probability(x, y, z) __builtin_expect(x, y)
 #endif

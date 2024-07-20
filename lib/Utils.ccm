@@ -1,11 +1,11 @@
-#ifndef LIBBASE_UTILS_HH_
-#define LIBBASE_UTILS_HH_
+module;
 
 #include <source_location>
 #include <string>
 #include <variant>
 
-namespace base::utils {
+export module base:utils;
+export namespace base::utils {
 template <typename... Types>
 struct Overloaded : Types... {
     using Types::operator()...;
@@ -25,5 +25,3 @@ constexpr decltype(auto) Visit(Visitor&& visitor, Variant&& variant) {
     return std::visit(std::forward<Variant>(variant), std::forward<Visitor>(visitor));
 }
 } // namespace base::utils
-
-#endif // LIBBASE_UTILS_HH_

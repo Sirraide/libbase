@@ -1,12 +1,4 @@
-#ifndef LIBBASE_FS_GENERIC_HH_
-#define LIBBASE_FS_GENERIC_HH_
-
-#include <base/detail/FSCommon.hh>
-#include <cstdio>
-#include <filesystem>
-#include <memory>
-
-namespace base {
+export namespace base {
 class FileImpl {
 public:
     using Path = std::filesystem::path;
@@ -31,5 +23,3 @@ protected:
     static auto Exists(PathRef path) noexcept -> bool;
 };
 } // namespace base
-
-#endif // LIBBASE_FS_GENERIC_HH_

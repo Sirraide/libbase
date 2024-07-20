@@ -1,6 +1,6 @@
 #include "TestCommon.hh"
 
-#include <base/IO.hh>
+import base;
 
 TEST_CASE("std::vector") {
     std::vector vec {1, 2, 3, 4, 5};

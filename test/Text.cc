@@ -1,11 +1,12 @@
 #include "TestCommon.hh"
 
-#include <base/Text.hh>
 #include <string_view>
 #include <print>
 
 // clang-format off
 
+import base;
+import base.text;
 using namespace base;
 using namespace base::text;
 using namespace std::literals;

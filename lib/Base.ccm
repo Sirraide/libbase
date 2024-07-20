@@ -1,0 +1,21 @@
+module;
+
+#include <chrono>
+#include <ranges>
+#include <clopts.hh>
+
+export module base;
+export import :formatters;
+export import :numeric;
+export import :result;
+export import :stream;
+export import :types;
+export import :utils;
+
+export namespace base {
+using namespace std::literals;
+namespace rgs = std::ranges;
+namespace vws = std::ranges::views;
+namespace chr = std::chrono;
+namespace cmd = command_line_options;
+}

@@ -1,5 +1,4 @@
-#ifndef LIBBASE_STREAM_HH_
-#define LIBBASE_STREAM_HH_
+module;
 
 #include <base/Assert.hh>
 #include <cstddef>
@@ -10,7 +9,9 @@
 #include <string_view>
 #include <utility>
 
-namespace base {
+export module base:stream;
+import :types;
+
 #define STRING_LITERAL(lit) [] {                            \
     if constexpr (std::is_same_v<char_type, char>)          \
         return lit;                                         \
@@ -26,6 +27,7 @@ namespace base {
         static_assert(false, "Unsupported character type"); \
 }()
 
+export namespace base {
 /// \brief A stream of characters.
 ///
 /// This is a non-owning wrapper around a blob of text intended for simple
@@ -693,9 +695,4 @@ using wstream = basic_stream<wchar_t>;
 using u8stream = basic_stream<char8_t>;
 using u16stream = basic_stream<char16_t>;
 using u32stream = basic_stream<char32_t>;
-
 } // namespace base
-
-#undef STRING_LITERAL
-
-#endif // LIBBASE_STREAM_HH_

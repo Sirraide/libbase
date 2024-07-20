@@ -1,12 +1,14 @@
-#ifndef LIBBASE_TEXT_HH_
-#define LIBBASE_TEXT_HH_
+module;
 
-#include <base/Result.hh>
-#include <base/Types.hh>
 #include <concepts>
+#include <format>
 #include <functional>
+#include <string>
 
-namespace base::text {
+export module base.text;
+import base;
+
+export namespace base::text {
 enum struct NormalisationForm {
     None, /// No normalisation.
     NFC,  /// Normalisation Form C.
@@ -86,9 +88,7 @@ struct c32 {
     /// Get the largest valid codepoint.
     [[nodiscard]] static constexpr auto max() -> c32 { return 0x10'FFFF; }
 };
-} // namespace base::text
 
-namespace base::text {
 /// Find all characters whose name contains one of the given strings.
 ///
 /// If the query is empty, the result is unspecified.
@@ -117,11 +117,11 @@ namespace base::text {
 [[nodiscard]] auto ToUTF8(std::u32string_view str) -> std::string;
 } // namespace base::text
 
-namespace base {
+export namespace base {
 using text::c32;
 } // namespace base
 
-template <>
+export template <>
 struct std::formatter<base::c32> : formatter<base::u32> {
     template <typename FormatContext>
     auto format(base::c32 c, FormatContext& ctx) const {
@@ -129,7 +129,7 @@ struct std::formatter<base::c32> : formatter<base::u32> {
     }
 };
 
-template <>
+export template <>
 struct std::formatter<char32_t> : formatter<base::u32> {
     template <typename FormatContext>
     auto format(char32_t c, FormatContext& ctx) const {
@@ -137,7 +137,7 @@ struct std::formatter<char32_t> : formatter<base::u32> {
     }
 };
 
-template <>
+export template <>
 struct std::formatter<std::u32string_view> : formatter<std::string_view> {
     template <typename FormatContext>
     auto format(std::u32string_view s, FormatContext& ctx) const {
@@ -148,12 +148,10 @@ struct std::formatter<std::u32string_view> : formatter<std::string_view> {
     }
 };
 
-template <>
+export template <>
 struct std::formatter<std::u32string> : formatter<std::u32string_view> {
     template <typename FormatContext>
     auto format(std::u32string_view s, FormatContext& ctx) const {
         return formatter<std::u32string_view>::format(s, ctx);
     }
 };
-
-#endif // LIBBASE_TEXT_HH_

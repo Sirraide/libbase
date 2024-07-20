@@ -1,15 +1,19 @@
-#include <base/Text.hh>
+module;
+
+#include <base/Macros.hh>
 #include <unicode/translit.h>
 #include <unicode/uchar.h>
 #include <unicode/unistr.h>
+#include <functional>
 
+module base.text;
+import base;
 using namespace base;
 using namespace base::text;
 
 /// ====================================================================
 ///  General Helpers
 /// ====================================================================
-namespace {
 template <typename CharTy>
 [[nodiscard]] auto ExportUTF(const icu::UnicodeString& ustr) -> std::basic_string<CharTy>;
 
@@ -31,7 +35,6 @@ template <>
     res.resize_and_overwrite(sizeof(char32_t) * usz(ustr.length()), Convert);
     return res;
 }
-} // namespace
 
 /// ====================================================================
 ///  C32

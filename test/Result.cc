@@ -1,6 +1,7 @@
 #include "TestCommon.hh"
-#include <base/Result.hh>
+#include <base/Macros.hh>
 
+import base;
 using namespace base;
 
 int x = 42;

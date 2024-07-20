@@ -1,7 +1,6 @@
 #include "TestCommon.hh"
 
-#include <base/Numeric.hh>
-
+import base;
 using namespace base;
 using namespace Catch::literals;
 

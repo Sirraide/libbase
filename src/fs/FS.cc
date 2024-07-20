@@ -1,16 +1,24 @@
-#include <base/FS.hh>
+module;
 
+#include <base/Macros.hh>
+#include <cerrno>
+#include <cstring>
+#include <filesystem>
+
+module base.fs;
+import base;
+using namespace base;
+
+#define LIBBASE_USE_GENERIC_FILESYSTEM_IMPL
 #ifdef LIBBASE_USE_GENERIC_FILESYSTEM_IMPL
-#    include "FSGeneric.inc"
+#    include "Generic.inc"
 #else
 #    ifdef __linux__
-#        include "FSLinux.inc"
+#        include "Linux.inc"
 #    else
-#        include "FSGeneric.inc"
+#        include "Generic.inc"
 #    endif
 #endif
-
-using namespace base;
 
 auto File::Delete(PathRef path, bool recursive) -> Result<bool> {
     return FileImpl::Delete(path, recursive);
@@ -49,11 +57,11 @@ auto File::size() noexcept -> usz {
 }
 
 auto File::write(InputView data) noexcept -> Result<> {
-    if ((+open_mode & + OpenMode::Write) == 0) return Error("File is not open for writing");
+    if ((+open_mode & +OpenMode::Write) == 0) return Error("File is not open for writing");
     return FileImpl::write(data);
 }
 
 auto File::writev(InputVector data) noexcept -> Result<> {
-    if ((+open_mode & + OpenMode::Write) == 0) return Error("File is not open for writing");
+    if ((+open_mode & +OpenMode::Write) == 0) return Error("File is not open for writing");
     return FileImpl::writev(data);
 }

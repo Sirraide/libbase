@@ -1,9 +1,13 @@
-#include <base/Numeric.hh>
-#include <charconv>
+module;
 
+#include <charconv>
+#include <concepts>
+#include <string>
+#include <system_error>
+
+module base;
 using namespace base;
 
-namespace {
 template <typename Ty>
 concept Numeric = std::integral<Ty> or std::floating_point<Ty>;
 
@@ -25,7 +29,6 @@ template <Numeric Number>
 
     return n;
 }
-} // namespace
 
 template <>
 auto base::Parse<bool>(std::string_view sv) -> Result<bool> {

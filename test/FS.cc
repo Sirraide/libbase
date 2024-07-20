@@ -1,9 +1,10 @@
 #include "TestCommon.hh"
 
-#include <base/Base.hh>
-#include <base/FS.hh>
 #include <fstream>
+#include <filesystem>
 
+import base;
+import base.fs;
 using namespace base;
 
 auto TPath = std::filesystem::temp_directory_path() / "foo";

@@ -1,54 +1,12 @@
-#ifndef LIBBASE_RESULT_HH_
-#define LIBBASE_RESULT_HH_
+module;
 
-#include <base/Utils.hh>
 #include <expected>
 #include <format>
 #include <string>
 #include <type_traits>
 
-#define LIBBASE_LPAREN_ (
-#define LIBBASE_RPAREN_ )
-
-/// Macro that propagates errors up the call stack.
-///
-/// The second optional argument to the macro, if present, should be an
-/// expression that evaluates to a string that will be propagated up the
-/// call stack as the error; the original error is in scope as `$`.
-///
-/// Example usage: Given
-///
-///     auto foo() -> Result<Bar> { ... }
-///
-/// we can write
-///
-///     Bar res = Try(foo());
-///     Bar res = Try(foo(), std::format("Failed to do X: {}", $));
-///
-/// to invoke `foo` and propagate the error up the call stack, if there
-/// is one; this way, we don’t have to actually write any verbose error
-/// handling code.
-///
-/// (Yes, I know this macro is an abomination, but this is what happens
-/// if you don’t have access to this as a language feature...)
-// clang-format off
-#define Try(x, ...) ({                                                       \
-    auto _res = x;                                                           \
-    if (not _res) {                                                          \
-        return std::unexpected(                                              \
-            __VA_OPT__(                                                      \
-                [&]([[maybe_unused]] std::string $) {                        \
-                    return __VA_ARGS__;                                      \
-                }                                                            \
-            ) __VA_OPT__(LIBBASE_LPAREN_)                                    \
-                std::move(_res.error())                                      \
-            __VA_OPT__(LIBBASE_RPAREN_)                                      \
-        );                                                                   \
-    }                                                                        \
-    using NonRef = std::remove_reference_t<decltype(_res._unsafe_unwrap())>; \
-    static_cast<std::add_rvalue_reference_t<NonRef>>(_res._unsafe_unwrap()); \
-})
-// clang-format on
+export module base:result;
+import :utils;
 
 namespace base::detail {
 template <typename Ty>
@@ -99,7 +57,7 @@ struct ResultImpl<ReferenceWrapper<Ty>> {
 };
 } // namespace base::detail
 
-namespace base {
+export namespace base {
 /// A result type that stores either a value or an error message.
 ///
 /// You can create a new result using the 'Error()' function and
@@ -153,7 +111,4 @@ template <typename... Args>
 ) -> std::unexpected<std::string> {
     return std::unexpected(std::format(fmt, std::forward<Args>(args)...));
 }
-
 } // namespace base
-
-#endif // LIBBASE_RESULT_HH_
