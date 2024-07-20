@@ -35,6 +35,17 @@ TEST_CASE("erase_unordered()") {
     REQUIRE(deq.empty());
 }
 
+TEST_CASE("join()") {
+    std::vector vec{"a"s, "b"s, "c"s};
+    std::deque deq{"a"sv, "b"sv, "c"sv};
+    std::array arr{"a", "b", "c"};
+
+    CHECK(utils::join(vec, ", ") == "a, b, c");
+    CHECK(utils::join(deq, "|") == "a|b|c");
+    CHECK(utils::join(arr, "") == "abc");
+    CHECK(utils::join(std::span{arr}, "") == "abc");
+}
+
 TEST_CASE("ReplaceAll") {
     std::string foo = "barbarbarbar";
 

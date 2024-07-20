@@ -29,6 +29,19 @@ void erase_unordered(Container& container, Iterator it) {
     }
 }
 
+/// Join a range of strings.
+template <typename Range>
+std::string join(const Range& range, std::string_view sep) {
+    std::string result;
+    auto begin = std::ranges::begin(range);
+    auto end = std::ranges::end(range);
+    for (auto it = begin; it != end; ++it) {
+        if (it != begin) result += sep;
+        result += *it;
+    }
+    return result;
+}
+
 /// Replace all occurrences of `from` with `to` in `str`.
 void ReplaceAll(std::string& str, std::string_view from, std::string_view to);
 
