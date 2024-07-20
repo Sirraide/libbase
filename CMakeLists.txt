@@ -152,6 +152,7 @@ if (NOT ICU_FOUND)
     message(FATAL_ERROR "ICU not found. Required components are: uc, i18n, data.")
 endif ()
 
+add_definitions(-DLIBASSERT_STATIC_DEFINE)
 FetchContent_Declare(
     libassert
     GIT_REPOSITORY https://github.com/jeremy-rifkin/libassert.git
