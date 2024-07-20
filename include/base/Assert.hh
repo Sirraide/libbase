@@ -9,8 +9,9 @@
 #endif
 
 #define Assert(cond, ...)      LIBASSERT_ASSERT(cond __VA_OPT__(, std::format(__VA_ARGS__)))
-#define DebugAssert(cond, ...) LIBASSERT_DEBUG_ASSERT(AK_DebugAssert, cond __VA_OPT__(, __VA_ARGS__))
+#define DebugAssert(cond, ...) LIBASSERT_DEBUG_ASSERT(cond __VA_OPT__(, std::format(__VA_ARGS__)))
+#define Fatal(...)             LIBASSERT_PANIC(__VA_OPT__(std::format(__VA_ARGS__)))
 #define Unreachable(...)       LIBASSERT_UNREACHABLE(__VA_OPT__(std::format(__VA_ARGS__)))
-#define Todo(...)              Unreachable("Todo" __VA_OPT__(": " __VA_ARGS__))
+#define Todo(...)              Unreachable("TODO: " __VA_OPT__(": " __VA_ARGS__))
 
 #endif // LIBBASE_ASSERT_HH_
