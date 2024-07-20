@@ -5,7 +5,12 @@ module;
 #include <variant>
 
 export module base:utils;
+import :types;
+
 export namespace base::utils {
+template <typename T, typename... Us>
+concept is = (std::is_same_v<std::remove_cvref_t<T>, std::remove_cvref_t<Us>> or ...);
+
 template <typename... Types>
 struct Overloaded : Types... {
     using Types::operator()...;
@@ -14,8 +19,23 @@ struct Overloaded : Types... {
 template <typename... Types>
 Overloaded(Types...) -> Overloaded<Types...>;
 
+/// Erase an element from a container without maintaining order.
+template <typename Container, typename Iterator>
+void erase_unordered(Container& container, Iterator it) {
+    if (container.size() == 1) container.erase(it);
+    else {
+        std::iter_swap(it, container.end() - 1);
+        container.pop_back();
+    }
+}
+
+/// Replace all occurrences of `from` with `to` in `str`.
+void ReplaceAll(std::string& str, std::string_view from, std::string_view to);
+
+/// Used instead of 'Assert()' in some places so we can catch the
+/// exception in unit tests.
 [[noreturn]] void ThrowOrAbort(
-    std::string message,
+    const std::string& message,
     std::source_location loc = std::source_location::current()
 );
 
