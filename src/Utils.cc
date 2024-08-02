@@ -1,8 +1,9 @@
 module;
 
+#include <base/Assert.hh>
 #include <print>
-#include <stdexcept>
 #include <source_location>
+#include <stdexcept>
 
 module base;
 
@@ -19,10 +20,9 @@ void base::utils::ReplaceAll(
 
 void base::utils::ThrowOrAbort(const std::string& message, std::source_location loc) {
     auto m = std::format("Error at {}:{}: {}", loc.file_name(), loc.line(), message);
-#if __EXCEPTIONS
+#if __cpp_exceptions
     throw std::runtime_error(m);
 #else
-    std::println(stderr, "{}", m);
-    std::abort();
+    Fatal(m);
 #endif
 }

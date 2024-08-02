@@ -1,0 +1,49 @@
+module;
+
+#include <base/Assert.hh>
+#include <utility>
+#include <variant>
+
+export module base:variant;
+import :utils;
+export namespace base {
+template <typename... Types>
+class Variant;
+}
+
+template <typename... Types>
+class base::Variant : public std::variant<Types...> {
+public:
+    using std::variant<Types...>::variant;
+
+    /// Get a reference to variant data, asserting on type mismatch.
+    template <typename Ty, typename Self>
+    [[nodiscard]] constexpr auto get(this Self&& self) -> decltype(std::get<Ty>(std::forward<Self>(self))) {
+        auto* val = std::get_if<Ty>(&self);
+        if (not val) utils::ThrowOrAbort("Variant does not hold the requested type.");
+
+        // This should *really* just use `std::forward_like`, but due to a
+        // problem between Clang treating it as a builtin and libstdc++’s
+        // implementation, that doesn’t work currently, so we’re stuck with
+        // this nonsense.
+        return static_cast<decltype(std::get<Ty>(std::forward<Self>(self)))>(*val);
+    }
+
+    /// Get a pointer to the data of this variant as the given type.
+    ///
+    /// This purposefully only supports lvalues.
+    template <typename Ty>
+    [[nodiscard]] constexpr auto get_if(this auto& self) noexcept { return std::get_if<Ty>(&self); }
+
+    /// Check if this variant holds (one of) the given type(s).
+    template <typename... Ty>
+    [[nodiscard]] constexpr bool is() const {
+        return (std::holds_alternative<Ty>(*this) or ...);
+    }
+
+    /// Visit this variant.
+    template <typename Visitor>
+    constexpr auto visit(Visitor&& visitor) -> decltype(auto) {
+        return std::visit(std::forward<Visitor>(visitor), *this);
+    }
+};

@@ -12,6 +12,7 @@ export import :result;
 export import :stream;
 export import :types;
 export import :utils;
+export import :variant;
 
 export namespace base {
 using namespace std::literals;
