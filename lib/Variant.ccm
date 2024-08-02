@@ -42,8 +42,8 @@ public:
     }
 
     /// Visit this variant.
-    template <typename Visitor>
-    constexpr auto visit(Visitor&& visitor) -> decltype(auto) {
-        return std::visit(std::forward<Visitor>(visitor), *this);
+    template <typename Visitor, typename Self>
+    constexpr auto visit(this Self&& self, Visitor&& visitor) -> decltype(auto) {
+        return std::visit(std::forward<Visitor>(visitor), std::forward<Self>(self));
     }
 };

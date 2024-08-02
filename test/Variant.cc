@@ -15,6 +15,12 @@ TEST_CASE("Variant::is") {
     CHECK(v.is<int, float>());
     CHECK(v.is<float, int>());
     CHECK(not v.is<int>());
+
+    const Variant<int, float> cv = 42;
+    CHECK(cv.is<int>());
+    CHECK(cv.is<int, float>());
+    CHECK(cv.is<float, int>());
+    CHECK(not cv.is<float>());
 }
 
 TEST_CASE("Variant::get") {
@@ -25,6 +31,10 @@ TEST_CASE("Variant::get") {
     v = 43.0f;
     CHECK(v.get<float>() == 43.0f);
     CHECK_THROWS(v.get<int>() == 43);
+
+    const Variant<int, float> cv = 42;
+    CHECK(cv.get<int>() == 42);
+    CHECK_THROWS(cv.get<float>() == 42.0f);
 
     static_assert(std::is_same_v<
         decltype(v.get<int>()),
@@ -58,6 +68,10 @@ TEST_CASE("Variant::get_if") {
     CHECK(*v.get_if<float>() == 42.0f);
     CHECK(v.get_if<int>() == nullptr);
 
+    const Variant<int, float> cv = 42;
+    REQUIRE(cv.get_if<int>() != nullptr);
+    CHECK(*cv.get_if<int>() == 42);
+
     static_assert(std::is_same_v<
         decltype(v.get_if<int>()),
         int*
@@ -83,4 +97,13 @@ TEST_CASE("Variant::visit") {
     v = 0.0f;
     v.visit(V);
     CHECK(v.get<float>() == 43.f);
+
+    const Variant<int, float> cv = 0;
+    bool visited = false;
+    utils::Overloaded CV {
+        [&](int) { visited = true; },
+        [](float) { }
+    };
+    cv.visit(CV);
+    CHECK(visited);
 }
