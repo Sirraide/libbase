@@ -19,10 +19,10 @@ void base::utils::ReplaceAll(
 
 
 void base::utils::ThrowOrAbort(const std::string& message, std::source_location loc) {
+#ifdef __cpp_exceptions
     auto m = std::format("Error at {}:{}: {}", loc.file_name(), loc.line(), message);
-#if __cpp_exceptions
     throw std::runtime_error(m);
 #else
-    Fatal(m);
+    Fatal("Error at {}:{}: {}", loc.file_name(), loc.line(), message);
 #endif
 }
