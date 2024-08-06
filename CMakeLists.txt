@@ -41,7 +41,7 @@ endif ()
 
 ## Flags for Clang and GCC.
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(libbase PUBLIC
+    target_compile_options(libbase PRIVATE
         ## Warnings.
         -Wall -Wextra     # Enable ‘all’ warnings.
         -Wundef           # Invalid #undef or undefined macro in #if.
@@ -83,7 +83,7 @@ endif ()
 
 ## Additional flags for GCC.
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    target_compile_options(libbase PUBLIC
+    target_compile_options(libbase PRIVATE
         -Wlogical-op      # Duplicate or unintended logical operators.
         -Werror=invalid-memory-model # For atomics.
         -Werror=maybe-uninitialized
@@ -94,7 +94,7 @@ endif ()
 
 ## Additional flags for Clang.
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(libbase PUBLIC
+    target_compile_options(libbase PRIVATE
         -Werror=dangling
         -Werror=return-stack-address
     )
@@ -102,7 +102,7 @@ endif ()
 
 ## Flags for MSVC.
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    target_compile_options(libbase PUBLIC
+    target_compile_options(libbase PRIVATE
         /W4 # Enable ‘all’ warnings.
 
         # Allow unnamed structs/unions.
@@ -115,7 +115,7 @@ endif ()
 
 ## On Windows, don’t suggest the _s nonsense functions.
 if (WIN32)
-    target_compile_definitions(libbase PUBLIC
+    target_compile_definitions(libbase PRIVATE
         _CRT_SECURE_NO_WARNINGS
         _CRT_SECURE_NO_WARNINGS_GLOBALS
         _CRT_NONSTDC_NO_WARNINGS
@@ -130,16 +130,16 @@ endif ()
 
 ## Debug/Release flags.
 if (NOT MSVC)
-    target_compile_options(libbase PUBLIC
+    target_compile_options(libbase PRIVATE
         $<$<CONFIG:DEBUG>:-O0 -g3 -ggdb3>
         $<$<CONFIG:RELEASE>:-O3 -march=native>
     )
-    target_link_options(libbase PUBLIC
+    target_link_options(libbase PRIVATE
         $<$<CONFIG:DEBUG>:-O0 -g3 -ggdb3 -rdynamic>
         $<$<CONFIG:RELEASE>:-O3 -march=native>
     )
 else ()
-    target_compile_options(libbase PUBLIC
+    target_compile_options(libbase PRIVATE
         $<$<CONFIG:DEBUG>:/Od>
         $<$<CONFIG:RELEASE>:/O2>
     )
@@ -147,7 +147,7 @@ endif ()
 
 ## Finally, apply user-specified flags.
 if (DEFINED LIBBASE_CXXFLAGS)
-    target_compile_options(libbase PUBLIC ${LIBBASE_CXXFLAGS})
+    target_compile_options(libbase PRIVATE ${LIBBASE_CXXFLAGS})
 endif()
 
 ## ============================================================================
