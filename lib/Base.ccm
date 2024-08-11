@@ -6,19 +6,17 @@ module;
 #include <clopts.hh>
 
 export module base;
+export import :dsa;
 export import :formatters;
 export import :numeric;
 export import :result;
 export import :stream;
 export import :types;
 export import :utils;
-export import :variant;
 
 export namespace base {
 using namespace std::literals;
 namespace chr = std::chrono;
 namespace cmd = command_line_options;
 namespace fs = std::filesystem;
-namespace rgs = std::ranges;
-namespace vws = std::ranges::views;
 }

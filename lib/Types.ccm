@@ -3,9 +3,13 @@ module;
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
+#include <ranges>
 
 export module base:types;
 export namespace base {
+namespace rgs = std::ranges;
+namespace vws = std::ranges::views;
+
 using u8 = std::uint8_t;
 using u16 = std::uint16_t;
 using u32 = std::uint32_t;

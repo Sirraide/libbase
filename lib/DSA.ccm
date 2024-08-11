@@ -1,0 +1,155 @@
+module;
+
+#include <base/Assert.hh>
+#include <deque>
+#include <generator>
+#include <map>
+#include <queue>
+#include <unordered_map>
+#include <utility>
+#include <variant>
+#include <vector>
+
+/// This module provides wrappers around STL data structures
+/// that add additional functionality, but don’t actually change
+/// anything about the implementation of those data structures;
+/// this also means that it is safe to e.g. slice a base::Queue
+/// down to a std::queue.
+export module base:dsa;
+import :utils;
+
+export namespace base {
+template<
+    typename KeyTy,
+    typename ValueTy,
+    typename HashTy = std::hash<KeyTy>,
+    typename Predicate = std::equal_to<KeyTy>,
+    typename Alloc = std::allocator<std::pair<const KeyTy, ValueTy>>
+> class HashMap;
+
+template <typename ValueType, typename Sequence = std::deque<ValueType>>
+class Queue;
+
+template <
+    typename KeyTy,
+    typename ValueTy,
+    typename Comparator = std::less<KeyTy>,
+    typename Alloc = std::allocator<std::pair<const KeyTy, ValueTy>>
+> class TreeMap;
+
+template <typename... Types>
+class Variant;
+}
+
+namespace base::detail {
+template <typename KeyTy, typename ValueTy>
+struct MapMixin {
+    /// Get an element if it exists.
+    auto get(this auto& self, const KeyTy& key) -> std::optional<ValueTy> {
+        auto it = self.find(key);
+        if (it == self.end()) return std::nullopt;
+        return it->second;
+    }
+
+    /// Get an element if it exists, or a default value otherwise.
+    auto get_or(this auto& self, const KeyTy& key, ValueTy def) -> ValueTy {
+        auto it = self.find(key);
+        if (it == self.end()) return std::move(def);
+        return it->second;
+    }
+};
+}
+
+
+/// Wrapper around 'std::unordered_map' that provides 'get()',
+/// and 'get_or()'.
+template<
+    typename KeyTy,
+    typename ValueTy,
+    typename HashTy,
+    typename Predicate,
+    typename Alloc
+> class base::HashMap :
+    public std::unordered_map<KeyTy, ValueTy, HashTy, Predicate, Alloc>,
+    public detail::MapMixin<KeyTy, ValueTy> {
+    using Base = std::unordered_map<KeyTy, ValueTy, HashTy, Predicate, Alloc>;
+
+public:
+    using Base::Base;
+};
+
+/// Wrapper around 'std::queue' that provides 'dequeue()' to remove
+/// and return an element because not having that is anoying...
+template <typename ValueType, typename Sequence>
+class base::Queue : public std::queue<ValueType, Sequence> {
+    using Base = std::queue<ValueType, Sequence>;
+
+public:
+    using Base::Base;
+
+    /// Pop the first element off the queue and return it.
+    [[nodiscard]] auto dequeue() -> ValueType {
+        auto v = std::move(Base::front());
+        Base::pop();
+        return v;
+    }
+
+    /// Streaming iterator that pops elements off the queue; it
+    /// is safe to enqueue new elements while iterating.
+    [[nodiscard]] auto stream() -> std::generator<ValueType> {
+        while (not Base::empty())
+            co_yield dequeue();
+    }
+};
+
+/// Wrapper around 'std::map' that provides 'get()', and 'get_or()'.
+template <
+    typename KeyTy,
+    typename ValueTy,
+    typename Comparator,
+    typename Alloc
+> class base::TreeMap :
+    public std::map<KeyTy, ValueTy, Comparator, Alloc>,
+    public detail::MapMixin<KeyTy, ValueTy> {
+    using Base = std::map<KeyTy, ValueTy, Comparator, Alloc>;
+
+public:
+    using Base::Base;
+};
+
+template <typename... Types>
+class base::Variant : public std::variant<Types...> {
+public:
+    using std::variant<Types...>::variant;
+
+    /// Get a reference to variant data, asserting on type mismatch.
+    template <typename Ty, typename Self>
+    [[nodiscard]] constexpr auto get(this Self&& self) -> decltype(std::get<Ty>(std::forward<Self>(self))) {
+        auto* val = std::get_if<Ty>(&self);
+        if (not val) utils::ThrowOrAbort("Variant does not hold the requested type.");
+
+        // This should *really* just use `std::forward_like`, but due to a
+        // problem between Clang treating it as a builtin and libstdc++’s
+        // implementation, that doesn’t work currently, so we’re stuck with
+        // this nonsense.
+        return static_cast<decltype(std::get<Ty>(std::forward<Self>(self)))>(*val);
+    }
+
+    /// Get a pointer to the data of this variant as the given type.
+    ///
+    /// This purposefully only supports lvalues.
+    template <typename Ty>
+    [[nodiscard]] constexpr auto get_if(this auto& self) noexcept { return std::get_if<Ty>(&self); }
+
+    /// Check if this variant holds (one of) the given type(s).
+    template <typename... Ty>
+    [[nodiscard]] constexpr bool is() const {
+        return (std::holds_alternative<Ty>(*this) or ...);
+    }
+
+    /// Visit this variant.
+    template <typename Visitor, typename Self>
+    constexpr auto visit(this Self&& self, Visitor&& visitor) -> decltype(auto) {
+        return std::visit(std::forward<Visitor>(visitor), std::forward<Self>(self));
+    }
+};

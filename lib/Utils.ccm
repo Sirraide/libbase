@@ -1,5 +1,7 @@
 module;
 
+#include <algorithm>
+#include <ranges>
 #include <source_location>
 #include <string>
 #include <variant>
@@ -40,6 +42,61 @@ std::string join(const Range& range, std::string_view sep) {
         result += *it;
     }
     return result;
+}
+
+/// Splice a value into a container at a specific position.
+///
+/// This function performs insertion and erasure at the same
+/// time; this has the benefit of avoiding moving any elements
+/// if the replacement has the same size as the number of elements
+/// removed.
+///
+/// Constraints: begin_remove < end_remove, both pointing into
+/// range, and input_range is not a subrange of range.
+///
+/// \param container The container to splice into.
+/// \param begin_remove The start of the range to remove.
+/// \param end_remove The end of the range to remove.
+/// \param input_range The range to copy into \p range.
+/// FIXME: Untested.
+template <typename Container, typename Iterator, typename Input>
+void splice(Container& container, Iterator begin_remove, Iterator end_remove, Input&& input_range) {
+    // If the replacement is the same size as the range to remove,
+    // we can just copy the elements in place.
+    usz add_size = usz(rgs::distance(input_range));
+    usz remove_size = usz(std::distance(begin_remove, end_remove));
+
+    // If we’re adding elements, make space for them.
+    if (add_size > remove_size) {
+        auto old_size = container.size();
+        auto extra = add_size - remove_size;
+        container.resize(container.size() + extra);
+
+        // Make space by moving 'extra' elements to the right,
+        // starting at the end of the range to remove because
+        // the part before it is going to be replaced anyway.
+        rgs::move_backward(
+            end_remove,
+            container.begin() + old_size,
+            end_remove + extra
+        );
+    }
+
+    // If we’re removing elements, we need to move elements
+    // back so we’re not left with a gap.
+    else if (add_size < remove_size) {
+        rgs::move(
+            end_remove,
+            container.end(),
+            begin_remove + add_size
+        );
+
+        auto extra = remove_size - add_size;
+        container.resize(container.size() - extra);
+    }
+
+    // Finally, copy the new elements into the range.
+    rgs::copy(std::forward<Input>(input_range), begin_remove);
 }
 
 /// Replace all occurrences of `from` with `to` in `str`.
