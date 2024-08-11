@@ -90,7 +90,7 @@ public:
         // Iterate through the input and perform matching.
         //
         // This is a variation of the Aho-Corasick algorithm, with
-        // two main differencec:
+        // two main differences:
         //
         //   1. We only match the longest pattern, e.g. a trie with
         //      the elements [fo, foo], will only match the input
@@ -141,7 +141,7 @@ public:
 
             // If we fail to the root, append everything that was matched
             // so far, since it won’t be useful anymore, but keep the current
-            // character (unless we fail from root to root, in which case
+            // character—unless we fail from root to root, in which case
             // discard it.
             if (current == Root) {
                 i += prev == Root;
@@ -167,7 +167,7 @@ public:
             out.insert(
                 out.end(),
                 input.begin() + isz(match_start),
-                input.begin() + isz(match_start + rest)
+                input.begin() + isz(match_start + to_append)
             );
 
             // Finally, skip past matching the rest.
