@@ -124,6 +124,13 @@ TEST_CASE("c32::to_upper") {
     CHECK(Chars[10].to_upper().value == Invalid);
 }
 
+TEST_CASE("c32::width") {
+    CHECK(c32(U'x').width() == 1);
+    CHECK(c32(U'3').width() == 1);
+    CHECK(c32(U'桜').width() == 2);
+    CHECK(c32(U'🌈').width() == 2);
+}
+
 TEST_CASE("FindCharsByName") {
     auto res = FindCharsByName([](c32 c, std::string_view name) {
         return std::ranges::contains(Chars, c) or (name.starts_with("LATIN") and c < 128);

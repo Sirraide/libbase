@@ -119,6 +119,19 @@ auto c32::to_upper() const -> c32 {
     return u_toupper(UChar32(value));
 }
 
+auto c32::width() const -> int {
+    auto val = u_getIntPropertyValue(UChar32(value), UCHAR_EAST_ASIAN_WIDTH);
+    switch (UEastAsianWidth(val)) {
+        default:
+            return 1;
+
+        // Ambiguous characters are not treated as wide as per Unicode Standard Annex #11.
+        case U_EA_FULLWIDTH:
+        case U_EA_WIDE:
+            return 2;
+    }
+}
+
 /// ====================================================================
 ///  Miscellaneous
 /// ====================================================================

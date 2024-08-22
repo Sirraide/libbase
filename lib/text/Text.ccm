@@ -71,6 +71,12 @@ struct c32 {
     /// Convert to upper case.
     [[nodiscard]] auto to_upper() const -> c32;
 
+    /// Get the width of this character.
+    ///
+    /// This is either 1 or 2. This property is only well-defined for
+    /// characters that have a fixed width.
+    [[nodiscard]] auto width() const -> int;
+
     constexpr c32& operator++() {
         ++value;
         return *this;
