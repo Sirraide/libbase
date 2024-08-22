@@ -326,12 +326,8 @@ public:
     ///
     /// Returns a range that yields each line in the stream; the line
     /// separators are not included. The stream is not modified.
-    [[nodiscard]] constexpr auto
-    lines(text_type line_separator = _s_default_line_separator())
-    const noexcept {
-        return _m_text
-            | std::views::split(line_separator)
-            | std::views::transform([](auto r) { return basic_stream(text_type(r)); });
+    [[nodiscard]] constexpr auto lines() const noexcept {
+        return split(_s_default_line_separator());
     }
 
     /// Remove all instances of a character from the stream.
@@ -379,6 +375,14 @@ public:
     [[nodiscard]] constexpr auto
     size_bytes() const noexcept -> size_type {
         return size() * sizeof(char_type);
+    }
+
+    /// Split the stream into parts.
+    [[nodiscard]] constexpr auto
+    split(text_type delimiter) const noexcept {
+        return _m_text
+            | std::views::split(delimiter)
+            | std::views::transform([](auto r) { return basic_stream(text_type(r)); });
     }
 
     ///@{
