@@ -335,9 +335,9 @@ public:
     }
 
     /// Remove all instances of a character from the stream.
-    [[nodiscard]]
-    auto remove(this basic_stream s, char_type c) -> string_type {
-        string_type out;
+    template <typename Buffer = string_type>
+    [[nodiscard]] auto remove(this basic_stream s, char_type c) -> Buffer {
+        Buffer out;
         while (not s.empty()) {
             auto pos = s._m_text.find(c);
             if (pos == text_type::npos) {
@@ -352,9 +352,10 @@ public:
     }
 
     /// Remove all instances of a number of characters from the stream.
+    template <typename Buffer = string_type>
     [[nodiscard]]
-    auto remove_all(this basic_stream s, text_type chars) -> string_type {
-        string_type out;
+    auto remove_all(this basic_stream s, text_type chars) -> Buffer {
+        Buffer out;
         while (not s.empty()) {
             auto pos = s._m_text.find_first_of(chars);
             if (pos == text_type::npos) {
