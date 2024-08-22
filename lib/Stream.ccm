@@ -85,6 +85,14 @@ public:
         else return reinterpret_cast<const char*>(_m_text.data());
     }
 
+    /// Iterate over the text in chunks.
+    [[nodiscard]] constexpr auto
+    chunks(size_type size) const noexcept {
+        return _m_text
+            | std::views::chunk(size)
+            | std::views::transform([](auto r) { return basic_stream(text_type(r)); });
+    }
+
     /// Skip a character.
     ///
     /// If the first character of the stream is the given character,

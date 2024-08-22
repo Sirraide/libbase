@@ -50,3 +50,10 @@ TEST_CASE("stream::split()") {
         CHECK_THAT(cc, RangeEquals(std::vector{"aa\nbb\n"sv, "\nbb\n"sv, ""sv}));
     }
 }
+
+TEST_CASE("stream::chunks()") {
+    std::string s = "hello world";
+    CHECK_THAT(stream{s}.chunks(3), RangeEquals(std::vector{"hel"sv, "lo "sv, "wor"sv, "ld"sv}));
+    CHECK_THAT(stream{s}.chunks(5), RangeEquals(std::vector{"hello"sv, " worl"sv, "d"sv}));
+    CHECK_THAT(stream{s}.chunks(6), RangeEquals(std::vector{"hello "sv, "world"sv}));
+}
