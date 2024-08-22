@@ -75,7 +75,7 @@ struct c32 {
     ///
     /// This is either 1 or 2. This property is only well-defined for
     /// characters that have a fixed width.
-    [[nodiscard]] auto width() const -> int;
+    [[nodiscard]] auto width() const -> unsigned;
 
     constexpr c32& operator++() {
         ++value;

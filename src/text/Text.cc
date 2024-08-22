@@ -119,7 +119,7 @@ auto c32::to_upper() const -> c32 {
     return u_toupper(UChar32(value));
 }
 
-auto c32::width() const -> int {
+auto c32::width() const -> unsigned {
     auto val = u_getIntPropertyValue(UChar32(value), UCHAR_EAST_ASIAN_WIDTH);
     switch (UEastAsianWidth(val)) {
         default:
