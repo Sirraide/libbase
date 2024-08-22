@@ -33,7 +33,7 @@ TEST_CASE("stream::split()") {
     std::string s = "aa\nbb\ncc\nbb\ncc";
 
     SECTION ("1") {
-        auto lines = stream{s}.split("\n");
+        auto lines = stream{s}.lines();
         REQUIRE(rgs::distance(lines) == 5);
         CHECK_THAT(lines, RangeEquals(std::vector{"aa"sv, "bb"sv, "cc"sv, "bb"sv, "cc"sv}));
     }
