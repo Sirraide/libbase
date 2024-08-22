@@ -334,6 +334,40 @@ public:
             | std::views::transform([](auto r) { return basic_stream(text_type(r)); });
     }
 
+    /// Remove all instances of a character from the stream.
+    [[nodiscard]]
+    auto remove(this basic_stream s, char_type c) -> string_type {
+        string_type out;
+        while (not s.empty()) {
+            auto pos = s._m_text.find(c);
+            if (pos == text_type::npos) {
+                out += s._m_text;
+                break;
+            }
+
+            out += s.take(pos);
+            s.drop();
+        }
+        return out;
+    }
+
+    /// Remove all instances of a number of characters from the stream.
+    [[nodiscard]]
+    auto remove_all(this basic_stream s, text_type chars) -> string_type {
+        string_type out;
+        while (not s.empty()) {
+            auto pos = s._m_text.find_first_of(chars);
+            if (pos == text_type::npos) {
+                out += s._m_text;
+                break;
+            }
+
+            out += s.take(pos);
+            s.drop();
+        }
+        return out;
+    }
+
     /// \return The size (= number of characters) of this stream.
     [[nodiscard]] constexpr auto
     size() const noexcept -> size_type {
