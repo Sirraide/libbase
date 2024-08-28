@@ -111,13 +111,13 @@ struct Context {
                 case '7':
                 case '8':
                 case '9':
-                    style.fg_colour = c - '0';
+                    style.fg_colour = u8(c - '0');
                     break;
 
                 case 'u':
                     style.underline = true;
                     if ("123456789"sv.contains(s[0].value())) {
-                        style.underline_colour = *s[0] - '0';
+                        style.underline_colour = u8(*s[0] - '0');
                         s.drop();
                     }
                     break;
