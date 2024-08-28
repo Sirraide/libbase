@@ -6,6 +6,12 @@
 
 import base;
 
+// Like string view, but escape chars are printed escaped.
+struct RawString {
+    std::string str;
+    constexpr auto operator<=>(const RawString&) const = default;
+};
+
 template <typename Ty>
 struct Catch::StringMaker<base::Result<Ty>> {
     static std::string convert(const base::Result<Ty>& res) {
@@ -13,5 +19,24 @@ struct Catch::StringMaker<base::Result<Ty>> {
         return std::format("{}", res.value());
     }
 };
+
+template <>
+struct Catch::StringMaker<RawString> {
+    static std::string convert(const RawString& res) {
+        std::string s;
+        for (auto c : res.str) {
+            if (c < 32) {
+                s += std::format("\\x{:02x}", c);
+            } else {
+                s += c;
+            }
+        }
+        return s;
+    }
+};
+
+inline auto operator""_raw(const char* str, size_t len) -> RawString {
+    return {std::string{str, len}};
+}
 
 #endif //TESTCOMMON_HH
