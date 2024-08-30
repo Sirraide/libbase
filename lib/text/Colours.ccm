@@ -75,7 +75,8 @@ requires (not AnyUnrenderedString<Ty>)
 decltype(auto) Extract(Ty&& arg) { return std::forward<Ty>(arg); }
 
 auto Extract(AnyUnrenderedString auto&& arg) -> std::string_view {
-    return std::string_view{arg.str};
+    if constexpr (requires { std::string_view{arg.str}; }) return std::string_view{arg.str};
+    else return std::string_view{arg.data(), arg.size()};
 }
 } // namespace base::text
 
