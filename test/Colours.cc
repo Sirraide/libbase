@@ -88,3 +88,12 @@ TEST_CASE("UnrenderedString") {
     s.write(res, "{}", str);
     CHECK(res == "abc\033[1mdef\033[m");
 }
+
+TEST_CASE("UnrenderedString::render()") {
+    UnrenderedString str;
+    str += "abc";
+    str += "%b(def)";
+
+    CHECK(str.render(false) == "abcdef");
+    CHECK(str.render(true) == "abc\033[1mdef\033[m");
+}

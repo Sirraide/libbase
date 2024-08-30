@@ -4,9 +4,6 @@ module;
 
 export module base.colours;
 export namespace base::text {
-/// Render colours in a string.
-[[nodiscard]] auto RenderColours(bool use_colours, std::string_view fmt) -> std::string;
-
 /// Mixin to simplify formatting strings with colours.
 ///
 /// A formatting code starts with a per cent sign, and the text to
@@ -30,6 +27,9 @@ class ColourFormatter;
 template <typename StringTy>
 class BasicUnrenderedString;
 using UnrenderedString = BasicUnrenderedString<std::string>;
+
+/// Render colours in a string.
+[[nodiscard]] auto RenderColours(bool use_colours, std::string_view fmt) -> std::string;
 }
 
 namespace base::text {
@@ -172,5 +172,9 @@ public:
     auto operator+=(const BasicUnrenderedString<Ty>& s) {
         str += s.str;
         return *this;
+    }
+
+    [[nodiscard]] auto render(bool use_colours) const -> std::string {
+        return text::RenderColours(use_colours, str);
     }
 };
