@@ -8,6 +8,10 @@ auto Render(std::string_view in) -> RawString {
     return {RenderColours(true, in)};
 }
 
+struct Formatter : ColourFormatter {
+    bool use_colour() const { return true; }
+};
+
 TEST_CASE("Strip formatting codes if use_colour is false") {
     CHECK(RenderColours(false, "") == "");
     CHECK(RenderColours(false, "abc") == "abc");
@@ -70,44 +74,4 @@ TEST_CASE("Underlining") {
     CHECK(Render("%u1(abc)") == "\033[4:3;58:5:1mabc\033[m"_raw);
     CHECK(Render("%1u1(abc)") == "\033[31;4:3;58:5:1mabc\033[m"_raw);
     CHECK(Render("%1u1b(abc)") == "\033[1;31;4:3;58:5:1mabc\033[m"_raw);
-}
-
-TEST_CASE("UnrenderedString") {
-    UnrenderedString str;
-    str += "abc";
-    str += "%b(def)";
-
-    struct S : ColourFormatter {
-        bool use_colour() const { return true; }
-    };
-
-    S s;
-    CHECK(s.format("{}", str) == "abc\033[1mdef\033[m");
-
-    std::string res;
-    s.write(res, "{}", str);
-    CHECK(res == "abc\033[1mdef\033[m");
-}
-
-TEST_CASE("UnrenderedString::render()") {
-    UnrenderedString str;
-    str += "abc";
-    str += "%b(def)";
-
-    CHECK(str.render(false) == "abcdef");
-    CHECK(str.render(true) == "abc\033[1mdef\033[m");
-}
-
-TEST_CASE("UnrenderedString::add()") {
-    UnrenderedString str;
-    str.add("abc%b({})", "def");
-
-    CHECK(str.render(false) == "abcdef");
-    CHECK(str.render(true) == "abc\033[1mdef\033[m");
-
-    UnrenderedString str2;
-    str2.add("{}", str);
-
-    CHECK(str2.render(false) == "abcdef");
-    CHECK(str2.render(true) == "abc\033[1mdef\033[m");
 }
