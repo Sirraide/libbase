@@ -71,3 +71,20 @@ TEST_CASE("Underlining") {
     CHECK(Render("%1u1(abc)") == "\033[31;4:3;58:5:1mabc\033[m"_raw);
     CHECK(Render("%1u1b(abc)") == "\033[1;31;4:3;58:5:1mabc\033[m"_raw);
 }
+
+TEST_CASE("UnrenderedString") {
+    UnrenderedString str;
+    str += "abc";
+    str += "%b(def)";
+
+    struct S : ColourFormatter {
+        bool use_colour() const { return true; }
+    };
+
+    S s;
+    CHECK(s.format("{}", str) == "abc\033[1mdef\033[m");
+
+    std::string res;
+    s.write(res, "{}", str);
+    CHECK(res == "abc\033[1mdef\033[m");
+}

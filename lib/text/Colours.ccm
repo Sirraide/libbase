@@ -23,7 +23,37 @@ export namespace base::text {
 /// - %1-%9: ANSI terminal colours (e.g. %4 becomes \033[34m).
 /// - %r: reset everything. This must be specified before any other formatting codes.
 /// - %u: curly underline; if the next character is a digit, it becomes the underline colour.
-struct ColourFormatter;
+class ColourFormatter;
+
+/// A string that contains formatting characters that still need
+/// to be rendered.
+template <typename StringTy>
+class BasicUnrenderedString;
+using UnrenderedString = BasicUnrenderedString<std::string>;
+}
+
+namespace base::text {
+template <typename>
+struct AnyUnrenderedStringImpl { static constexpr bool value = false; };
+
+template <typename Ty>
+requires std::is_reference_v<Ty>
+struct AnyUnrenderedStringImpl<Ty> {
+    static constexpr bool value = AnyUnrenderedStringImpl<std::remove_reference_t<Ty>>::value;
+};
+
+template <typename Ty>
+struct AnyUnrenderedStringImpl<const Ty> {
+    static constexpr bool value = AnyUnrenderedStringImpl<Ty>::value;
+};
+
+template <typename StringTy>
+struct AnyUnrenderedStringImpl<BasicUnrenderedString<StringTy>> {
+    static constexpr bool value = true;
+};
+
+template <typename Ty>
+concept AnyUnrenderedString = AnyUnrenderedStringImpl<Ty>::value;
 }
 
 /// Mixin to simplify formatting strings with colours.
@@ -47,23 +77,42 @@ struct ColourFormatter;
 /// to escape any character, e.g. '\033%' is a literal '%' sign. This is
 /// also often required for literal closed parentheses, e.g. '%b(\033))'
 /// produces a bold ')'.
-struct base::text::ColourFormatter {
+class base::text::ColourFormatter {
+    template <typename Ty>
+    struct RenderedImpl { using type = Ty; };
+
+    template <AnyUnrenderedString Ty>
+    struct RenderedImpl<Ty> { using type = std::string_view; };
+
+    template <typename Ty>
+    using Rendered = typename RenderedImpl<Ty>::type;
+
+    template <typename Ty>
+    static auto Extract(Ty&& arg) -> Ty {
+        return std::forward<Ty>(arg);
+    }
+
+    static auto Extract(AnyUnrenderedString auto&& arg) -> std::string_view {
+        return std::string_view{arg.str};
+    }
+
+public:
     template <typename... Args>
     auto format(
         this auto&& self,
-        std::format_string<Args...> fmt,
+        std::format_string<Rendered<Args>...> fmt,
         Args&&... args
     ) -> std::string {
         return text::RenderColours(
             self.use_colour(),
-            std::format(fmt, std::forward<Args>(args)...)
+            std::format(fmt, self.ColourFormatter::Extract(std::forward<Args>(args))...)
         );
     }
 
     template <typename... Args>
     void print(
         this auto&& self,
-        std::format_string<Args...> fmt,
+        std::format_string<Rendered<Args>...> fmt,
         Args&&... args
     ) {
         std::print(stdout, "{}", self.format(fmt, std::forward<Args>(args)...));
@@ -73,30 +122,49 @@ struct base::text::ColourFormatter {
     void print(
         this auto&& self,
         FILE* f,
-        std::format_string<Args...> fmt,
+        std::format_string<Rendered<Args>...> fmt,
         Args&&... args
     ) {
         std::print(f, "{}", self.format(fmt, std::forward<Args>(args)...));
     }
 
     template <typename... Args>
-    auto write(
+    void write(
         this auto&& self,
         std::string& out,
-        std::format_string<Args...> fmt,
+        std::format_string<Rendered<Args>...> fmt,
         Args&&... args
-    ) -> std::string {
+    ) {
         out += self.format(fmt, std::forward<Args>(args)...);
     }
 
     template <typename OutputStream, typename... Args>
     requires requires (OutputStream& os, std::string s) { os << s; }
-    auto write(
+    void write(
         this auto&& self,
         OutputStream& os,
-        std::format_string<Args...> fmt,
+        std::format_string<Rendered<Args>...> fmt,
         Args&&... args
-    ) -> std::string {
+    ) {
         os << self.format(fmt, std::forward<Args>(args)...);
+    }
+};
+
+template <typename StringTy = std::string>
+class base::text::BasicUnrenderedString {
+    friend ColourFormatter;
+    StringTy str;
+
+public:
+    BasicUnrenderedString() = default;
+
+    auto operator+=(char c) -> BasicUnrenderedString& {
+        str += c;
+        return *this;
+    }
+
+    auto operator+=(std::string_view s) -> BasicUnrenderedString& {
+        str += s;
+        return *this;
     }
 };
