@@ -167,4 +167,10 @@ public:
         str += s;
         return *this;
     }
+
+    template <typename Ty>
+    auto operator+=(const BasicUnrenderedString<Ty>& s) {
+        str += s.str;
+        return *this;
+    }
 };
