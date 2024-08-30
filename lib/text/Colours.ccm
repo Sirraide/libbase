@@ -188,6 +188,6 @@ public:
     ) { std::format_to(std::back_inserter(str), fmt, text::Extract(std::forward<Args>(args))...); }
 
     [[nodiscard]] auto render(bool use_colours) const -> std::string {
-        return text::RenderColours(use_colours, str);
+        return text::RenderColours(use_colours, text::Extract(*this));
     }
 };
