@@ -97,3 +97,17 @@ TEST_CASE("UnrenderedString::render()") {
     CHECK(str.render(false) == "abcdef");
     CHECK(str.render(true) == "abc\033[1mdef\033[m");
 }
+
+TEST_CASE("UnrenderedString::add()") {
+    UnrenderedString str;
+    str.add("abc%b({})", "def");
+
+    CHECK(str.render(false) == "abcdef");
+    CHECK(str.render(true) == "abc\033[1mdef\033[m");
+
+    UnrenderedString str2;
+    str2.add("{}", str);
+
+    CHECK(str2.render(false) == "abcdef");
+    CHECK(str2.render(true) == "abc\033[1mdef\033[m");
+}

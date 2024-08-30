@@ -30,11 +30,13 @@ using UnrenderedString = BasicUnrenderedString<std::string>;
 
 /// Render colours in a string.
 [[nodiscard]] auto RenderColours(bool use_colours, std::string_view fmt) -> std::string;
-}
+} // namespace base::text
 
 namespace base::text {
 template <typename>
-struct AnyUnrenderedStringImpl { static constexpr bool value = false; };
+struct AnyUnrenderedStringImpl {
+    static constexpr bool value = false;
+};
 
 template <typename Ty>
 requires std::is_reference_v<Ty>
@@ -54,7 +56,28 @@ struct AnyUnrenderedStringImpl<BasicUnrenderedString<StringTy>> {
 
 template <typename Ty>
 concept AnyUnrenderedString = AnyUnrenderedStringImpl<Ty>::value;
+
+template <typename Ty>
+struct RenderedImpl {
+    using type = Ty;
+};
+
+template <AnyUnrenderedString Ty>
+struct RenderedImpl<Ty> {
+    using type = std::string_view;
+};
+
+template <typename Ty>
+using Rendered = typename RenderedImpl<Ty>::type;
+
+template <typename Ty>
+requires (not AnyUnrenderedString<Ty>)
+decltype(auto) Extract(Ty&& arg) { return std::forward<Ty>(arg); }
+
+auto Extract(AnyUnrenderedString auto&& arg) -> std::string_view {
+    return std::string_view{arg.str};
 }
+} // namespace base::text
 
 /// Mixin to simplify formatting strings with colours.
 ///
@@ -78,24 +101,6 @@ concept AnyUnrenderedString = AnyUnrenderedStringImpl<Ty>::value;
 /// also often required for literal closed parentheses, e.g. '%b(\033))'
 /// produces a bold ')'.
 class base::text::ColourFormatter {
-    template <typename Ty>
-    struct RenderedImpl { using type = Ty; };
-
-    template <AnyUnrenderedString Ty>
-    struct RenderedImpl<Ty> { using type = std::string_view; };
-
-    template <typename Ty>
-    using Rendered = typename RenderedImpl<Ty>::type;
-
-    template <typename Ty>
-    static auto Extract(Ty&& arg) -> Ty {
-        return std::forward<Ty>(arg);
-    }
-
-    static auto Extract(AnyUnrenderedString auto&& arg) -> std::string_view {
-        return std::string_view{arg.str};
-    }
-
 public:
     template <typename... Args>
     auto format(
@@ -105,7 +110,7 @@ public:
     ) -> std::string {
         return text::RenderColours(
             self.use_colour(),
-            std::format(fmt, self.ColourFormatter::Extract(std::forward<Args>(args))...)
+            std::format(fmt, text::Extract(std::forward<Args>(args))...)
         );
     }
 
@@ -153,6 +158,7 @@ public:
 template <typename StringTy = std::string>
 class base::text::BasicUnrenderedString {
     friend ColourFormatter;
+    friend auto text::Extract(AnyUnrenderedString auto&& arg) -> std::string_view;
     StringTy str;
 
 public:
@@ -173,6 +179,12 @@ public:
         str += s.str;
         return *this;
     }
+
+    template <typename... Args>
+    void add(
+        std::format_string<Rendered<Args>...> fmt,
+        Args&&... args
+    ) { std::format_to(std::back_inserter(str), fmt, text::Extract(std::forward<Args>(args))...); }
 
     [[nodiscard]] auto render(bool use_colours) const -> std::string {
         return text::RenderColours(use_colours, str);
