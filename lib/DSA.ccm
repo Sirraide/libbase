@@ -19,13 +19,13 @@ export module base:dsa;
 import :utils;
 
 export namespace base {
-template<
+template <
     typename KeyTy,
     typename ValueTy,
     typename HashTy = std::hash<KeyTy>,
     typename Predicate = std::equal_to<KeyTy>,
-    typename Alloc = std::allocator<std::pair<const KeyTy, ValueTy>>
-> class HashMap;
+    typename Alloc = std::allocator<std::pair<const KeyTy, ValueTy>>>
+class HashMap;
 
 template <typename ValueType, typename Sequence = std::deque<ValueType>>
 class Queue;
@@ -34,8 +34,8 @@ template <
     typename KeyTy,
     typename ValueTy,
     typename Comparator = std::less<KeyTy>,
-    typename Alloc = std::allocator<std::pair<const KeyTy, ValueTy>>
-> class TreeMap;
+    typename Alloc = std::allocator<std::pair<const KeyTy, ValueTy>>>
+class TreeMap;
 
 template <typename... Types>
 class Variant;
@@ -58,20 +58,18 @@ struct MapMixin {
         return it->second;
     }
 };
-}
-
+} // namespace base::detail
 
 /// Wrapper around 'std::unordered_map' that provides 'get()',
 /// and 'get_or()'.
-template<
+template <
     typename KeyTy,
     typename ValueTy,
     typename HashTy,
     typename Predicate,
-    typename Alloc
-> class base::HashMap :
-    public std::unordered_map<KeyTy, ValueTy, HashTy, Predicate, Alloc>,
-    public detail::MapMixin<KeyTy, ValueTy> {
+    typename Alloc>
+class base::HashMap : public std::unordered_map<KeyTy, ValueTy, HashTy, Predicate, Alloc>
+    , public detail::MapMixin<KeyTy, ValueTy> {
     using Base = std::unordered_map<KeyTy, ValueTy, HashTy, Predicate, Alloc>;
 
 public:
@@ -107,10 +105,9 @@ template <
     typename KeyTy,
     typename ValueTy,
     typename Comparator,
-    typename Alloc
-> class base::TreeMap :
-    public std::map<KeyTy, ValueTy, Comparator, Alloc>,
-    public detail::MapMixin<KeyTy, ValueTy> {
+    typename Alloc>
+class base::TreeMap : public std::map<KeyTy, ValueTy, Comparator, Alloc>
+    , public detail::MapMixin<KeyTy, ValueTy> {
     using Base = std::map<KeyTy, ValueTy, Comparator, Alloc>;
 
 public:
@@ -149,7 +146,11 @@ public:
 
     /// Visit this variant.
     template <typename Visitor, typename Self>
-    constexpr auto visit(this Self&& self, Visitor&& visitor) -> decltype(auto) {
+    constexpr auto visit(this Self&& self, Visitor&& visitor)
+        // Need to specify this explicitly, otherwise, we run into
+        // problems with recursive visitors because it can’t deduce
+        // the return type of this in that case.
+        -> decltype(std::visit(std::forward<Visitor>(visitor), std::forward<Self>(self))) {
         return std::visit(std::forward<Visitor>(visitor), std::forward<Self>(self));
     }
 };

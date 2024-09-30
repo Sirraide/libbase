@@ -107,3 +107,23 @@ TEST_CASE("Variant::visit") {
     cv.visit(CV);
     CHECK(visited);
 }
+
+TEST_CASE("Recursive visitor") {
+    struct S { Variant<S*, int> s{}; };
+
+    S a, b, c;
+    a.s = &b;
+    b.s = &c;
+    c.s = 42;
+
+    Variant<S*, int> v = &a;
+    Variant<S*, int> w = 37;
+
+    auto V = utils::Overloaded{
+        [&](int i) -> std::string { return std::format("{}\n", i); },
+        [&](this auto& self, S* s) -> std::string { return s->s.visit(self); }
+    };
+
+    CHECK(v.visit(V) == "42\n");
+    CHECK(w.visit(V) == "37\n");
+}
