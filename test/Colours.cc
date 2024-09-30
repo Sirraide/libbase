@@ -75,3 +75,7 @@ TEST_CASE("Underlining") {
     CHECK(Render("%1u1(abc)") == "\033[31;4:3;58:5:1mabc\033[m"_raw);
     CHECK(Render("%1u1b(abc)") == "\033[1;31;4:3;58:5:1mabc\033[m"_raw);
 }
+
+TEST_CASE("Literal text") {
+    CHECK(Render("\002%aea%h5%q%qa)(%())))))))\003") == "%aea%h5%q%qa)(%())))))))"_raw);
+}

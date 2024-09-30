@@ -130,7 +130,7 @@ struct Context {
     void Render() {
         for (;;) {
             // Append everything we have so far.
-            out += s.take_until_any("\033%)");
+            out += s.take_until_any("\033\002%)");
 
             // Stop if we don’t have any formatting codes anymore.
             if (s.empty()) break;
@@ -144,6 +144,14 @@ struct Context {
                 case '\033':
                     out += s.take(1);
                     break;
+
+                // Start of text marks literal text that is not to be interpreted
+                // as formatting.
+                case '\002': {
+                    out += s.take_until('\003');
+                    if (s.consume('\003')) break;
+                    utils::ThrowOrAbort(std::format("Unterminated literal text in '{}'", fmt));
+                } break;
 
                 // Closing parenthesis. Pop the last style.
                 case ')': {
