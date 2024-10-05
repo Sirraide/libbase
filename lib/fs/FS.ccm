@@ -109,6 +109,9 @@ class File : FileImpl {
     OpenMode open_mode;
 
 public:
+    using FileImpl::Path;
+    using FileImpl::PathRef;
+
     /// Get the open mode of the file.
     [[nodiscard]] auto mode() const noexcept -> OpenMode { return open_mode; }
 
