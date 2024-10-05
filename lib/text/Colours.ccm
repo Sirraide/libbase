@@ -23,6 +23,16 @@ export namespace base::text {
 class ColourFormatter;
 
 /// Render colours in a string.
+//
+// FIXME: The entire colours system is a bit janky; find some
+// better way of writing this such that random characters in
+// the input aren’t accidentally picked up as formatting (I
+// think we have to preprocess the format string *before*
+// formatting and also accept a format string in this function).
+//
+// Idea: escape all arguments using \002 and \003, unless
+// base::is_unrendered_string<Type> is true for a type; make
+// this a template so people can specialise it.
 [[nodiscard]] auto RenderColours(bool use_colours, std::string_view fmt) -> std::string;
 } // namespace base::text
 

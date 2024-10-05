@@ -1,9 +1,9 @@
 #ifndef LIBBASE_MACROS_HH
 #define LIBBASE_MACROS_HH
 
-#include <utility>
 #include <expected>
 #include <type_traits>
+#include <utility>
 
 #define LIBBASE_STR_(X) #X
 #define LIBBASE_STR(X)  LIBBASE_STR_(X)
@@ -31,6 +31,28 @@
     constexpr auto operator|=(e& a, e b) noexcept -> e& { return a = a | b; } \
     constexpr bool operator&(e a, e b) noexcept { return (+a & +b) != 0; }
 
+#define LIBBASE_DECLARE_HIDDEN_IMPL(cls) \
+private:                                 \
+    struct Impl;                         \
+    std::unique_ptr<Impl> impl;          \
+    cls();                               \
+public:                                  \
+    ~cls();                              \
+    cls(const cls&) = delete;            \
+    cls& operator=(const cls&) = delete; \
+    cls(cls&&) noexcept;                 \
+    cls& operator=(cls&&) noexcept;      \
+private:
+
+#define LIBBASE_DEFINE_HIDDEN_IMPL(cls)                                     \
+    cls::cls() = default;                                                   \
+    cls::~cls() = default;                                                  \
+    cls::cls(cls&& other) noexcept : impl(std::exchange(other.impl, {})) {} \
+    cls& cls::operator=(cls&& other) noexcept {                             \
+        if (this == std::addressof(other)) return *this;                    \
+        impl = std::exchange(other.impl, {});                               \
+        return *this;                                                       \
+    }
 
 /// Macro that propagates errors up the call stack.
 ///
@@ -72,7 +94,7 @@
 })
 // clang-format on
 
-#define defer ::base::detail::DeferImpl _ = [&]
+#define defer   ::base::detail::DeferImpl _ = [&]
 #define tempset auto _ = ::base::detail::Tempset{}->*
 
 namespace base::detail {
@@ -110,6 +132,6 @@ struct Tempset {
         return TempsetStage1{lvalue};
     }
 };
-}
+} // namespace base::detail
 
-#endif //LIBBASE_MACROS_HH
+#endif // LIBBASE_MACROS_HH
