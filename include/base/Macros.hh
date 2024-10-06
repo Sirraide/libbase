@@ -39,17 +39,17 @@ private:
     constexpr auto operator|=(e& a, e b) noexcept -> e& { return a = a | b; } \
     constexpr bool operator&(e a, e b) noexcept { return (+a & +b) != 0; }
 
-#define LIBBASE_DECLARE_HIDDEN_IMPL(cls) \
-private:                                 \
-    struct Impl;                         \
-    std::unique_ptr<Impl> impl;          \
-    cls();                               \
-public:                                  \
-    ~cls();                              \
-    cls(const cls&) = delete;            \
-    cls& operator=(const cls&) = delete; \
-    cls(cls&&) noexcept;                 \
-    cls& operator=(cls&&) noexcept;      \
+#define LIBBASE_DECLARE_HIDDEN_IMPL(cls, ...) \
+private:                                      \
+    struct Impl;                              \
+    std::unique_ptr<Impl> impl;               \
+    cls(__VA_ARGS__);                         \
+public:                                       \
+    ~cls();                                   \
+    cls(const cls&) = delete;                 \
+    cls& operator=(const cls&) = delete;      \
+    cls(cls&&) noexcept;                      \
+    cls& operator=(cls&&) noexcept;           \
 private:
 
 #define LIBBASE_DEFINE_HIDDEN_IMPL(cls)                                     \
@@ -62,14 +62,14 @@ private:
         return *this;                                                       \
     }
 
-#define LIBBASE_DECLARE_HIDDEN_IMPL_IMMOVABLE(cls) \
-private:                                           \
-    struct Impl;                                   \
-    std::unique_ptr<Impl> impl;                    \
-    cls();                                         \
-public:                                            \
-    ~cls();                                        \
-    LIBBASE_IMMOVABLE(cls);                        \
+#define LIBBASE_DECLARE_HIDDEN_IMPL_IMMOVABLE(cls, ...) \
+private:                                                \
+    struct Impl;                                        \
+    std::unique_ptr<Impl> impl;                         \
+    cls(__VA_ARGS__);                                   \
+public:                                                 \
+    ~cls();                                             \
+    LIBBASE_IMMOVABLE(cls);                             \
 private:
 
 #define LIBBASE_DEFINE_HIDDEN_IMPL_IMMOVABLE(cls) \
