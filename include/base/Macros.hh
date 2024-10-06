@@ -54,6 +54,20 @@ private:
         return *this;                                                       \
     }
 
+#define LIBBASE_DECLARE_HIDDEN_IMPL_IMMOVABLE(cls) \
+private:                                           \
+    struct Impl;                                   \
+    std::unique_ptr<Impl> impl;                    \
+    cls();                                         \
+public:                                            \
+    ~cls();                                        \
+    LIBBASE_IMMOVABLE(cls);                        \
+private:
+
+#define LIBBASE_DEFINE_HIDDEN_IMPL_IMMOVABLE(cls) \
+    cls::cls() = default;                         \
+    cls::~cls() = default;
+
 /// Macro that propagates errors up the call stack.
 ///
 /// The second optional argument to the macro, if present, should be an
