@@ -17,6 +17,14 @@
     cls(cls&&) = delete;                 \
     cls& operator=(cls&&) = delete
 
+#define LIBBASE_MOVE_ONLY(cls)           \
+public:                                  \
+    cls(cls&&) = default;                \
+    cls& operator=(cls&&) = default;     \
+    cls(const cls&) = delete;            \
+    cls& operator=(const cls&) = delete; \
+private:
+
 #ifndef NDEBUG
 #    define LIBBASE_DEBUG(...) __VA_ARGS__
 #else
