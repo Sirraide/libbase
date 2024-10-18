@@ -141,13 +141,31 @@ public:
     ~TempsetStage2() { lvalue = std::move(old_value); }
 };
 
+#define DEFINE_ASSIGN_OP(op)                                                          \
+    auto operator op##=(auto&& value) {                                               \
+        return TempsetStage2{lvalue, lvalue op std::forward<decltype(value)>(value)}; \
+    }
+
 template <typename T>
 struct TempsetStage1 {
     T& lvalue;
     auto operator=(auto&& value) {
         return TempsetStage2{lvalue, std::forward<decltype(value)>(value)};
     }
+
+    DEFINE_ASSIGN_OP(|);
+    DEFINE_ASSIGN_OP(&);
+    DEFINE_ASSIGN_OP(^);
+    DEFINE_ASSIGN_OP(<<);
+    DEFINE_ASSIGN_OP(>>);
+    DEFINE_ASSIGN_OP(+);
+    DEFINE_ASSIGN_OP(-);
+    DEFINE_ASSIGN_OP(*);
+    DEFINE_ASSIGN_OP(/);
+    DEFINE_ASSIGN_OP(%);
 };
+
+#undef DEFINE_ASSIGN_OP
 
 struct Tempset {
     auto operator->*(auto& lvalue) {
