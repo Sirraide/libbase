@@ -112,6 +112,28 @@ TEST_CASE("stream::drop_back()") {
     CHECK(stream{s}.drop_back(-200) == "");
 }
 
+TEST_CASE("stream::ends_with") {
+    std::string s = "hello world";
+
+    CHECK(stream{s}.ends_with('d'));
+    CHECK(stream{s}.ends_with("d"));
+    CHECK(stream{s}.ends_with("ld"));
+    CHECK(stream{s}.ends_with("world"));
+    CHECK_FALSE(stream{s}.ends_with("lx"));
+    CHECK_FALSE(stream{s}.ends_with("worldx"));
+}
+
+TEST_CASE("stream::ends_with_any") {
+    std::string s = "hello world";
+
+    CHECK(stream{s}.ends_with_any("d"));
+    CHECK(stream{s}.ends_with_any("ld"));
+    CHECK(stream{s}.ends_with_any("world"));
+    CHECK(stream{s}.ends_with_any("dx"));
+    CHECK(stream{s}.ends_with_any("ldx"));
+    CHECK_FALSE(stream{s}.ends_with_any("lx"));
+}
+
 TEST_CASE("stream::remove()") {
     std::string s = "hello world";
 
@@ -150,4 +172,26 @@ TEST_CASE("stream::split()") {
         REQUIRE(rgs::distance(cc) == 3);
         CHECK_THAT(cc, RangeEquals(std::vector{"aa\nbb\n"sv, "\nbb\n"sv, ""sv}));
     }
+}
+
+TEST_CASE("stream::starts_with") {
+    std::string s = "hello world";
+
+    CHECK(stream{s}.starts_with('h'));
+    CHECK(stream{s}.starts_with("h"));
+    CHECK(stream{s}.starts_with("he"));
+    CHECK(stream{s}.starts_with("hello"));
+    CHECK_FALSE(stream{s}.starts_with("hx"));
+    CHECK_FALSE(stream{s}.starts_with("xhello"));
+}
+
+TEST_CASE("stream::starts_with_any") {
+    std::string s = "hello world";
+
+    CHECK(stream{s}.starts_with_any("h"));
+    CHECK(stream{s}.starts_with_any("eh"));
+    CHECK(stream{s}.starts_with_any("hello"));
+    CHECK(stream{s}.starts_with_any("hx"));
+    CHECK(stream{s}.starts_with_any("xhello"));
+    CHECK_FALSE(stream{s}.starts_with_any("x"));
 }

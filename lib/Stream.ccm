@@ -348,9 +348,8 @@ public:
 
     /// \return True if the stream ends with any of the given characters.
     [[nodiscard]] constexpr auto
-    ends_with_any(std::initializer_list<char_type> suffix) const -> bool {
-        return not _m_text.empty() and
-               std::ranges::find(suffix, _m_text.back()) != suffix.end();
+    ends_with_any(text_type suffix) const -> bool {
+        return not _m_text.empty() and basic_stream{suffix}.contains(_m_text.back());
     }
 
     /// Extract a series of characters from a stream.
@@ -458,8 +457,7 @@ public:
     /// \return True if the stream starts with any of the given characters.
     [[nodiscard]] constexpr auto
     starts_with_any(text_type prefix) const -> bool {
-        return not _m_text.empty() and
-               std::ranges::find(prefix, _m_text.front()) != prefix.end();
+        return not _m_text.empty() and basic_stream{prefix}.contains(_m_text.front());
     }
 
     /// Get N characters from the stream.
