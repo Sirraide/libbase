@@ -57,3 +57,31 @@ TEST_CASE("stream::chunks()") {
     CHECK_THAT(stream{s}.chunks(5), RangeEquals(std::vector{"hello"sv, " worl"sv, "d"sv}));
     CHECK_THAT(stream{s}.chunks(6), RangeEquals(std::vector{"hello "sv, "world"sv}));
 }
+
+TEST_CASE("stream::drop()") {
+    std::string s = "hello world";
+
+    CHECK(stream{s}.drop(0) == "hello world");
+    CHECK(stream{s}.drop(1) == "ello world");
+    CHECK(stream{s}.drop(2) == "llo world");
+    CHECK(stream{s}.drop(200) == "");
+
+    CHECK(stream{s}.drop(-0) == "hello world");
+    CHECK(stream{s}.drop(-1) == "hello worl");
+    CHECK(stream{s}.drop(-2) == "hello wor");
+    CHECK(stream{s}.drop(-200) == "");
+}
+
+TEST_CASE("stream::drop_back()") {
+    std::string s = "hello world";
+
+    CHECK(stream{s}.drop_back(0) == "hello world");
+    CHECK(stream{s}.drop_back(1) == "hello worl");
+    CHECK(stream{s}.drop_back(2) == "hello wor");
+    CHECK(stream{s}.drop_back(200) == "");
+
+    CHECK(stream{s}.drop_back(-0) == "hello world");
+    CHECK(stream{s}.drop_back(-1) == "ello world");
+    CHECK(stream{s}.drop_back(-2) == "llo world");
+    CHECK(stream{s}.drop_back(-200) == "");
+}

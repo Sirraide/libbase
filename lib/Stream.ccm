@@ -143,18 +143,41 @@ public:
     ///
     /// \see consume(char_type)
     ///
-    /// \param n The number of characters to drop.
+    /// \param n The number of characters to drop. If negative, calls
+    ///          drop_back() instead.
+    ///
     /// \return This.
-    template <std::integral size = size_type>
-    requires (not std::same_as<std::remove_cvref_t<size>, char_type>)
+    template <std::integral size_ty = size_type>
+    requires (not std::same_as<std::remove_cvref_t<size_ty>, char_type>)
     constexpr auto
-    drop(size n = 1) noexcept -> basic_stream& {
-        if constexpr (not std::unsigned_integral<size>) Assert(
-            n >= 0,
-            "Cannot drop a negative number of characters"
-        );
+    drop(size_ty n = 1) noexcept -> basic_stream& {
+        if constexpr (not std::unsigned_integral<size_ty>) {
+            if (n < 0) return drop_back(static_cast<size_type>(-n));
+        }
 
         (void) take(static_cast<size_type>(n));
+        return *this;
+    }
+
+    /// Discard N characters from the back of the stream.
+    ///
+    /// If the stream contains fewer than N characters, this clears
+    /// the entire stream.
+    ///
+    /// \param n The number of characters to drop. If negative, calls
+    ///          drop() instead.
+    ///
+    /// \return This.
+    template <std::integral size_ty = size_type>
+    requires (not std::same_as<std::remove_cvref_t<size_ty>, char_type>)
+    constexpr auto
+    drop_back(size_ty n = 1) noexcept -> basic_stream& {
+        if constexpr (not std::unsigned_integral<size_ty>) {
+            if (n < 0) return drop(static_cast<size_type>(-n));
+        }
+
+        if (static_cast<size_type>(n) >= _m_text.size()) _m_text = {};
+        else _m_text.remove_suffix(static_cast<size_type>(n));
         return *this;
     }
 
