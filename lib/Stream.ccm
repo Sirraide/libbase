@@ -107,6 +107,31 @@ public:
         return true;
     }
 
+    /// Skip a list of characters.
+    ///
+    /// If the stream starts with the given list of characters, in that
+    /// order, they are removed from the stream. Otherwise, do nothing.
+    ///
+    /// \param chars The characters to skip.
+    /// \return True if the characters were skipped.
+    [[nodiscard]] constexpr auto
+    consume(text_type chars) noexcept -> bool {
+        if (not starts_with(chars)) return false;
+        drop(chars.size());
+        return true;
+    }
+
+    /// Skip any of a set of characters.
+    ///
+    /// \param chars The characters to skip.
+    /// \return True if any of the characters were skipped.
+    [[nodiscard]] constexpr auto
+    consume_any(text_type chars) noexcept -> bool {
+        if (not starts_with_any(chars)) return false;
+        drop();
+        return true;
+    }
+
     /// Check if the stream contains a character.
     [[nodiscard]] constexpr auto
     contains(char_type c) noexcept -> bool {

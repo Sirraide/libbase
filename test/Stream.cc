@@ -11,6 +11,107 @@ struct StringWrapper {
     bool operator==(std::string_view s) const { return data == s; }
 };
 
+
+TEST_CASE("stream::chunks()") {
+    std::string s = "hello world";
+    CHECK_THAT(stream{s}.chunks(3), RangeEquals(std::vector{"hel"sv, "lo "sv, "wor"sv, "ld"sv}));
+    CHECK_THAT(stream{s}.chunks(5), RangeEquals(std::vector{"hello"sv, " worl"sv, "d"sv}));
+    CHECK_THAT(stream{s}.chunks(6), RangeEquals(std::vector{"hello "sv, "world"sv}));
+}
+
+TEST_CASE("stream::contains()") {
+    std::string s = "hello world";
+
+    CHECK(stream{s}.contains('h'));
+    CHECK(stream{s}.contains('w'));
+    CHECK(stream{s}.contains(' '));
+    CHECK_FALSE(stream{s}.contains('x'));
+    CHECK_FALSE(stream{s}.contains('!'));
+
+    CHECK(stream{s}.contains("hello"));
+    CHECK(stream{s}.contains("world"));
+    CHECK(stream{s}.contains(" "));
+    CHECK_FALSE(stream{s}.contains("hellox"));
+    CHECK_FALSE(stream{s}.contains("!world"));
+}
+
+TEST_CASE("stream::contains_any()") {
+    std::string s = "hello world";
+
+    CHECK(stream{s}.contains_any("hxyz"));
+    CHECK(stream{s}.contains_any("wxyz"));
+    CHECK(stream{s}.contains_any(" !"));
+    CHECK_FALSE(stream{s}.contains_any("xyz"));
+}
+
+TEST_CASE("stream::consume(char)") {
+    std::string str = "hello world";
+    stream s{str};
+
+    CHECK(s.consume('h'));
+    CHECK(s.consume('e'));
+    CHECK(s.consume('l'));
+    CHECK_FALSE(s.consume('x'));
+    CHECK_FALSE(s.consume('!'));
+    CHECK(s.consume('l'));
+    CHECK(s == "o world");
+}
+
+TEST_CASE("stream::consume(string_view)") {
+    std::string str = "hello world";
+    stream s{str};
+
+    CHECK(s.consume("hello"));
+    CHECK(s.consume(" "));
+    CHECK_FALSE(s.consume("x"));
+    CHECK_FALSE(s.consume("!"));
+    CHECK(s.consume("wor"));
+    CHECK(s.consume("ld"));
+    CHECK(s.empty());
+}
+
+TEST_CASE("stream::consume_any()") {
+    std::string str = "hello world";
+    stream s{str};
+
+    CHECK(s.consume_any("hxyz"));
+    CHECK(s.consume_any("e"));
+    CHECK(s.consume_any("l"));
+    CHECK_FALSE(s.consume_any("xyz"));
+    CHECK_FALSE(s.consume_any(" !"));
+    CHECK(s.consume_any("worl"));
+    CHECK(s.consume_any("lod"));
+    CHECK(s == " world");
+}
+
+TEST_CASE("stream::drop()") {
+    std::string s = "hello world";
+
+    CHECK(stream{s}.drop(0) == "hello world");
+    CHECK(stream{s}.drop(1) == "ello world");
+    CHECK(stream{s}.drop(2) == "llo world");
+    CHECK(stream{s}.drop(200) == "");
+
+    CHECK(stream{s}.drop(-0) == "hello world");
+    CHECK(stream{s}.drop(-1) == "hello worl");
+    CHECK(stream{s}.drop(-2) == "hello wor");
+    CHECK(stream{s}.drop(-200) == "");
+}
+
+TEST_CASE("stream::drop_back()") {
+    std::string s = "hello world";
+
+    CHECK(stream{s}.drop_back(0) == "hello world");
+    CHECK(stream{s}.drop_back(1) == "hello worl");
+    CHECK(stream{s}.drop_back(2) == "hello wor");
+    CHECK(stream{s}.drop_back(200) == "");
+
+    CHECK(stream{s}.drop_back(-0) == "hello world");
+    CHECK(stream{s}.drop_back(-1) == "ello world");
+    CHECK(stream{s}.drop_back(-2) == "llo world");
+    CHECK(stream{s}.drop_back(-200) == "");
+}
+
 TEST_CASE("stream::remove()") {
     std::string s = "hello world";
 
@@ -49,39 +150,4 @@ TEST_CASE("stream::split()") {
         REQUIRE(rgs::distance(cc) == 3);
         CHECK_THAT(cc, RangeEquals(std::vector{"aa\nbb\n"sv, "\nbb\n"sv, ""sv}));
     }
-}
-
-TEST_CASE("stream::chunks()") {
-    std::string s = "hello world";
-    CHECK_THAT(stream{s}.chunks(3), RangeEquals(std::vector{"hel"sv, "lo "sv, "wor"sv, "ld"sv}));
-    CHECK_THAT(stream{s}.chunks(5), RangeEquals(std::vector{"hello"sv, " worl"sv, "d"sv}));
-    CHECK_THAT(stream{s}.chunks(6), RangeEquals(std::vector{"hello "sv, "world"sv}));
-}
-
-TEST_CASE("stream::drop()") {
-    std::string s = "hello world";
-
-    CHECK(stream{s}.drop(0) == "hello world");
-    CHECK(stream{s}.drop(1) == "ello world");
-    CHECK(stream{s}.drop(2) == "llo world");
-    CHECK(stream{s}.drop(200) == "");
-
-    CHECK(stream{s}.drop(-0) == "hello world");
-    CHECK(stream{s}.drop(-1) == "hello worl");
-    CHECK(stream{s}.drop(-2) == "hello wor");
-    CHECK(stream{s}.drop(-200) == "");
-}
-
-TEST_CASE("stream::drop_back()") {
-    std::string s = "hello world";
-
-    CHECK(stream{s}.drop_back(0) == "hello world");
-    CHECK(stream{s}.drop_back(1) == "hello worl");
-    CHECK(stream{s}.drop_back(2) == "hello wor");
-    CHECK(stream{s}.drop_back(200) == "");
-
-    CHECK(stream{s}.drop_back(-0) == "hello world");
-    CHECK(stream{s}.drop_back(-1) == "ello world");
-    CHECK(stream{s}.drop_back(-2) == "llo world");
-    CHECK(stream{s}.drop_back(-200) == "");
 }
