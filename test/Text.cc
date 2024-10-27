@@ -166,9 +166,11 @@ TEST_CASE("ToUpper") {
 TEST_CASE("8<->32 Conversion") {
     std::string_view s1 = "áéẹḍțöźȕ";
     std::u32string_view s2 = U"áéẹḍțöźȕ";
+    char32_t c = U'🌈';
 
     CHECK(ToUTF8(s2) == s1);
     CHECK(ToUTF32(s1) == s2);
     CHECK(ToUTF8(ToUTF32(s1)) == s1);
     CHECK(ToUTF32(ToUTF8(s2)) == s2);
+    CHECK(ToUTF8(c) == "🌈"sv);
 }

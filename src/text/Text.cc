@@ -270,3 +270,7 @@ auto text::ToUTF32(std::string_view str) -> std::u32string {
 auto text::ToUTF8(std::u32string_view str) -> std::string {
     return ExportUTF<char>(UStr(str));
 }
+
+auto text::ToUTF8(c32 c) -> std::string {
+    return ExportUTF<char>(UStr(std::u32string_view{&c.value, 1}));
+}

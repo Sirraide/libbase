@@ -121,6 +121,7 @@ struct c32 {
 
 /// Convert UTF-32 to UTF-8.
 [[nodiscard]] auto ToUTF8(std::u32string_view str) -> std::string;
+[[nodiscard]] auto ToUTF8(c32 str) -> std::string;
 } // namespace base::text
 
 export namespace base {
