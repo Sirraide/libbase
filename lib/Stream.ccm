@@ -644,50 +644,37 @@ public:
     /// \return The matched characters.
     [[nodiscard]] constexpr auto
     take_back_until(char_type c) noexcept -> text_type {
-        auto pos = _m_text.rfind(c);
-        if (pos == text_type::npos) return std::exchange(_m_text, {});
-        return _m_take_back(pos);
+        return _m_take_back<false>(_m_text.rfind(c));
     }
 
     /// \see take_back_until(char_type)
     [[nodiscard]] constexpr auto
     take_back_until(text_type s) noexcept -> text_type {
-        auto pos = _m_text.rfind(s);
-        if (s.empty() or pos == text_type::npos) return std::exchange(_m_text, {});
-        return _m_take_back(pos, s.size());
+        return _m_take_back<false>(_m_text.rfind(s), s.size());
     }
 
     /// \see take_back_until(char_type)
     [[nodiscard]] constexpr auto
     take_back_until_any(text_type chars) noexcept -> text_type {
-        auto pos = _m_text.find_last_of(chars);
-        if (chars.empty() or pos == text_type::npos) return std::exchange(_m_text, {});
-        return _m_take_back(pos);
+        return _m_take_back<false>(_m_text.find_last_of(chars));
     }
-
 
     /// \see take_back_until(char_type)
     [[nodiscard]] constexpr auto
     take_back_until_any_or_empty(text_type chars) noexcept -> text_type {
-        auto pos = _m_text.find_last_of(chars);
-        if (chars.empty() or pos == text_type::npos) return {};
-        return _m_take_back(pos);
+        return _m_take_back<true>(_m_text.find_last_of(chars));
     }
 
     /// \see take_back_until(char_type)
     [[nodiscard]] constexpr auto
     take_back_until_or_empty(char_type c) noexcept -> text_type {
-        auto pos = _m_text.rfind(c);
-        if (pos == text_type::npos) return {};
-        return _m_take_back(pos);
+        return _m_take_back<true>(_m_text.rfind(c));
     }
 
     /// \see take_back_until(char_type)
     [[nodiscard]] constexpr auto
     take_back_until_or_empty(text_type s) noexcept -> text_type {
-        auto pos = _m_text.rfind(s);
-        if (s.empty() or pos == text_type::npos) return {};
-        return _m_take_back(pos, s.size());
+        return _m_take_back<true>(_m_text.rfind(s), s.size());
     }
     ///@}
 
@@ -896,7 +883,18 @@ private:
 
     // Return characters starting from position `n` (exclusive)
     // and remove them from the stream.
+    //
+    // Note: `skip` must be set to the number of characters we matched,
+    // i.e. 1 for char_type and `_any` overloads (because we match at
+    // most one character in the string view in that case), and the
+    // length of the needle otherwise.
+    template <bool _or_empty>
     constexpr auto _m_take_back(size_type pos, size_type skip = 1) noexcept -> text_type {
+        if (skip == 0 or pos == text_type::npos) {
+            if constexpr (_or_empty) return {};
+            else return std::exchange(_m_text, {});
+        }
+
         pos += skip;
         auto tail = _m_text.substr(pos);
         _m_text.remove_suffix(size() - pos);
