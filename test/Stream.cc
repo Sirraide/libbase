@@ -11,6 +11,21 @@ struct StringWrapper {
     bool operator==(std::string_view s) const { return data == s; }
 };
 
+template <>
+struct Catch::StringMaker<stream> {
+    static std::string convert(const stream& res) {
+        std::string s;
+        for (auto c : res.text()) {
+            if (c < 32) {
+                s += std::format("\\x{:02x}", c);
+            } else {
+                s += c;
+            }
+        }
+        return s;
+    }
+};
+
 
 TEST_CASE("stream::chunks()") {
     std::string s = "hello world";
@@ -82,6 +97,45 @@ TEST_CASE("stream::consume_any()") {
     CHECK(s.consume_any("worl"));
     CHECK(s.consume_any("lod"));
     CHECK(s == " world");
+}
+
+TEST_CASE("stream::consume_back()") {
+    std::string str = "hello world";
+    stream s{str};
+
+    CHECK(s.consume_back('d'));
+    CHECK(s.consume_back('l'));
+    CHECK(s.consume_back('r'));
+    CHECK_FALSE(s.consume_back('x'));
+    CHECK_FALSE(s.consume_back('!'));
+    CHECK(s.consume_back('o'));
+    CHECK(s == "hello w");
+}
+
+TEST_CASE("stream::consume_back(string_view)") {
+    std::string str = "hello world";
+    stream s{str};
+
+    CHECK(s.consume_back("world"));
+    CHECK(s.consume_back(" "));
+    CHECK_FALSE(s.consume_back("x"));
+    CHECK_FALSE(s.consume_back("!"));
+    CHECK(s.consume_back("hello"));
+    CHECK(s.empty());
+}
+
+TEST_CASE("stream::consume_back_any()") {
+    std::string str = "hello world";
+    stream s{str};
+
+    CHECK(s.consume_back_any("dxyz"));
+    CHECK(s.consume_back_any("l"));
+    CHECK(s.consume_back_any("r"));
+    CHECK_FALSE(s.consume_back_any("xyz"));
+    CHECK_FALSE(s.consume_back_any(" !"));
+    CHECK(s.consume_back_any("worl"));
+    CHECK(s.consume_back_any("lodw"));
+    CHECK(s == "hello ");
 }
 
 TEST_CASE("stream::drop()") {
@@ -194,4 +248,211 @@ TEST_CASE("stream::starts_with_any") {
     CHECK(stream{s}.starts_with_any("hx"));
     CHECK(stream{s}.starts_with_any("xhello"));
     CHECK_FALSE(stream{s}.starts_with_any("x"));
+}
+
+TEST_CASE("stream::take_until") {
+    std::string s = "hello world";
+
+    CHECK(stream{s}.take_until(' ') == "hello"sv);
+    CHECK(stream{s}.take_until('o') == "hell"sv);
+    CHECK(stream{s}.take_until('x') == "hello world"sv);
+    CHECK(stream{s}.take_until('h') == ""sv);
+
+    CHECK(stream{s}.take_until_any(" ") == "hello"sv);
+    CHECK(stream{s}.take_until_any("eo") == "h"sv);
+    CHECK(stream{s}.take_until_any("x") == "hello world"sv);
+    CHECK(stream{s}.take_until_any("rw") == "hello "sv);
+
+    CHECK(stream{s}.take_until(" ") == "hello"sv);
+    CHECK(stream{s}.take_until("lo") == "hel"sv);
+    CHECK(stream{s}.take_until("ld") == "hello wor"sv);
+    CHECK(stream{s}.take_until("lx") == "hello world"sv);
+
+    CHECK(stream{s}.take_until([](char c) { return c == ' '; }) == "hello"sv);
+    CHECK(stream{s}.take_until([](char c) { return c == 'o'; }) == "hell"sv);
+    CHECK(stream{s}.take_until([](char c) { return c == 'x'; }) == "hello world"sv);
+    CHECK(stream{s}.take_until([](char c) { return c == 'h'; }) == ""sv);
+}
+
+TEST_CASE("stream::take_until_or_empty") {
+    std::string s = "hello world";
+
+    CHECK(stream{s}.take_until_or_empty(' ') == "hello"sv);
+    CHECK(stream{s}.take_until_or_empty('o') == "hell"sv);
+    CHECK(stream{s}.take_until_or_empty('x') == ""sv);
+    CHECK(stream{s}.take_until_or_empty('h') == ""sv);
+
+    CHECK(stream{s}.take_until_any_or_empty(" ") == "hello"sv);
+    CHECK(stream{s}.take_until_any_or_empty("eo") == "h"sv);
+    CHECK(stream{s}.take_until_any_or_empty("x") == ""sv);
+    CHECK(stream{s}.take_until_any_or_empty("rw") == "hello "sv);
+
+    CHECK(stream{s}.take_until_or_empty(" ") == "hello"sv);
+    CHECK(stream{s}.take_until_or_empty("lo") == "hel"sv);
+    CHECK(stream{s}.take_until_or_empty("ld") == "hello wor"sv);
+    CHECK(stream{s}.take_until_or_empty("lx") == ""sv);
+
+    CHECK(stream{s}.take_until_or_empty([](char c) { return c == ' '; }) == "hello"sv);
+    CHECK(stream{s}.take_until_or_empty([](char c) { return c == 'o'; }) == "hell"sv);
+    CHECK(stream{s}.take_until_or_empty([](char c) { return c == 'x'; }) == ""sv);
+    CHECK(stream{s}.take_until_or_empty([](char c) { return c == 'h'; }) == ""sv);
+}
+
+TEST_CASE("stream::take_while") {
+    std::string s = "hello world";
+
+    CHECK(stream{s}.take_while(' ') == ""sv);
+    CHECK(stream{s}.take_while('h') == "h"sv);
+    CHECK(stream{s}.take_while('o') == ""sv);
+    CHECK(stream{s}.take_while('x') == ""sv);
+
+    CHECK(stream{s}.take_while_any(" ") == ""sv);
+    CHECK(stream{s}.take_while_any("eho") == "he"sv);
+    CHECK(stream{s}.take_while_any("x") == ""sv);
+    CHECK(stream{s}.take_while_any("w loeh") == "hello wo"sv);
+
+    CHECK(stream{s}.take_while([](char c) { return c == ' '; }) == ""sv);
+    CHECK(stream{s}.take_while([](char c) { return "eho"sv.contains(c); }) == "he"sv);
+    CHECK(stream{s}.take_while([](char c) { return c == 'x'; }) == ""sv);
+    CHECK(stream{s}.take_while([](char c) { return "w loeh"sv.contains(c); }) == "hello wo"sv);
+}
+
+TEST_CASE("stream::take_back_until") {
+    std::string s = "hello world";
+
+    CHECK(stream{s}.take_back_until(' ') == "world"sv);
+    CHECK(stream{s}.drop_back_until(' ') == "hello "sv);
+
+    CHECK(stream{s}.take_back_until('o') == "rld"sv);
+    CHECK(stream{s}.drop_back_until('o') == "hello wo"sv);
+
+    CHECK(stream{s}.take_back_until('x') == "hello world"sv);
+    CHECK(stream{s}.drop_back_until('x') == ""sv);
+
+    CHECK(stream{s}.take_back_until('h') == "ello world"sv);
+    CHECK(stream{s}.drop_back_until('h') == "h"sv);
+
+    CHECK(stream{s}.take_back_until('d') == ""sv);
+    CHECK(stream{s}.drop_back_until('d') == "hello world"sv);
+
+    CHECK(stream{s}.take_back_until_any(" ") == "world"sv);
+    CHECK(stream{s}.drop_back_until_any(" ") == "hello "sv);
+
+    CHECK(stream{s}.take_back_until_any("eo") == "rld"sv);
+    CHECK(stream{s}.drop_back_until_any("eo") == "hello wo"sv);
+
+    CHECK(stream{s}.take_back_until_any("x") == "hello world"sv);
+    CHECK(stream{s}.drop_back_until_any("x") == ""sv);
+
+    CHECK(stream{s}.take_back_until_any("rw") == "ld"sv);
+    CHECK(stream{s}.drop_back_until_any("rw") == "hello wor"sv);
+
+    CHECK(stream{s}.take_back_until_any("ld") == ""sv);
+    CHECK(stream{s}.drop_back_until_any("ld") == "hello world"sv);
+
+    CHECK(stream{s}.take_back_until(" ") == "world"sv);
+    CHECK(stream{s}.drop_back_until(" ") == "hello "sv);
+
+    CHECK(stream{s}.take_back_until("lo") == " world"sv);
+    CHECK(stream{s}.drop_back_until("lo") == "hello"sv);
+
+    CHECK(stream{s}.take_back_until("ld") == ""sv);
+    CHECK(stream{s}.drop_back_until("ld") == "hello world"sv);
+
+    CHECK(stream{s}.take_back_until("lx") == "hello world"sv);
+    CHECK(stream{s}.drop_back_until("lx") == ""sv);
+}
+
+TEST_CASE("stream::take_back_until_or_empty") {
+    std::string s = "hello world";
+
+    CHECK(stream{s}.take_back_until_or_empty(' ') == "world"sv);
+    CHECK(stream{s}.drop_back_until_or_empty(' ') == "hello "sv);
+
+    CHECK(stream{s}.take_back_until_or_empty('o') == "rld"sv);
+    CHECK(stream{s}.drop_back_until_or_empty('o') == "hello wo"sv);
+
+    CHECK(stream{s}.take_back_until_or_empty('x') == ""sv);
+    CHECK(stream{s}.drop_back_until_or_empty('x') == "hello world"sv);
+
+    CHECK(stream{s}.take_back_until_or_empty('h') == "ello world"sv);
+    CHECK(stream{s}.drop_back_until_or_empty('h') == "h"sv);
+
+    CHECK(stream{s}.take_back_until_or_empty('d') == ""sv);
+    CHECK(stream{s}.drop_back_until_or_empty('d') == "hello world"sv);
+
+    CHECK(stream{s}.take_back_until_any_or_empty(" ") == "world"sv);
+    CHECK(stream{s}.drop_back_until_any_or_empty(" ") == "hello "sv);
+
+    CHECK(stream{s}.take_back_until_any_or_empty("eo") == "rld"sv);
+    CHECK(stream{s}.drop_back_until_any_or_empty("eo") == "hello wo"sv);
+
+    CHECK(stream{s}.take_back_until_any_or_empty("x") == ""sv);
+    CHECK(stream{s}.drop_back_until_any_or_empty("x") == "hello world"sv);
+
+    CHECK(stream{s}.take_back_until_any_or_empty("rw") == "ld"sv);
+    CHECK(stream{s}.drop_back_until_any_or_empty("rw") == "hello wor"sv);
+
+    CHECK(stream{s}.take_back_until_any_or_empty("ld") == ""sv);
+    CHECK(stream{s}.drop_back_until_any_or_empty("ld") == "hello world"sv);
+
+    CHECK(stream{s}.take_back_until_or_empty(" ") == "world"sv);
+    CHECK(stream{s}.drop_back_until_or_empty(" ") == "hello "sv);
+
+    CHECK(stream{s}.take_back_until_or_empty("lo") == " world"sv);
+    CHECK(stream{s}.drop_back_until_or_empty("lo") == "hello"sv);
+
+    CHECK(stream{s}.take_back_until_or_empty("ld") == ""sv);
+    CHECK(stream{s}.drop_back_until_or_empty("ld") == "hello world"sv);
+
+    CHECK(stream{s}.take_back_until_or_empty("lx") == ""sv);
+    CHECK(stream{s}.drop_back_until_or_empty("lx") == "hello world"sv);
+}
+
+TEST_CASE("stream::take_back_until: whitespace") {
+    constexpr std::string_view ws = " \t\r\n\f\v";
+    std::string str{"foo  bar\tbaz\r\nquux\fbar"};
+    stream s{str};
+
+    CHECK(s.take_back_until_any(ws) == "bar"sv);
+    CHECK(RawString{std::string{s.text()}} == "foo  bar\tbaz\r\nquux\f"_raw);
+    CHECK(s.consume_back('\f'));
+    CHECK(s.take_back_until_any(ws) == "quux"sv);
+    CHECK(s.consume_back('\n'));
+    CHECK(s.take_back_until_any(ws) == ""sv);
+    CHECK(s.consume_back('\r'));
+    CHECK(s.take_back_until_any(ws) == "baz"sv);
+    CHECK(s.consume_back('\t'));
+    CHECK(s.take_back_until_any(ws) == "bar"sv);
+    CHECK(RawString{std::string{s.text()}} == "foo  "_raw);
+    CHECK(s.consume_back(' '));
+    CHECK(RawString{std::string{s.text()}} == "foo "_raw);
+    CHECK(s.take_back_until_any(ws) == ""sv);
+    CHECK(RawString{std::string{s.text()}} == "foo "_raw);
+    CHECK(s.consume_back(' '));
+    CHECK(s.take_back_until_any(ws) == "foo"sv);
+    CHECK(s.take_back_until_any(ws) == ""sv);
+    CHECK(s.empty());
+
+    s = str;
+    CHECK(s.take_back_until_any_or_empty(ws) == "bar"sv);
+    CHECK(RawString{std::string{s.text()}} == "foo  bar\tbaz\r\nquux\f"_raw);
+    CHECK(s.consume_back('\f'));
+    CHECK(s.take_back_until_any_or_empty(ws) == "quux"sv);
+    CHECK(s.consume_back('\n'));
+    CHECK(s.take_back_until_any_or_empty(ws) == ""sv);
+    CHECK(s.consume_back('\r'));
+    CHECK(s.take_back_until_any_or_empty(ws) == "baz"sv);
+    CHECK(s.consume_back('\t'));
+    CHECK(s.take_back_until_any_or_empty(ws) == "bar"sv);
+    CHECK(RawString{std::string{s.text()}} == "foo  "_raw);
+    CHECK(s.consume_back(' '));
+    CHECK(RawString{std::string{s.text()}} == "foo "_raw);
+    CHECK(s.take_back_until_any_or_empty(ws) == ""sv);
+    CHECK(RawString{std::string{s.text()}} == "foo "_raw);
+    CHECK(s.consume_back(' '));
+    CHECK(RawString{std::string{s.text()}} == "foo"_raw);
+    CHECK(s.take_back_until_any_or_empty(ws) == ""sv);
+    CHECK(s.take_back_until_any_or_empty(ws) == ""sv);
+    CHECK(s == "foo");
 }

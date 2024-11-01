@@ -132,6 +132,45 @@ public:
         return true;
     }
 
+    /// Skip a character.
+    ///
+    /// If the first character of the stream is the given character,
+    /// remove it from the stream. Otherwise, do nothing.
+    ///
+    /// \param c The character to skip.
+    /// \return True if the character was skipped.
+    [[nodiscard]] constexpr auto
+    consume_back(char_type c) noexcept -> bool {
+        if (not ends_with(c)) return false;
+        drop_back();
+        return true;
+    }
+
+    /// Skip a list of characters.
+    ///
+    /// If the stream starts with the given list of characters, in that
+    /// order, they are removed from the stream. Otherwise, do nothing.
+    ///
+    /// \param chars The characters to skip.
+    /// \return True if the characters were skipped.
+    [[nodiscard]] constexpr auto
+    consume_back(text_type chars) noexcept -> bool {
+        if (not ends_with(chars)) return false;
+        drop_back(chars.size());
+        return true;
+    }
+
+    /// Skip any of a set of characters.
+    ///
+    /// \param chars The characters to skip.
+    /// \return True if any of the characters were skipped.
+    [[nodiscard]] constexpr auto
+    consume_back_any(text_type chars) noexcept -> bool {
+        if (not ends_with_any(chars)) return false;
+        drop_back();
+        return true;
+    }
+
     /// Check if the stream contains a character.
     [[nodiscard]] constexpr auto
     contains(char_type c) noexcept -> bool {
@@ -205,6 +244,78 @@ public:
         else _m_text.remove_suffix(static_cast<size_type>(n));
         return *this;
     }
+
+    ///@{
+    /// \brief Drop characters from the back stream conditionally.
+    ///
+    /// Same as \c take_back_until() and friends, but discards the
+    /// characters instead and returns the stream.
+    ///
+    /// \see take_back_until(char_type)
+    ///
+    /// \param c A character, \c string_view, or unary predicate.
+    /// \return This
+    constexpr auto
+    drop_back_until(char_type c) noexcept -> basic_stream& {
+        (void) take_back_until(c);
+        return *this;
+    }
+
+    /// \see take_back_until(char_type)
+    constexpr auto
+    drop_back_until(text_type s) noexcept -> basic_stream& {
+        (void) take_back_until(s);
+        return *this;
+    }
+
+    /// \see take_until(char_type) const
+    template <typename UnaryPredicate>
+    requires requires (UnaryPredicate c) { c(char_type{}); }
+    constexpr auto
+    drop_back_until(UnaryPredicate c)
+    noexcept(noexcept(c(char_type{}))) -> basic_stream& {
+        (void) take_back_until(std::move(c));
+        return *this;
+    }
+
+    /// \see take_back_until(char_type)
+    constexpr auto
+    drop_back_until_any(text_type chars) noexcept -> basic_stream& {
+        (void) take_back_until_any(chars);
+        return *this;
+    }
+
+    /// \see take_back_until(char_type)
+    constexpr auto
+    drop_back_until_any_or_empty(text_type chars) noexcept -> basic_stream& {
+        (void) take_back_until_any_or_empty(chars);
+        return *this;
+    }
+
+    /// \see take_back_until(char_type)
+    constexpr auto
+    drop_back_until_or_empty(char_type c) noexcept -> basic_stream& {
+        (void) take_back_until_or_empty(c);
+        return *this;
+    }
+
+    /// \see take_back_until(char_type)
+    constexpr auto
+    drop_back_until_or_empty(text_type s) noexcept -> basic_stream& {
+        (void) take_back_until_or_empty(s);
+        return *this;
+    }
+
+    /// \see take_back_until(char_type)
+    template <typename UnaryPredicate>
+    requires requires (UnaryPredicate c) { c(char_type{}); }
+    constexpr auto
+    drop_back_until_or_empty(UnaryPredicate c)
+    noexcept(noexcept(c(char_type{}))) -> basic_stream& {
+        (void) take_back_until_or_empty(std::move(c));
+        return *this;
+    }
+    ///@}
 
     ///@{
     /// \brief Drop characters from the stream conditionally.
@@ -298,30 +409,6 @@ public:
     constexpr auto
     drop_while_any(text_type chars) noexcept -> basic_stream& {
         (void) take_while_any(chars);
-        return *this;
-    }
-
-    /// \see take_until(char_type)
-    constexpr auto
-    drop_while_any_or_empty(text_type chars) noexcept -> basic_stream& {
-        (void) take_while_any_or_empty(chars);
-        return *this;
-    }
-
-    /// \see take_until(char_type)
-    constexpr auto
-    drop_while_or_empty(char_type c) noexcept -> basic_stream& {
-        (void) take_while_or_empty(c);
-        return *this;
-    }
-
-    /// \see take_until(char_type)
-    template <typename UnaryPredicate>
-    requires requires (UnaryPredicate c) { c(char_type{}); }
-    constexpr auto
-    drop_while_or_empty(UnaryPredicate c)
-    noexcept(noexcept(c(char_type{}))) -> basic_stream& {
-        (void) take_while_or_empty(std::move(c));
         return *this;
     }
     ///@}
@@ -529,6 +616,84 @@ public:
     /// @}
 
     ///@{
+    /// \brief Get characters from the end of the stream conditionally.
+    ///
+    /// These take either
+    ///
+    ///     1. a single character,
+    ///     2. a string view, or
+    ///     3. a unary predicate.
+    ///
+    /// The stream is advanced until (in the case of the \c _until overloads)
+    /// or while (in the case of the \c _while overloads) we find a character
+    ///
+    ///     1. equal to the given character, or
+    ///     2. equal to the given string (or any of the characters in the
+    ///        string for the \c _any overloads), or
+    ///     3. for which the given predicate returns \c true.
+    ///
+    /// If a matching character is found, all characters skipped over this way are
+    /// returned as text.
+    ///
+    /// If the condition is not \c true for any of the characters in the stream,
+    /// the entire text is returned (excepting the _while overloads, which return
+    /// an empty string instead). The \c _or_empty overloads, return an empty
+    /// string instead, and the stream is not advanced at all.
+    ///
+    /// \param c A character, \c string_view, or unary predicate.
+    /// \return The matched characters.
+    [[nodiscard]] constexpr auto
+    take_back_until(char_type c) noexcept -> text_type {
+        auto pos = _m_text.rfind(c);
+        if (pos == text_type::npos) return std::exchange(_m_text, {});
+        return _m_take_back(pos);
+    }
+
+    /// \see take_back_until(char_type)
+    [[nodiscard]] constexpr auto
+    take_back_until(text_type s) noexcept -> text_type {
+        auto pos = _m_text.rfind(s);
+        if (s.empty() or pos == text_type::npos) return std::exchange(_m_text, {});
+        pos += s.size() - 1;
+        return _m_take_back(pos);
+    }
+
+    /// \see take_back_until(char_type)
+    [[nodiscard]] constexpr auto
+    take_back_until_any(text_type chars) noexcept -> text_type {
+        auto pos = _m_text.find_last_of(chars);
+        if (chars.empty() or pos == text_type::npos) return std::exchange(_m_text, {});
+        return _m_take_back(pos);
+    }
+
+
+    /// \see take_back_until(char_type)
+    [[nodiscard]] constexpr auto
+    take_back_until_any_or_empty(text_type chars) noexcept -> text_type {
+        auto pos = _m_text.find_last_of(chars);
+        if (chars.empty() or pos == text_type::npos) return {};
+        return _m_take_back(pos);
+    }
+
+    /// \see take_back_until(char_type)
+    [[nodiscard]] constexpr auto
+    take_back_until_or_empty(char_type c) noexcept -> text_type {
+        auto pos = _m_text.rfind(c);
+        if (pos == text_type::npos) return {};
+        return _m_take_back(pos);
+    }
+
+    /// \see take_back_until(char_type)
+    [[nodiscard]] constexpr auto
+    take_back_until_or_empty(text_type s) noexcept -> text_type {
+        auto pos = _m_text.rfind(s);
+        if (s.empty() or pos == text_type::npos) return {};
+        pos += s.size() - 1;
+        return _m_take_back(pos);
+    }
+    ///@}
+
+    ///@{
     /// \brief Get characters from the stream conditionally.
     ///
     /// These take either
@@ -549,8 +714,9 @@ public:
     /// returned as text.
     ///
     /// If the condition is not \c true for any of the characters in the stream,
-    /// the entire text is returned. The \c _or_empty overloads, return an empty
-    /// string instead, and the stream is not advanced at all.
+    /// the entire text is returned (excepting the _while overloads, which return
+    /// nothing instead). The \c _or_empty overloads, return an empty string instead,
+    /// and the stream is not advanced at all.
     ///
     /// \param c A character, \c string_view, or unary predicate.
     /// \return The matched characters.
@@ -616,7 +782,7 @@ public:
     /// \see take_until(char_type)
     [[nodiscard]] constexpr auto
     take_while(char_type c) noexcept -> text_type {
-        return _m_take_while<false>(c);
+        return _m_take_while(c);
     }
 
     /// \see take_until(char_type)
@@ -625,34 +791,13 @@ public:
     [[nodiscard]] constexpr auto
     take_while(UnaryPredicate c)
     noexcept(noexcept(c(char_type{}))) -> text_type {
-        return _m_take_while_cond<false>(std::move(c));
+        return _m_take_while_cond(std::move(c));
     }
 
     /// \see take_until(char_type)
     [[nodiscard]] constexpr auto
     take_while_any(text_type chars) noexcept -> text_type {
-        return _m_take_while_any<false>(chars);
-    }
-
-    /// \see take_until(char_type)
-    [[nodiscard]] constexpr auto
-    take_while_any_or_empty(text_type chars) noexcept -> text_type {
-        return _m_take_while_any<true>(chars);
-    }
-
-    /// \see take_until(char_type)
-    [[nodiscard]] constexpr auto
-    take_while_or_empty(char_type c) noexcept -> text_type {
-        return _m_take_while<true>(c);
-    }
-
-    /// \see take_until(char_type)
-    template <typename UnaryPredicate>
-    requires requires (UnaryPredicate c) { c(char_type{}); }
-    [[nodiscard]] constexpr auto
-    take_while_or_empty(UnaryPredicate c)
-    noexcept(noexcept(c(char_type{}))) -> text_type {
-        return _m_take_while_cond<true>(std::move(c));
+        return _m_take_while_any(chars);
     }
     ///@}
 
@@ -751,6 +896,15 @@ private:
         return txt;
     }
 
+    // Return characters starting from position `n` (exclusive)
+    // and remove them from the stream.
+    constexpr auto _m_take_back(size_type pos) noexcept -> text_type {
+        ++pos;
+        auto tail = _m_text.substr(pos);
+        _m_text.remove_suffix(size() - pos);
+        return tail;
+    }
+
     template <bool _or_empty, typename UnaryPredicate>
     requires requires (UnaryPredicate c) { c(char_type{}); }
     [[nodiscard]] constexpr auto
@@ -763,29 +917,27 @@ private:
 
         if (i > size()) {
             if constexpr (_or_empty) return {};
-            else return _m_advance(size());
+            else return std::exchange(_m_text, {});
         }
 
         return _m_advance(i - 1);
     }
 
-    template <bool _or_empty>
     [[nodiscard]] constexpr auto
     _m_take_while(char_type c) noexcept -> text_type {
-        return _m_take_while_cond<_or_empty>(
+        return _m_take_while_cond(
             [c](char_type ch) { return ch == c; }
         );
     }
 
-    template <bool _or_empty>
     [[nodiscard]] constexpr auto
     _m_take_while_any(text_type chars) noexcept -> text_type {
-        return _m_take_while_cond<_or_empty>([chars](char_type ch) {
+        return _m_take_while_cond([chars](char_type ch) {
             return chars.find(ch) != text_type::npos;
         });
     }
 
-    template <bool _or_empty, typename UnaryPredicate>
+    template <typename UnaryPredicate>
     requires requires (UnaryPredicate c) { c(char_type{}); }
     [[nodiscard]] constexpr auto
     _m_take_while_cond(UnaryPredicate c)
@@ -795,11 +947,7 @@ private:
             if (not c(_m_text[i - 1]))
                 break;
 
-        if (i > size()) {
-            if constexpr (_or_empty) return {};
-            else return _m_advance(size());
-        }
-
+        if (i > size()) return std::exchange(_m_text, {});
         return _m_advance(i - 1);
     }
 };
