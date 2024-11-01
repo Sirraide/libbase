@@ -654,8 +654,7 @@ public:
     take_back_until(text_type s) noexcept -> text_type {
         auto pos = _m_text.rfind(s);
         if (s.empty() or pos == text_type::npos) return std::exchange(_m_text, {});
-        pos += s.size() - 1;
-        return _m_take_back(pos);
+        return _m_take_back(pos, s.size());
     }
 
     /// \see take_back_until(char_type)
@@ -688,8 +687,7 @@ public:
     take_back_until_or_empty(text_type s) noexcept -> text_type {
         auto pos = _m_text.rfind(s);
         if (s.empty() or pos == text_type::npos) return {};
-        pos += s.size() - 1;
-        return _m_take_back(pos);
+        return _m_take_back(pos, s.size());
     }
     ///@}
 
@@ -898,8 +896,8 @@ private:
 
     // Return characters starting from position `n` (exclusive)
     // and remove them from the stream.
-    constexpr auto _m_take_back(size_type pos) noexcept -> text_type {
-        ++pos;
+    constexpr auto _m_take_back(size_type pos, size_type skip = 1) noexcept -> text_type {
+        pos += skip;
         auto tail = _m_text.substr(pos);
         _m_text.remove_suffix(size() - pos);
         return tail;
