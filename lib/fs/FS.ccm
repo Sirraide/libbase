@@ -206,5 +206,8 @@ public:
     static auto Read(PathRef path) noexcept -> Result<FileContents>;
 
     /// Write data to a file on disk.
+    ///
+    /// This automatically creates any intermediate
+    /// directories that do not exist.
     static auto Write(PathRef path, InputView data) noexcept -> Result<>;
 };

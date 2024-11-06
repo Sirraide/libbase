@@ -90,6 +90,9 @@ auto File::Open(PathRef path, OpenMode mode) noexcept -> Result<File> {
 }
 
 auto File::Write(PathRef path, InputView data) noexcept -> Result<> {
+    std::error_code ec;
+    std_fs::create_directories(path.parent_path(), ec);
+    if (ec) return Error("Could not create directories for '{}': {}", path.string(), ec.message());
     auto f = Try(Open(path, OpenMode::Write));
     return f.write(data);
 }

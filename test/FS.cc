@@ -10,6 +10,7 @@ using namespace base;
 using namespace base::fs;
 
 auto TPath = std::filesystem::temp_directory_path() / "foo";
+auto TDirPath = std::filesystem::temp_directory_path() / "foo-dir";
 
 auto ThisFile() -> std::string_view {
     static std::string file_contents = [] {
@@ -103,6 +104,13 @@ TEST_CASE("File::Write") {
 
     File::Write(TPath, ThisFile()).value();
     CHECK(File::ReadToContainer(TPath).value() == ThisFile());
+}
+
+TEST_CASE("File::Write should create parent dirs") {
+    auto path = TDirPath / "a" / "b" / "c" / "d";
+    File::Delete(TDirPath, true).value();
+    File::Write(path, "foobarbaz\n"sv).value();
+    CHECK(File::ReadToContainer(path).value() == "foobarbaz\n");
 }
 
 TEST_CASE("File::mode") {
