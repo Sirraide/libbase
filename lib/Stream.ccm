@@ -1,5 +1,6 @@
 module;
 
+#include <algorithm>
 #include <base/Assert.hh>
 #include <cstddef>
 #include <format>
@@ -190,6 +191,32 @@ public:
     contains_any(text_type chars) noexcept -> bool {
         auto pos = _m_text.find_first_of(chars);
         return pos != text_type::npos;
+    }
+
+    /// Count the number of occurrences of a character.
+    [[nodiscard]] constexpr auto
+    count(char_type c) const noexcept -> size_type {
+        return size_type(std::ranges::count(_m_text, c));
+    }
+
+    /// Count the number of occurrences of a substring.
+    [[nodiscard]] constexpr auto
+    count(text_type s) const noexcept -> size_type {
+        size_type count = 0;
+        for (
+            size_type pos = 0;
+            (pos = _m_text.find(s, pos)) != text_type::npos;
+            pos += s.size()
+        ) ++count;
+        return count;
+    }
+
+    /// Count the number of any of a set of characters.
+    [[nodiscard]] constexpr auto
+    count_any(text_type chars) const noexcept -> size_type {
+        return size_type(std::ranges::count_if(_m_text, [chars](char_type c) {
+            return chars.contains(c);
+        }));
     }
 
     /// \return The data pointer.

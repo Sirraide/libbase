@@ -138,6 +138,34 @@ TEST_CASE("stream::consume_back_any()") {
     CHECK(s == "hello ");
 }
 
+TEST_CASE("stream::count()") {
+    std::string s = "aaabbbcccdddaacdcdcd";
+
+    CHECK(stream{s}.count('a') == 5);
+    CHECK(stream{s}.count('b') == 3);
+    CHECK(stream{s}.count('c') == 6);
+    CHECK(stream{s}.count('d') == 6);
+    CHECK(stream{s}.count('x') == 0);
+
+    CHECK(stream{s}.count("aa") == 2);
+    CHECK(stream{s}.count("bb") == 1);
+    CHECK(stream{s}.count("cc") == 1);
+    CHECK(stream{s}.count("ccc") == 1);
+    CHECK(stream{s}.count("cccc") == 0);
+    CHECK(stream{s}.count("x") == 0);
+}
+
+TEST_CASE("stream::count_any") {
+    std::string s = "aaabbbcccdddaacdcdcd";
+
+    CHECK(stream{s}.count_any("abc") == 14);
+    CHECK(stream{s}.count_any("xyz") == 0);
+    CHECK(stream{s}.count_any("x") == 0);
+    CHECK(stream{s}.count_any("xa") == 5);
+    CHECK(stream{s}.count_any("cxab") == 14);
+    CHECK(stream{s}.count_any("adcb") == 20);
+}
+
 TEST_CASE("stream::drop()") {
     std::string s = "hello world";
 
