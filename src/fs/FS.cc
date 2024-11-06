@@ -8,6 +8,7 @@ module;
 
 #ifdef __linux__
 #    include <fcntl.h>
+#    include <linux/limits.h>
 #    include <sys/mman.h>
 #    include <sys/stat.h>
 #    include <unistd.h>
@@ -16,29 +17,45 @@ module;
 module base.fs;
 import base;
 using namespace base;
+using namespace base::fs;
+
+namespace std_fs = std::filesystem;
 
 #ifdef LIBBASE_FS_LINUX
-#include "FSLinux.inc"
+#    include "FSLinux.inc"
 #else
-#include "FSGeneric.inc"
+#    include "FSGeneric.inc"
 #endif
+
+auto fs::ChangeDirectory(PathRef path) -> Result<> {
+    std::error_code ec;
+    std_fs::current_path(path, ec);
+    if (ec) return Error("Could not change directory to '{}': {}", path.string(), ec.message());
+    return {};
+}
+
+auto fs::CurrentDirectory() -> Path {
+    // If this ever errors, your system is broken.
+    std::error_code ec;
+    return std_fs::current_path(ec);
+}
 
 auto File::Delete(PathRef path, bool recursive) -> Result<bool> {
     std::error_code ec;
     if (recursive) {
-        auto deleted = std::filesystem::remove_all(path, ec);
+        auto deleted = std_fs::remove_all(path, ec);
         if (ec) return Error("Could not remove path '{}': {}", path.string(), ec.message());
         return deleted;
     }
 
-    auto deleted = std::filesystem::remove(path, ec);
+    auto deleted = std_fs::remove(path, ec);
     if (ec) return Error("Could not delete path '{}': {}", path.string(), ec.message());
     return deleted;
 }
 
 auto File::Exists(PathRef path) noexcept -> bool {
     std::error_code ec;
-    return std::filesystem::exists(path, ec);
+    return std_fs::exists(path, ec);
 }
 
 auto File::Open(PathRef path, OpenMode mode) noexcept -> Result<File> {
@@ -67,7 +84,7 @@ auto File::Open(PathRef path, OpenMode mode) noexcept -> Result<File> {
 
     // Save the path.
     std::error_code ec;
-    f.abs_path = std::filesystem::absolute(path, ec);
+    f.abs_path = std_fs::absolute(path, ec);
     if (ec) return Error("Could not get absolute path: {}", ec.message());
     return f;
 }
@@ -99,14 +116,14 @@ void File::rewind() noexcept {
 
 auto File::resize(usz size) noexcept -> Result<> {
     std::error_code ec;
-    std::filesystem::resize_file(abs_path, size, ec);
+    std_fs::resize_file(abs_path, size, ec);
     if (ec) return Error("Could not resize file: {}", ec.message());
     return {};
 }
 
 auto File::size() noexcept -> usz {
     std::error_code ec;
-    auto s = std::filesystem::file_size(abs_path, ec);
+    auto s = std_fs::file_size(abs_path, ec);
     if (ec) return 0;
     return s;
 }

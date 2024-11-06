@@ -2,10 +2,12 @@
 
 #include <fstream>
 #include <filesystem>
+#include <base/detail/SystemInfo.hh>
 
 import base;
 import base.fs;
 using namespace base;
+using namespace base::fs;
 
 auto TPath = std::filesystem::temp_directory_path() / "foo";
 
@@ -18,6 +20,30 @@ auto ThisFile() -> std::string_view {
         };
     }();
     return file_contents;
+}
+
+TEST_CASE("CurrentDirectory()") {
+    CHECK(fs::CurrentDirectory() == std::filesystem::current_path());
+}
+
+TEST_CASE("ChangeDirectory()") {
+    auto old = fs::CurrentDirectory();
+    REQUIRE(old != std::filesystem::temp_directory_path());
+    fs::ChangeDirectory(std::filesystem::temp_directory_path()).value();
+    CHECK(std::filesystem::current_path() == std::filesystem::temp_directory_path());
+    fs::ChangeDirectory(old).value();
+    CHECK(std::filesystem::current_path() == old);
+}
+
+TEST_CASE("ExecutablePath") {
+#ifdef LIBBASE_FS_LINUX
+    // We can’t exactly check this against itself, so just
+    // assert that it works.
+    CHECK(fs::ExecutablePath().value() == LIBBASE_TESTING_BINARY_DIR "/tests");
+#else
+    // The generic implementation doesn’t support this.
+    CHECK(fs::ExecutablePath().error() == "ExecutablePath() is not supported on this platform");
+#endif
 }
 
 TEST_CASE("File::Delete, File::Exists") {

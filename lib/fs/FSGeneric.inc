@@ -1,4 +1,4 @@
-class base::FileContents {
+class base::fs::FileContents {
     friend File;
 
     std::vector<char> vec;

@@ -30,3 +30,10 @@ auto File::Read(PathRef path) noexcept -> Result<FileContents> {
     if (ptr == MAP_FAILED) return Err("mmap");
     return FileContents{ptr, usz(st.st_size)};
 }
+
+auto fs::ExecutablePath() -> Result<Path> {
+    char buf[PATH_MAX];
+    auto n = readlink("/proc/self/exe", buf, sizeof buf);
+    if (n == -1) return Error("Could not read executable path: {}", std::strerror(errno));
+    return Path{std::string_view{buf, usz(n)}};
+}

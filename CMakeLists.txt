@@ -205,5 +205,8 @@ if (DEFINED BUILD_TESTS)
     file(GLOB_RECURSE test_sources test/*.cc)
     add_executable(tests ${test_sources})
     target_link_libraries(tests PRIVATE libbase Catch2::Catch2WithMain)
+    target_compile_definitions(tests PRIVATE
+        "LIBBASE_TESTING_BINARY_DIR=\"${CMAKE_CURRENT_BINARY_DIR}\""
+    )
     catch_discover_tests(tests)
 endif()

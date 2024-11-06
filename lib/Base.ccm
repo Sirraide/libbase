@@ -18,5 +18,4 @@ export namespace base {
 using namespace std::literals;
 namespace chr = std::chrono;
 namespace cmd = command_line_options;
-namespace fs = std::filesystem;
 }
