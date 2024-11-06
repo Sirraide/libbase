@@ -1,13 +1,27 @@
 module;
 
+#include <base/detail/SystemInfo.hh>
 #include <base/Macros.hh>
 #include <cerrno>
 #include <cstring>
 #include <filesystem>
 
+#ifdef __linux__
+#    include <fcntl.h>
+#    include <sys/mman.h>
+#    include <sys/stat.h>
+#    include <unistd.h>
+#endif
+
 module base.fs;
 import base;
 using namespace base;
+
+#ifdef LIBBASE_FS_LINUX
+#include "FSLinux.inc"
+#else
+#include "FSGeneric.inc"
+#endif
 
 auto File::Delete(PathRef path, bool recursive) -> Result<bool> {
     std::error_code ec;

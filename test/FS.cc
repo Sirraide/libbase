@@ -51,6 +51,10 @@ TEST_CASE("File::Open") {
     CHECK(File::Open(TPath, OpenMode(134)).error() == "Invalid open mode '134'");
 }
 
+TEST_CASE("File::Read") {
+    CHECK(File::Read(__FILE__).value().view() == ThisFile());
+}
+
 TEST_CASE("File::ReadInto") {
     std::string a;
     File::ReadInto(__FILE__, a).value();
@@ -63,16 +67,16 @@ TEST_CASE("File::ReadInto") {
     CHECK(std::string_view{b.data(), b.size()} == ThisFile());
 }
 
-TEST_CASE("File::Read") {
-    CHECK(File::Read(__FILE__).value() == ThisFile());
+TEST_CASE("File::ReadToContainer") {
+    CHECK(File::ReadToContainer(__FILE__).value() == ThisFile());
 }
 
 TEST_CASE("File::Write") {
     File::Write(TPath, "foobarbaz\n"sv).value();
-    CHECK(File::Read(TPath).value() == "foobarbaz\n");
+    CHECK(File::ReadToContainer(TPath).value() == "foobarbaz\n");
 
     File::Write(TPath, ThisFile()).value();
-    CHECK(File::Read(TPath).value() == ThisFile());
+    CHECK(File::ReadToContainer(TPath).value() == ThisFile());
 }
 
 TEST_CASE("File::mode") {
@@ -86,7 +90,7 @@ TEST_CASE("File::print") {
     f.print("{}\n", "quxquux").value();
     f.print("{}:{}\n", 47, 74).value();
     f.rewind();
-    CHECK(File::Read(TPath).value() == "foobarbaz\nquxquux\n47:74\n");
+    CHECK(File::ReadToContainer(TPath).value() == "foobarbaz\nquxquux\n47:74\n");
 }
 
 TEST_CASE("File::read") {
@@ -143,7 +147,7 @@ TEST_CASE("File::resize, File::write") {
     f.write("foobarbaz\n").value();
     f.write("quxquux\n"sv).value();
     f.rewind();
-    CHECK(File::Read(TPath).value() == "foobarbaz\nquxquux\n");
+    CHECK(File::ReadToContainer(TPath).value() == "foobarbaz\nquxquux\n");
     CHECK(f.size() == 18);
 
     f.resize(10).value();
@@ -161,7 +165,7 @@ TEST_CASE("File::writev") {
     CHECK(f.size() == 0);
     f.writev(input).value();
     f.rewind();
-    CHECK(File::Read(TPath).value() == "foobarbaz\nquxquux\n");
+    CHECK(File::ReadToContainer(TPath).value() == "foobarbaz\nquxquux\n");
     CHECK(f.size() == 18);
 }
 

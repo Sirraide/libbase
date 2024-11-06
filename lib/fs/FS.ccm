@@ -1,5 +1,6 @@
 module;
 
+#include <base/detail/SystemInfo.hh>
 #include <base/Assert.hh>
 #include <base/Macros.hh>
 #include <cstdio>
@@ -12,6 +13,7 @@ import base;
 
 export namespace base {
 class File;
+class FileContents;
 class FileSystem;
 
 struct InputView;
@@ -95,6 +97,12 @@ struct base::OutputView : std::span<std::byte> {
           ) {}
 };
 
+#ifdef LIBBASE_FS_LINUX
+#include "FSLinux.inc"
+#else
+#include "FSGeneric.inc"
+#endif
+
 /// A handle to a file on disk.
 ///
 /// The file is closed when this goes out of scope. This should
@@ -159,7 +167,7 @@ public:
     ///         it could not be opened, for whatever reason.
     static auto Open(PathRef path, OpenMode mode = OpenMode::Read) noexcept -> Result<File>;
 
-    /// Read an entire file into a string.
+    /// Read an entire file into a container.
     template <CharBuffer Buffer>
     static auto ReadInto(PathRef path, Buffer& buffer) noexcept -> Result<> {
         auto sz = buffer.size();
@@ -173,13 +181,16 @@ public:
         return {};
     }
 
-    /// Read an entire file into a string.
+    /// Read an entire file into a container.
     template <typename Buffer = std::string>
-    static auto Read(PathRef path) noexcept -> Result<Buffer> {
+    static auto ReadToContainer(PathRef path) noexcept -> Result<Buffer> {
         Buffer buffer;
         Try(ReadInto(path, buffer));
         return buffer;
     }
+
+    /// Read an entire file and get the raw data.
+    static auto Read(PathRef path) noexcept -> Result<FileContents>;
 
     /// Write data to a file on disk.
     static auto Write(PathRef path, InputView data) noexcept -> Result<>;
