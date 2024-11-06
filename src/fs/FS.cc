@@ -9,28 +9,52 @@ module base.fs;
 import base;
 using namespace base;
 
-#define LIBBASE_USE_GENERIC_FILESYSTEM_IMPL
-#ifdef LIBBASE_USE_GENERIC_FILESYSTEM_IMPL
-#    include "Generic.inc"
-#else
-#    ifdef __linux__
-#        include "Linux.inc"
-#    else
-#        include "Generic.inc"
-#    endif
-#endif
-
 auto File::Delete(PathRef path, bool recursive) -> Result<bool> {
-    return FileImpl::Delete(path, recursive);
+    std::error_code ec;
+    if (recursive) {
+        auto deleted = std::filesystem::remove_all(path, ec);
+        if (ec) return Error("Could not remove path '{}': {}", path.string(), ec.message());
+        return deleted;
+    }
+
+    auto deleted = std::filesystem::remove(path, ec);
+    if (ec) return Error("Could not delete path '{}': {}", path.string(), ec.message());
+    return deleted;
 }
 
 auto File::Exists(PathRef path) noexcept -> bool {
-    return FileImpl::Exists(path);
+    std::error_code ec;
+    return std::filesystem::exists(path, ec);
 }
 
-auto File::Open(PathRef path, OpenMode flags) noexcept -> Result<File> {
+auto File::Open(PathRef path, OpenMode mode) noexcept -> Result<File> {
+    std::string mode_str;
+
+    switch (mode) {
+        default: return Error("Invalid open mode '{}'", +mode);
+        case OpenMode::Read: mode_str = "r"; break;
+        case OpenMode::Write: mode_str = "w"; break;
+        case OpenMode::Append: mode_str = "a"; break;
+        case OpenMode::ReadWrite: mode_str = "w+"; break;
+        case OpenMode::ReadAppend: mode_str = "a+"; break;
+    }
+
+    // Always use binary mode.
+    mode_str += 'b';
+
+    // Dew it.
+    auto ptr = std::fopen(path.c_str(), mode_str.c_str());
+    if (not ptr) return Error("Could not open file: {}", std::strerror(errno));
     File f;
-    Try(f.open(path, flags));
+    f.handle.reset(ptr);
+
+    // Save the flags.
+    f.open_mode = mode;
+
+    // Save the path.
+    std::error_code ec;
+    f.abs_path = std::filesystem::absolute(path, ec);
+    if (ec) return Error("Could not get absolute path: {}", ec.message());
     return f;
 }
 
@@ -41,27 +65,55 @@ auto File::Write(PathRef path, InputView data) noexcept -> Result<> {
 
 auto File::read(OutputView into) noexcept -> Result<usz> {
     if ((+open_mode & +OpenMode::Read) == 0) return Error("File is not open for reading");
-    return FileImpl::read(into);
+    usz n_read = 0;
+    while (not into.empty() and not std::feof(handle.get())) {
+        auto r = std::fread(into.data(), 1, into.size(), handle.get());
+        if (std::ferror(handle.get())) return Error(
+            "Could not read from file: {}",
+            std::strerror(errno)
+        );
+
+        n_read += r;
+        into = into.subspan(r);
+    }
+    return n_read;
 }
 
 void File::rewind() noexcept {
-    FileImpl::rewind();
+    std::rewind(handle.get());
 }
 
 auto File::resize(usz size) noexcept -> Result<> {
-    return FileImpl::resize(size);
+    std::error_code ec;
+    std::filesystem::resize_file(abs_path, size, ec);
+    if (ec) return Error("Could not resize file: {}", ec.message());
+    return {};
 }
 
 auto File::size() noexcept -> usz {
-    return FileImpl::size();
+    std::error_code ec;
+    auto s = std::filesystem::file_size(abs_path, ec);
+    if (ec) return 0;
+    return s;
 }
 
 auto File::write(InputView data) noexcept -> Result<> {
     if ((+open_mode & +OpenMode::Write) == 0) return Error("File is not open for writing");
-    return FileImpl::write(data);
+    while (not data.empty()) {
+        auto r = std::fwrite(data.data(), 1, data.size(), handle.get());
+        if (std::ferror(handle.get())) return Error(
+            "Could not write to file: {}",
+            std::strerror(errno)
+        );
+        data = data.subspan(r);
+    }
+    return {};
 }
 
 auto File::writev(InputVector data) noexcept -> Result<> {
     if ((+open_mode & +OpenMode::Write) == 0) return Error("File is not open for writing");
-    return FileImpl::writev(data);
+
+    // <cstdio> doesn’t support scatter/gather I/O :(.
+    for (auto& d : data) Try(write(d));
+    return {};
 }

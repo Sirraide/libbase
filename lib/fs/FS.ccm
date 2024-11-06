@@ -1,24 +1,55 @@
 module;
 
-#include <memory>
-#include <cstring>
-#include <cstdio>
-#include <filesystem>
 #include <base/Assert.hh>
 #include <base/Macros.hh>
+#include <cstdio>
+#include <cstring>
+#include <filesystem>
+#include <memory>
 
 export module base.fs;
 import base;
 
 export namespace base {
+class File;
+class FileSystem;
+
+struct InputView;
+struct OutputView;
+
+enum struct OpenMode : u8;
+
+using InputVector = std::span<const InputView>;
+
 template <typename Ty>
 concept CharBuffer = requires (Ty t, usz sz) {
     { t.data() } -> std::same_as<char*>;
     { t.size() } -> std::integral;
     { t.resize(sz) };
 };
+} // namespace base
 
-struct InputView : std::span<const std::byte> {
+/// Do NOT use this as a bitmask! Only ever supply at most one of
+/// these. The values of the enumerators are an implementation detail.
+enum struct base::OpenMode : base::u8 {
+    /// Open the file for reading. The file must exist.
+    Read = 1,
+
+    /// Open the file for writing. Truncates the file if it
+    /// exists, creates it if it does not.
+    Write = 2,
+
+    /// Same as Write, but does not perform truncation.
+    Append = 4,
+
+    /// Open the file for reading and writing.
+    ReadWrite = Read | Write,
+
+    /// Open the file for reading and appending.
+    ReadAppend = Read | Write | Append,
+};
+
+struct base::InputView : std::span<const std::byte> {
     using std::span<const std::byte>::span;
     using std::span<const std::byte>::operator=;
 
@@ -45,7 +76,7 @@ struct InputView : std::span<const std::byte> {
           ) {}
 };
 
-struct OutputView : std::span<std::byte> {
+struct base::OutputView : std::span<std::byte> {
     using std::span<std::byte>::span;
     using std::span<std::byte>::operator=;
 
@@ -64,59 +95,27 @@ struct OutputView : std::span<std::byte> {
           ) {}
 };
 
-using InputVector = std::span<const InputView>;
-
-/// Do NOT use this as a bitmask! Only ever supply at most one of
-/// these. The values of the enumerators are an implementation detail.
-enum struct OpenMode : u8 {
-    /// Open the file for reading. The file must exist.
-    Read = 1,
-
-    /// Open the file for writing. Truncates the file if it
-    /// exists, creates it if it does not.
-    Write = 2,
-
-    /// Same as Write, but does not perform truncation.
-    Append = 4,
-
-    /// Open the file for reading and writing.
-    ReadWrite = Read | Write,
-
-    /// Open the file for reading and appending.
-    ReadAppend = Read | Write | Append,
-};
-} // namespace base
-
-#define LIBBASE_USE_GENERIC_FILESYSTEM_IMPL
-#ifdef LIBBASE_USE_GENERIC_FILESYSTEM_IMPL
-#    include "Generic.inc"
-#else
-#    ifdef __linux__
-#        include "Linux.inc"
-#    else
-#        include "Generic.inc"
-#    endif
-#endif
-
-export namespace base {
 /// A handle to a file on disk.
 ///
 /// The file is closed when this goes out of scope. This should
 /// only be used for actual files, not for (named) pipes, sockets,
 /// etc.
-class File : FileImpl {
-    friend FileImpl;
+class base::File {
+public:
+    using Path = std::filesystem::path;
+    using PathRef = const std::filesystem::path&;
+
+private:
     OpenMode open_mode;
+    std::unique_ptr<FILE, decltype(&std::fclose)> handle{nullptr, std::fclose};
+    Path abs_path; // Hack so we can truncate the file.
 
 public:
-    using FileImpl::Path;
-    using FileImpl::PathRef;
-
     /// Get the open mode of the file.
     [[nodiscard]] auto mode() const noexcept -> OpenMode { return open_mode; }
 
     /// Print to the file.
-    template <typename ...Args>
+    template <typename... Args>
     auto print(std::format_string<Args...> fmt, Args&&... args) noexcept -> Result<> {
         return write(std::format(fmt, std::forward<Args>(args)...));
     }
@@ -185,4 +184,18 @@ public:
     /// Write data to a file on disk.
     static auto Write(PathRef path, InputView data) noexcept -> Result<>;
 };
-} // namespace base
+
+class base::FileSystem {
+    using PathRef = File::PathRef;
+    using Path = File::Path;
+
+    /// Change the current working directory.
+    static auto ChangeDirectory(PathRef path) noexcept -> Result<>;
+
+    /// Get the path to the current working directory.
+    static auto CurrentDirectory() noexcept -> Path;
+
+    /// Get the path to the current executable. This can fail
+    /// on platforms where this isn’t supported.
+    static auto ExecutablePath() noexcept -> Result<Path>;
+};
