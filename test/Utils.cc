@@ -82,13 +82,13 @@ public:
           _trivial_ro_bar{std::move(trivial_bar)} {}
 };
 
-auto S::get_foo() -> const std::string& { return _foo; }
+auto S::get_foo() const -> const std::string& { return _foo; }
 void S::set_foo(std::string new_value) { _foo = std::move(new_value); }
-auto S::get_bar() -> std::string { return _bar; }
+auto S::get_bar() const -> std::string { return _bar; }
 void S::set_bar(std::string new_value) { _bar = std::move(new_value); }
 void S::set_trivial_bar(std::string new_value) { _trivial_bar = std::move(new_value); }
 void S::set_trivial_foo(std::string new_value) { _trivial_foo = std::move(new_value); }
-std::string S::get_baz() { return "foobarbaz"; }
+auto S::get_baz() const -> std::string { return "foobarbaz"; }
 
 TEST_CASE("Properties work") {
     S s{"trivial_foo", "trivial_bar"};
