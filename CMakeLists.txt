@@ -42,6 +42,9 @@ endif ()
 ## Flags for Clang and GCC.
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(libbase PRIVATE
+        -fms-extensions
+        -fdeclspec
+
         ## Warnings.
         -Wall -Wextra     # Enable ‘all’ warnings.
         -Wundef           # Invalid #undef or undefined macro in #if.
@@ -205,6 +208,7 @@ if (DEFINED BUILD_TESTS)
     file(GLOB_RECURSE test_sources test/*.cc)
     add_executable(tests ${test_sources})
     target_link_libraries(tests PRIVATE libbase Catch2::Catch2WithMain)
+    target_compile_options(tests PRIVATE -fms-extensions -fdeclspec)
     target_compile_definitions(tests PRIVATE
         "LIBBASE_TESTING_BINARY_DIR=\"${CMAKE_CURRENT_BINARY_DIR}\""
     )

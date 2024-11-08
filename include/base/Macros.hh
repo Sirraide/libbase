@@ -76,6 +76,8 @@ private:
     cls::cls() = default;                         \
     cls::~cls() = default;
 
+#define VA_FIRST(first, ...) first
+
 /// Macro that propagates errors up the call stack.
 ///
 /// The second optional argument to the macro, if present, should be an
@@ -118,6 +120,17 @@ private:
 
 #define defer   ::base::detail::DeferImpl _ = [&]
 #define tempset auto _ = ::base::detail::Tempset{}->*
+
+#define Property(type, name, ...)             \
+    VA_FIRST(__VA_ARGS__ __VA_OPT__(, ) type) \
+    get_##name();                             \
+    void set_##name(type new_value);          \
+    __declspec(property(get = get_##name, put = set_##name)) type name
+
+#define Readonly(type, name, ...)             \
+    VA_FIRST(__VA_ARGS__ __VA_OPT__(, ) type) \
+    get_##name();                             \
+    __declspec(property(get = get_##name)) type name
 
 namespace base::detail {
 template <typename Callable>

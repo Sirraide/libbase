@@ -1,6 +1,8 @@
 #include "TestCommon.hh"
-#include <vector>
+
+#include <base/Macros.hh>
 #include <deque>
+#include <string>
 
 import base;
 using namespace base;
@@ -61,4 +63,33 @@ TEST_CASE("ReplaceAll") {
 
     utils::ReplaceAll(foo, "foo", "[foo]");
     CHECK(foo == "[foo][foo][foo][foo][foo][foo][foo][foo]");
+}
+
+struct S {
+    std::string _foo, _bar;
+    Property(std::string, foo, const std::string&);
+    Property(std::string, bar);
+    Readonly(std::string, baz);
+
+};
+
+auto S::get_foo() -> const std::string& { return _foo; }
+void S::set_foo(std::string new_value) { _foo = std::move(new_value); }
+auto S::get_bar() -> std::string { return _bar; }
+void S::set_bar(std::string new_value) { _bar = std::move(new_value); }
+std::string S::get_baz() { return "foobarbaz"; }
+
+TEST_CASE("Properties work") {
+    S s;
+    s._foo = "foo";
+    s._bar = "bar";
+
+    CHECK(s.foo == "foo");
+    CHECK(s.bar == "bar");
+    s.foo = "bar";
+    s.bar = "foo";
+    CHECK(s.foo == "bar");
+    CHECK(s.bar == "foo");
+
+    CHECK(s.baz == "foobarbaz");
 }
