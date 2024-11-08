@@ -534,6 +534,41 @@ public:
         return out;
     }
 
+    /// Replace all occurrences of a string in the stream and
+    /// return the resulting string.
+    [[nodiscard]] constexpr auto
+    replace(text_type from, text_type to) const noexcept -> string_type {
+        string_type str;
+        usz pos = 0;
+        for (;;) {
+            auto next = _m_text.find(from, pos);
+            if (next == text_type::npos) {
+                str += _m_text.substr(pos);
+                break;
+            }
+
+            str += _m_text.substr(pos, next - pos);
+            str += to;
+            pos = next + from.size();
+        }
+        return str;
+    }
+
+    [[nodiscard]] constexpr auto
+    replace(char_type from, text_type to) const noexcept -> string_type {
+        return replace(text_type{&from, 1}, to);
+    }
+
+    [[nodiscard]] constexpr auto
+    replace(text_type from, char_type to) const noexcept -> string_type {
+        return replace(from, text_type{&to, 1});
+    }
+
+    [[nodiscard]] constexpr auto
+    replace(char_type from, char_type to) const noexcept -> string_type {
+        return replace(text_type{&from, 1}, text_type{&to, 1});
+    }
+
     /// \return The size (= number of characters) of this stream.
     [[nodiscard]] constexpr auto
     size() const noexcept -> size_type {

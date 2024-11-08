@@ -234,6 +234,24 @@ TEST_CASE("stream::remove()") {
     CHECK(stream{s}.remove_all<StringWrapper>("xyz") == "hello world");
 }
 
+TEST_CASE("stream::replace()") {
+    std::string s1 = "hello world";
+    std::string s2 = "aaa foo bbb aaa";
+
+    CHECK(stream{s1}.replace('l', 'X') == "heXXo worXd");
+    CHECK(stream{s1}.replace("l", "X") == "heXXo worXd");
+    CHECK(stream{s1}.replace("lo", "X") == "helX world");
+    CHECK(stream{s1}.replace("ol", 'X') == "hello world");
+    CHECK(stream{s1}.replace('o', 'o') == "hello world");
+    CHECK(stream{s1}.replace('q', "he") == "hello world");
+
+    CHECK(stream{s2}.replace('a', 'X') == "XXX foo bbb XXX");
+    CHECK(stream{s2}.replace("aaa", "X") == "X foo bbb X");
+    CHECK(stream{s2}.replace("aaa", 'X') == "X foo bbb X");
+    CHECK(stream{s2}.replace("aaa", "aaaaaa") == "aaaaaa foo bbb aaaaaa");
+    CHECK(stream{s2}.replace("aaa", "ccc") == "ccc foo bbb ccc");
+}
+
 TEST_CASE("stream::split()") {
     std::string s = "aa\nbb\ncc\nbb\ncc";
 
