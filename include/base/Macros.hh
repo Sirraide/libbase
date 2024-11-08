@@ -121,11 +121,13 @@ private:
 #define defer   ::base::detail::DeferImpl _ = [&]
 #define tempset auto _ = ::base::detail::Tempset{}->*
 
-#define Property(type, name, ...)                           \
-    [[nodiscard]] VA_FIRST(__VA_ARGS__ __VA_OPT__(, ) type) \
-        get_##name() const;                                 \
-    void set_##name(type new_value);                        \
-    __declspec(property(get = get_##name, put = set_##name)) type name
+#define Property(type, name, ...)                                       \
+public:                                                                 \
+    [[nodiscard]] VA_FIRST(__VA_ARGS__ __VA_OPT__(, ) type)             \
+        get_##name() const;                                             \
+    void set_##name(type new_value);                                    \
+    __declspec(property(get = get_##name, put = set_##name)) type name; \
+private:
 
 #define TrivialProperty(type, name, ...)                                \
 private:                                                                \
@@ -138,9 +140,11 @@ public:                                                                 \
 private:
 
 #define Readonly(type, name, ...)                           \
+public:                                                     \
     [[nodiscard]] VA_FIRST(__VA_ARGS__ __VA_OPT__(, ) type) \
         get_##name() const;                                 \
-    __declspec(property(get = get_##name)) type name
+    __declspec(property(get = get_##name)) type name;       \
+private:
 
 #define TrivialReadonly(type, name, ...)                    \
 private:                                                    \
