@@ -127,10 +127,29 @@ private:
     void set_##name(type new_value);          \
     __declspec(property(get = get_##name, put = set_##name)) type name
 
+#define TrivialProperty(type, name, ...)                                \
+private:                                                                \
+    type _##name;                                                       \
+public:                                                                 \
+    VA_FIRST(__VA_ARGS__ __VA_OPT__(, ) type)                           \
+    get_##name() { return _##name; }                                    \
+    void set_##name(type new_value);                                    \
+    __declspec(property(get = get_##name, put = set_##name)) type name; \
+private:
+
 #define Readonly(type, name, ...)             \
     VA_FIRST(__VA_ARGS__ __VA_OPT__(, ) type) \
     get_##name();                             \
     __declspec(property(get = get_##name)) type name
+
+#define TrivialReadonly(type, name, ...)              \
+private:                                              \
+    type _##name;                                     \
+public:                                               \
+    VA_FIRST(__VA_ARGS__ __VA_OPT__(, ) type)         \
+    get_##name() { return _##name; }                  \
+    __declspec(property(get = get_##name)) type name; \
+private:
 
 namespace base::detail {
 template <typename Callable>
