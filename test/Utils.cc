@@ -68,8 +68,9 @@ TEST_CASE("ReplaceAll") {
 struct S {
     std::string _foo, _bar;
     ComputedProperty(std::string, foo);
-    ComputedProperty(std::string, bar);
+    ComputedProperty(std::string, bar, _bar);
     ComputedReadonly(std::string, baz);
+    ComputedReadonly(std::string, quux, "quux");
 
     Property(std::string, trivial_foo);
     Property(std::string, trivial_bar, "tri_bar");
@@ -82,7 +83,6 @@ public:
 
 auto S::get_foo() const -> std::string { return _foo; }
 void S::set_foo(std::string new_value) { _foo = std::move(new_value); }
-auto S::get_bar() const -> std::string { return _bar; }
 void S::set_bar(std::string new_value) { _bar = std::move(new_value); }
 void S::set_trivial_bar(std::string new_value) { _trivial_bar = std::move(new_value); }
 void S::set_trivial_foo(std::string new_value) { _trivial_foo = std::move(new_value); }
@@ -101,6 +101,7 @@ TEST_CASE("Properties work") {
     CHECK(s.foo == "bar");
     CHECK(s.bar == "foo");
     CHECK(s.baz == "foobarbaz");
+    CHECK(s.quux == "quux");
     CHECK(s.trivial_foo == "tri_foo");
     CHECK(s.trivial_bar == "tri_bar");
     CHECK(s.trivial_ro_foo == "trivial_foo");

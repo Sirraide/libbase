@@ -76,7 +76,7 @@ private:
     cls::cls() = default;                         \
     cls::~cls() = default;
 
-#define VA_FIRST(first, ...) first
+#define LIBBASE_VA_FIRST(first, ...) first
 
 /// Macro that propagates errors up the call stack.
 ///
@@ -121,9 +121,9 @@ private:
 #define defer   ::base::detail::DeferImpl _ = [&]
 #define tempset auto _ = ::base::detail::Tempset{}->*
 
-#define ComputedProperty(type, name)                                    \
+#define ComputedProperty(type, name, ...)                               \
 public:                                                                 \
-    [[nodiscard]] type get_##name() const;                              \
+    [[nodiscard]] type get_##name() const __VA_OPT__({ return ) LIBBASE_VA_FIRST(__VA_ARGS__ __VA_OPT__(,) ;) __VA_OPT__(;}) \
     void set_##name(type new_value);                                    \
     __declspec(property(get = get_##name, put = set_##name)) type name; \
 private:
@@ -137,9 +137,9 @@ public:                                                                 \
     __declspec(property(get = get_##name, put = set_##name)) type name; \
 private:
 
-#define ComputedReadonly(type, name)                  \
+#define ComputedReadonly(type, name, ...)             \
 public:                                               \
-    [[nodiscard]] type get_##name() const;            \
+    [[nodiscard]] type get_##name() const __VA_OPT__({ return ) LIBBASE_VA_FIRST(__VA_ARGS__ __VA_OPT__(,) ;) __VA_OPT__(;}) \
     __declspec(property(get = get_##name)) type name; \
 private:
 
