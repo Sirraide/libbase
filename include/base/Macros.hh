@@ -121,38 +121,34 @@ private:
 #define defer   ::base::detail::DeferImpl _ = [&]
 #define tempset auto _ = ::base::detail::Tempset{}->*
 
+#define ComputedProperty(type, name)                                    \
+public:                                                                 \
+    [[nodiscard]] type get_##name() const;                              \
+    void set_##name(type new_value);                                    \
+    __declspec(property(get = get_##name, put = set_##name)) type name; \
+private:
+
 #define Property(type, name, ...)                                       \
-public:                                                                 \
-    [[nodiscard]] VA_FIRST(__VA_ARGS__ __VA_OPT__(, ) type)             \
-        get_##name() const;                                             \
-    void set_##name(type new_value);                                    \
-    __declspec(property(get = get_##name, put = set_##name)) type name; \
-private:
-
-#define TrivialProperty(type, name, ...)                                \
 private:                                                                \
-    type _##name;                                                       \
+    type _##name __VA_OPT__(=) __VA_ARGS__;                             \
 public:                                                                 \
-    [[nodiscard]] VA_FIRST(__VA_ARGS__ __VA_OPT__(, ) type)             \
-        get_##name() const { return _##name; }                          \
+    [[nodiscard]] type get_##name() const { return _##name; }           \
     void set_##name(type new_value);                                    \
     __declspec(property(get = get_##name, put = set_##name)) type name; \
 private:
 
-#define Readonly(type, name, ...)                           \
-public:                                                     \
-    [[nodiscard]] VA_FIRST(__VA_ARGS__ __VA_OPT__(, ) type) \
-        get_##name() const;                                 \
-    __declspec(property(get = get_##name)) type name;       \
+#define ComputedReadonly(type, name)                  \
+public:                                               \
+    [[nodiscard]] type get_##name() const;            \
+    __declspec(property(get = get_##name)) type name; \
 private:
 
-#define TrivialReadonly(type, name, ...)                    \
-private:                                                    \
-    type _##name;                                           \
-public:                                                     \
-    [[nodiscard]] VA_FIRST(__VA_ARGS__ __VA_OPT__(, ) type) \
-        get_##name() const { return _##name; }              \
-    __declspec(property(get = get_##name)) type name;       \
+#define Readonly(type, name, ...)                             \
+private:                                                      \
+    type _##name __VA_OPT__(=) __VA_ARGS__;                   \
+public:                                                       \
+    [[nodiscard]] type get_##name() const { return _##name; } \
+    __declspec(property(get = get_##name)) type name;         \
 private:
 
 namespace base::detail {
