@@ -151,6 +151,12 @@ public:                                                       \
     __declspec(property(get = get_##name)) type name;         \
 private:
 
+#define Writeonly(type, name, ...)                    \
+public:                                               \
+    void set_##name(type new_value);                  \
+    __declspec(property(put = set_##name)) type name; \
+private:
+
 namespace base::detail {
 template <typename Callable>
 class DeferImpl {

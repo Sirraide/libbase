@@ -77,6 +77,8 @@ struct S {
     Readonly(std::string, trivial_ro_foo);
     Readonly(std::string, trivial_ro_bar, "trivial_bar");
 
+    Writeonly(std::string, writeonly);
+
 public:
     S(std::string trivial_foo) : _trivial_ro_foo{std::move(trivial_foo)} {}
 };
@@ -87,12 +89,17 @@ void S::set_bar(std::string new_value) { _bar = std::move(new_value); }
 void S::set_trivial_bar(std::string new_value) { _trivial_bar = std::move(new_value); }
 void S::set_trivial_foo(std::string new_value) { _trivial_foo = std::move(new_value); }
 auto S::get_baz() const -> std::string { return "foobarbaz"; }
+void S::set_writeonly(std::string new_value) {
+    CHECK(new_value == "writeonly");
+}
+
 
 TEST_CASE("Properties work") {
     S s{"trivial_foo"};
     s._foo = "foo";
     s._bar = "bar";
     s.trivial_foo = "tri_foo";
+    s.writeonly = "writeonly";
 
     CHECK(s.foo == "foo");
     CHECK(s.bar == "bar");
