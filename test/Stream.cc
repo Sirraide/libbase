@@ -26,6 +26,30 @@ struct Catch::StringMaker<stream> {
     }
 };
 
+TEST_CASE("stream(string&)") {
+    std::string s;
+    CHECK(stream{s}.empty());
+    CHECK(stream{s}.size() == 0);
+}
+
+TEST_CASE("stream(string_view)") {
+    std::string_view s;
+    CHECK(stream{s}.empty());
+    CHECK(stream{s}.size() == 0);
+}
+
+TEST_CASE("stream::back()") {
+    std::string s = "hello world";
+    CHECK(stream{s}.back() == 'd');
+    CHECK(stream{""sv}.back() == std::nullopt);
+}
+
+TEST_CASE("stream::char_ptr()") {
+    std::string s = "hello world";
+    std::u32string su32 = U"hello world";
+    CHECK(stream{s}.char_ptr() == s.data());
+    CHECK(u32stream{su32}.char_ptr() == reinterpret_cast<const char*>(su32.data()));
+}
 
 TEST_CASE("stream::chunks()") {
     std::string s = "hello world";
@@ -194,7 +218,15 @@ TEST_CASE("stream::drop_back()") {
     CHECK(stream{s}.drop_back(-200) == "");
 }
 
-TEST_CASE("stream::ends_with") {
+TEST_CASE("stream::empty()") {
+    std::string s1 = "hello world";
+    std::string s2;
+
+    CHECK(not stream{s1}.empty());
+    CHECK(stream{s2}.empty());
+}
+
+TEST_CASE("stream::ends_with()") {
     std::string s = "hello world";
 
     CHECK(stream{s}.ends_with('d'));
@@ -205,7 +237,7 @@ TEST_CASE("stream::ends_with") {
     CHECK_FALSE(stream{s}.ends_with("worldx"));
 }
 
-TEST_CASE("stream::ends_with_any") {
+TEST_CASE("stream::ends_with_any()") {
     std::string s = "hello world";
 
     CHECK(stream{s}.ends_with_any("d"));
@@ -214,6 +246,43 @@ TEST_CASE("stream::ends_with_any") {
     CHECK(stream{s}.ends_with_any("dx"));
     CHECK(stream{s}.ends_with_any("ldx"));
     CHECK_FALSE(stream{s}.ends_with_any("lx"));
+}
+
+TEST_CASE("stream::extract()") {
+    char c1{}, c2{}, c3{}, c4{};
+    std::string s1 = "";
+    std::string s2 = "hel";
+    std::string s3 = "lo w";
+
+    CHECK(not stream{s1}.extract(c1, c2, c3, c4));
+    CHECK((c1 == 0 and c2 == 0 and c3 == 0 and c4 == 0));
+    CHECK(not stream{s2}.extract(c1, c2, c3, c4));
+    CHECK((c1 == 0 and c2 == 0 and c3 == 0 and c4 == 0));
+    CHECK(stream{s3}.extract(c1, c2, c3, c4));
+    CHECK((c1 == 'l' and c2 == 'o' and c3 == ' ' and c4 == 'w'));
+}
+
+TEST_CASE("stream::front()") {
+    std::string s1 = "hello world";
+    std::string s2;
+
+    CHECK(stream{s1}.front() == 'h');
+    CHECK(stream{s2}.front() == std::nullopt);
+}
+
+TEST_CASE("stream::has()") {
+    std::string s1 = "hello world";
+    std::string s2;
+
+    CHECK(stream{s1}.has(0));
+    CHECK(stream{s1}.has(1));
+    CHECK(stream{s1}.has(2));
+    CHECK(stream{s1}.has(6));
+    CHECK(stream{s1}.has(11));
+    CHECK(not stream{s1}.has(12));
+
+    CHECK(stream{s2}.has(0));
+    CHECK(not stream{s2}.has(1));
 }
 
 TEST_CASE("stream::remove()") {
@@ -250,6 +319,22 @@ TEST_CASE("stream::replace()") {
     CHECK(stream{s2}.replace("aaa", 'X') == "X foo bbb X");
     CHECK(stream{s2}.replace("aaa", "aaaaaa") == "aaaaaa foo bbb aaaaaa");
     CHECK(stream{s2}.replace("aaa", "ccc") == "ccc foo bbb ccc");
+}
+
+TEST_CASE("stream::size()") {
+    std::string s1 = "hello world";
+    std::string s2;
+
+    CHECK(stream{s1}.size() == 11);
+    CHECK(stream{s2}.size() == 0);
+}
+
+TEST_CASE("stream::size_bytes()") {
+    std::u32string s1 = U"hello world";
+    std::u32string s2;
+
+    CHECK(u32stream{s1}.size_bytes() == s1.size() * sizeof(char32_t));
+    CHECK(u32stream{s2}.size_bytes() == 0);
 }
 
 TEST_CASE("stream::split()") {
