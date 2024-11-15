@@ -2381,6 +2381,20 @@ using std::operator&&;
 using std::operator||;
 } // namespace std
 
+export namespace std::chrono {
+using std::chrono::operator-;
+using std::chrono::operator+;
+using std::chrono::operator/;
+using std::chrono::operator*;
+using std::chrono::operator%;
+using std::chrono::operator==;
+using std::chrono::operator<;
+using std::chrono::operator>;
+using std::chrono::operator<=;
+using std::chrono::operator>=;
+using std::chrono::operator<=>;
+}
+
 // libstdc++-specific
 #ifdef __GLIBCXX__
 export namespace std::ranges::views::__adaptor {
