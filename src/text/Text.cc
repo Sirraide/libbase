@@ -1,12 +1,10 @@
 module;
-
 #include <base/Macros.hh>
 #include <unicode/translit.h>
 #include <unicode/uchar.h>
 #include <unicode/unistr.h>
-#include <functional>
-
 module base.text;
+
 import base;
 using namespace base;
 using namespace base::text;

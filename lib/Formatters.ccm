@@ -1,11 +1,5 @@
-module;
-
-#include <format>
-#include <print>
-#include <string>
-#include <vector>
-
 export module base:formatters;
+import base.std;
 
 template <typename Inner>
 struct std::formatter<std::vector<Inner>> : std::formatter<Inner> {

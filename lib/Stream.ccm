@@ -1,17 +1,10 @@
 module;
 
-#include <algorithm>
 #include <base/Assert.hh>
-#include <cstddef>
-#include <format>
-#include <optional>
-#include <ranges>
-#include <source_location>
-#include <string_view>
-#include <utility>
 
 export module base:stream;
 import :types;
+import base.std;
 
 #define STRING_LITERAL(lit) [] {                            \
     if constexpr (std::is_same_v<char_type, char>)          \
@@ -90,8 +83,8 @@ public:
     [[nodiscard]] constexpr auto
     chunks(size_type size) const noexcept {
         return _m_text
-            | std::views::chunk(size)
-            | std::views::transform([](auto r) { return basic_stream(text_type(r)); });
+            | vws::chunk(size)
+            | vws::transform([](auto r) { return basic_stream(text_type(r)); });
     }
 
     /// Skip a character.
@@ -585,8 +578,8 @@ public:
     [[nodiscard]] constexpr auto
     split(text_type delimiter) const noexcept {
         return _m_text
-            | std::views::split(delimiter)
-            | std::views::transform([](auto r) { return basic_stream(text_type(r)); });
+            | vws::split(delimiter)
+            | vws::transform([](auto r) { return basic_stream(text_type(r)); });
     }
 
     ///@{

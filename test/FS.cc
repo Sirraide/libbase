@@ -9,8 +9,8 @@ import base.fs;
 using namespace base;
 using namespace base::fs;
 
-auto TPath = std::filesystem::temp_directory_path() / "foo";
-auto TDirPath = std::filesystem::temp_directory_path() / "foo-dir";
+auto TPath = std::filesystem::temp_directory_path() / "file-that-does-not-exist";
+auto TDirPath = std::filesystem::temp_directory_path() / "directory-that-does-not-exist";
 
 auto ThisFile() -> std::string_view {
     static std::string file_contents = [] {

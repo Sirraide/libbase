@@ -1,12 +1,6 @@
-module;
-
-#include <concepts>
-#include <format>
-#include <functional>
-#include <string>
-
 export module base.text;
 import base;
+import base.std;
 
 export namespace base::text {
 enum struct NormalisationForm {

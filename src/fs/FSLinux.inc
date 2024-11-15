@@ -8,7 +8,7 @@ auto File::Read(PathRef path) noexcept -> Result<FileContents> {
             "Could not {} file '{}': {}",
             action,
             path.string(),
-            std::strerror(errno)
+            std::strerror(std_errno())
         );
     };
 
@@ -34,6 +34,6 @@ auto File::Read(PathRef path) noexcept -> Result<FileContents> {
 auto fs::ExecutablePath() -> Result<Path> {
     char buf[PATH_MAX];
     auto n = readlink("/proc/self/exe", buf, sizeof buf);
-    if (n == -1) return Error("Could not read executable path: {}", std::strerror(errno));
+    if (n == -1) return Error("Could not read executable path: {}", std::strerror(std_errno()));
     return Path{std::string_view{buf, usz(n)}};
 }

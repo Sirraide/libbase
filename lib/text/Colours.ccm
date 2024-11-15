@@ -1,8 +1,6 @@
-module;
-
-#include <print>
-
 export module base.colours;
+import base.std;
+
 export namespace base::text {
 /// Mixin to simplify formatting strings with colours.
 ///
@@ -77,13 +75,13 @@ public:
         std::format_string<Args...> fmt,
         Args&&... args
     ) {
-        std::print(stdout, "{}", self.format(fmt, std::forward<Args>(args)...));
+        std::print(std_out(), "{}", self.format(fmt, std::forward<Args>(args)...));
     }
 
     template <typename... Args>
     void print(
         this auto&& self,
-        FILE* f,
+        std::FILE* f,
         std::format_string<Args...> fmt,
         Args&&... args
     ) {

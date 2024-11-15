@@ -1,13 +1,8 @@
 module;
-
 #include <base/Assert.hh>
 #include <base/Macros.hh>
-#include <queue>
-#include <ranges>
-#include <unordered_map>
-#include <vector>
-
 export module base.trie;
+
 import base;
 
 export namespace base {

@@ -2,9 +2,6 @@ module;
 
 #include <base/detail/SystemInfo.hh>
 #include <base/Macros.hh>
-#include <cerrno>
-#include <cstring>
-#include <filesystem>
 
 #ifdef __linux__
 #    include <fcntl.h>
@@ -75,7 +72,7 @@ auto File::Open(PathRef path, OpenMode mode) noexcept -> Result<File> {
 
     // Dew it.
     auto ptr = std::fopen(path.c_str(), mode_str.c_str());
-    if (not ptr) return Error("Could not open file: {}", std::strerror(errno));
+    if (not ptr) return Error("Could not open file: {}", std::strerror(std_errno()));
     File f;
     f.handle.reset(ptr);
 
@@ -104,7 +101,7 @@ auto File::read(OutputView into) noexcept -> Result<usz> {
         auto r = std::fread(into.data(), 1, into.size(), handle.get());
         if (std::ferror(handle.get())) return Error(
             "Could not read from file: {}",
-            std::strerror(errno)
+            std::strerror(std_errno())
         );
 
         n_read += r;
@@ -137,7 +134,7 @@ auto File::write(InputView data) noexcept -> Result<> {
         auto r = std::fwrite(data.data(), 1, data.size(), handle.get());
         if (std::ferror(handle.get())) return Error(
             "Could not write to file: {}",
-            std::strerror(errno)
+            std::strerror(std_errno())
         );
         data = data.subspan(r);
     }

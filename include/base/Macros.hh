@@ -1,10 +1,6 @@
 #ifndef LIBBASE_MACROS_HH
 #define LIBBASE_MACROS_HH
 
-#include <expected>
-#include <type_traits>
-#include <utility>
-
 #define LIBBASE_STR_(X) #X
 #define LIBBASE_STR(X)  LIBBASE_STR_(X)
 
@@ -156,60 +152,5 @@ public:                                               \
     void set_##name(type new_value);                  \
     __declspec(property(put = set_##name)) type name; \
 private:
-
-namespace base::detail {
-template <typename Callable>
-class DeferImpl {
-    Callable c;
-
-public:
-    DeferImpl(Callable c) : c(std::move(c)) {}
-    ~DeferImpl() { c(); }
-};
-
-template <typename T, typename U>
-class TempsetStage2 {
-    T& lvalue;
-    T old_value;
-
-public:
-    TempsetStage2(T& lvalue, U&& value)
-        : lvalue(lvalue),
-          old_value(std::exchange(lvalue, std::forward<U>(value))) {}
-    ~TempsetStage2() { lvalue = std::move(old_value); }
-};
-
-#define DEFINE_ASSIGN_OP(op)                                                          \
-    auto operator op##=(auto&& value) {                                               \
-        return TempsetStage2{lvalue, lvalue op std::forward<decltype(value)>(value)}; \
-    }
-
-template <typename T>
-struct TempsetStage1 {
-    T& lvalue;
-    auto operator=(auto&& value) {
-        return TempsetStage2{lvalue, std::forward<decltype(value)>(value)};
-    }
-
-    DEFINE_ASSIGN_OP(|);
-    DEFINE_ASSIGN_OP(&);
-    DEFINE_ASSIGN_OP(^);
-    DEFINE_ASSIGN_OP(<<);
-    DEFINE_ASSIGN_OP(>>);
-    DEFINE_ASSIGN_OP(+);
-    DEFINE_ASSIGN_OP(-);
-    DEFINE_ASSIGN_OP(*);
-    DEFINE_ASSIGN_OP(/);
-    DEFINE_ASSIGN_OP(%);
-};
-
-#undef DEFINE_ASSIGN_OP
-
-struct Tempset {
-    auto operator->*(auto& lvalue) {
-        return TempsetStage1{lvalue};
-    }
-};
-} // namespace base::detail
 
 #endif // LIBBASE_MACROS_HH

@@ -1,0 +1,19 @@
+module;
+#include <clopts.hh>
+export module base:cmd;
+
+export namespace base::cmd {
+using command_line_options::clopts;
+using command_line_options::file;
+using command_line_options::flag;
+using command_line_options::func;
+using command_line_options::help;
+using command_line_options::multiple;
+using command_line_options::option;
+using command_line_options::overridable;
+using command_line_options::positional;
+using command_line_options::ref;
+using command_line_options::stop_parsing;
+using command_line_options::values;
+using command_line_options::experimental::short_option;
+}

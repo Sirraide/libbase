@@ -1,14 +1,6 @@
 module;
 
 #include <base/Assert.hh>
-#include <deque>
-#include <generator>
-#include <map>
-#include <queue>
-#include <unordered_map>
-#include <utility>
-#include <variant>
-#include <vector>
 
 /// This module provides wrappers around STL data structures
 /// that add additional functionality, but don’t actually change
@@ -17,6 +9,7 @@ module;
 /// down to a std::queue.
 export module base:dsa;
 import :utils;
+import base.std;
 
 export namespace base {
 template <

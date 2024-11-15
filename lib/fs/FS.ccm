@@ -1,15 +1,11 @@
 module;
-
 #include <base/Assert.hh>
 #include <base/detail/SystemInfo.hh>
 #include <base/Macros.hh>
-#include <cstdio>
-#include <cstring>
-#include <filesystem>
-#include <memory>
-
 export module base.fs;
+
 import base;
+import base.std;
 
 export namespace base::fs {
 class File;
