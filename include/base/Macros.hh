@@ -121,6 +121,11 @@ private:
 #define defer   ::base::detail::DeferImpl _ = [&]
 #define tempset auto _ = ::base::detail::Tempset{}->*
 
+#ifndef LIBBASE_PROPERTIES
+#    define LIBBASE_PROPERTIES __clang__
+#endif
+
+#if LIBBASE_PROPERTIES
 #define ComputedProperty(type, name, ...)                               \
 public:                                                                 \
     [[nodiscard]] type get_##name() const __VA_OPT__({ return ) LIBBASE_VA_FIRST(__VA_ARGS__ __VA_OPT__(,) ;) __VA_OPT__(;}) \
@@ -156,6 +161,7 @@ public:                                               \
     void set_##name(type new_value);                  \
     __declspec(property(put = set_##name)) type name; \
 private:
+#endif
 
 namespace base::detail {
 template <typename Callable>
@@ -211,6 +217,7 @@ struct Tempset {
     }
 };
 
+#if LIBBASE_PROPERTIES
 template <typename Ty>
 struct PropertyType {
     using type = Ty;
@@ -232,6 +239,7 @@ struct PropertyType<Ty&> {
 
     static auto get(type t) -> decltype(auto) { return *t; }
 };
+#endif
 } // namespace base::detail
 
 #endif // LIBBASE_MACROS_HH

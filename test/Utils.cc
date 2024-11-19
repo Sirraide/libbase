@@ -66,6 +66,7 @@ TEST_CASE("ReplaceAll") {
     CHECK(foo == "[foo][foo][foo][foo][foo][foo][foo][foo]");
 }
 
+#if LIBBASE_PROPERTIES
 struct S {
     std::string _foo, _bar;
     ComputedProperty(std::string, foo);
@@ -163,4 +164,4 @@ static_assert(__is_same(decltype(std::declval<Trivial>().get_baz()), std::string
 static_assert(__is_same(decltype(std::declval<Trivial>().get_quux()), std::string_view));
 static_assert(__is_same(decltype(std::declval<Trivial>().get_big()), const std::array<int, 10000>&));
 static_assert(__is_same(decltype(std::declval<Trivial>().get_big2()), const std::array<int, 10000>&));
-
+#endif
