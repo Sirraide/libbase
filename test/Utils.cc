@@ -3,6 +3,7 @@
 #include <base/Macros.hh>
 #include <deque>
 #include <string>
+#include <array>
 
 import base;
 using namespace base;
@@ -83,6 +84,11 @@ public:
     S(std::string trivial_foo) : _trivial_ro_foo{std::move(trivial_foo)} {}
 };
 
+static_assert(__is_same(decltype(std::declval<S>().get_trivial_foo()), const std::string&));
+static_assert(__is_same(decltype(std::declval<S>().get_trivial_bar()), const std::string&));
+static_assert(__is_same(decltype(std::declval<S>().get_trivial_ro_foo()), const std::string&));
+static_assert(__is_same(decltype(std::declval<S>().get_trivial_ro_bar()), const std::string&));
+
 auto S::get_foo() const -> std::string { return _foo; }
 void S::set_foo(std::string new_value) { _foo = std::move(new_value); }
 void S::set_bar(std::string new_value) { _bar = std::move(new_value); }
@@ -92,7 +98,6 @@ auto S::get_baz() const -> std::string { return "foobarbaz"; }
 void S::set_writeonly(std::string new_value) {
     CHECK(new_value == "writeonly");
 }
-
 
 TEST_CASE("Properties work") {
     S s{"trivial_foo"};
@@ -114,3 +119,48 @@ TEST_CASE("Properties work") {
     CHECK(s.trivial_ro_foo == "trivial_foo");
     CHECK(s.trivial_ro_bar == "trivial_bar");
 }
+
+// Check that reference properties are stored as pointers.
+struct Ref {
+    Property(std::string&, foo);
+    Property(std::string&, bar, _foo);
+    Readonly(const std::string&, baz);
+    Readonly(const std::string&, quux, _baz);
+
+public:
+    Ref(std::string& a, std::string& b) : _foo{&a}, _baz{&b} {}
+};
+
+static_assert(__is_same(decltype(std::declval<Ref>().get_foo()), std::string&));
+static_assert(__is_same(decltype(std::declval<Ref>().get_bar()), std::string&));
+static_assert(__is_same(decltype(std::declval<Ref>().get_baz()), const std::string&));
+static_assert(__is_same(decltype(std::declval<Ref>().get_quux()), const std::string&));
+
+TEST_CASE("Reference properties") {
+    std::string a = "foo", b = "bar";
+    Ref r{a, b};
+
+    CHECK(r.foo == "foo");
+    CHECK(r.bar == "foo");
+    CHECK(r.baz == "bar");
+    CHECK(r.quux == "bar");
+}
+
+// Check that trivially copyable types are returned by value, so long as they’re small.
+struct Trivial {
+    using Big = std::array<int, 10000>;
+    Readonly(int, bar);
+    Property(int, foo);
+    Readonly(std::string_view, baz);
+    Property(std::string_view, quux);
+    Readonly(Big, big);
+    Property(Big, big2);
+};
+
+static_assert(__is_same(decltype(std::declval<Trivial>().get_bar()), int));
+static_assert(__is_same(decltype(std::declval<Trivial>().get_foo()), int));
+static_assert(__is_same(decltype(std::declval<Trivial>().get_baz()), std::string_view));
+static_assert(__is_same(decltype(std::declval<Trivial>().get_quux()), std::string_view));
+static_assert(__is_same(decltype(std::declval<Trivial>().get_big()), const std::array<int, 10000>&));
+static_assert(__is_same(decltype(std::declval<Trivial>().get_big2()), const std::array<int, 10000>&));
+

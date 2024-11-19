@@ -128,13 +128,13 @@ public:                                                                 \
     __declspec(property(get = get_##name, put = set_##name)) type name; \
 private:
 
-#define Property(type, name, ...)                                       \
-private:                                                                \
-    type _##name __VA_OPT__(=) __VA_ARGS__;                             \
-public:                                                                 \
-    [[nodiscard]] type get_##name() const { return _##name; }           \
-    void set_##name(type new_value);                                    \
-    __declspec(property(get = get_##name, put = set_##name)) type name; \
+#define Property(ty, name, ...)                                                                                \
+private:                                                                                                       \
+    ::base::detail::PropertyType<ty>::type _##name __VA_OPT__(=) __VA_ARGS__;                                  \
+public:                                                                                                        \
+    [[nodiscard]] decltype(auto) get_##name() const { return ::base::detail::PropertyType<ty>::get(_##name); } \
+    void set_##name(ty new_value);                                                                             \
+    __declspec(property(get = get_##name, put = set_##name)) ty name;                                          \
 private:
 
 #define ComputedReadonly(type, name, ...)             \
@@ -143,12 +143,12 @@ public:                                               \
     __declspec(property(get = get_##name)) type name; \
 private:
 
-#define Readonly(type, name, ...)                             \
-private:                                                      \
-    type _##name __VA_OPT__(=) __VA_ARGS__;                   \
-public:                                                       \
-    [[nodiscard]] type get_##name() const { return _##name; } \
-    __declspec(property(get = get_##name)) type name;         \
+#define Readonly(ty, name, ...)                                                                                \
+private:                                                                                                       \
+    ::base::detail::PropertyType<ty>::type _##name __VA_OPT__(=) __VA_ARGS__;                                  \
+public:                                                                                                        \
+    [[nodiscard]] decltype(auto) get_##name() const { return ::base::detail::PropertyType<ty>::get(_##name); } \
+    __declspec(property(get = get_##name)) ty name;                                                            \
 private:
 
 #define Writeonly(type, name, ...)                    \
@@ -209,6 +209,28 @@ struct Tempset {
     auto operator->*(auto& lvalue) {
         return TempsetStage1{lvalue};
     }
+};
+
+template <typename Ty>
+struct PropertyType {
+    using type = Ty;
+
+private:
+    using get_return_ty = std::conditional_t<
+        sizeof(type) <= 16 and std::is_trivially_copyable_v<type>,
+        type,
+        const type&
+    >;
+
+public:
+    static auto get(const type& t) -> get_return_ty { return t; }
+};
+
+template <typename Ty>
+struct PropertyType<Ty&> {
+    using type = Ty*;
+
+    static auto get(type t) -> decltype(auto) { return *t; }
 };
 } // namespace base::detail
 
