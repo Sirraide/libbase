@@ -1,7 +1,5 @@
 #include "TestCommon.hh"
-#include <base/Macros.hh>
 
-import base;
 using namespace base;
 
 TEST_CASE("tempset compound assignment ops") {

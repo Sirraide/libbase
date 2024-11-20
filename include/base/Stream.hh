@@ -1,4 +1,5 @@
-module;
+#ifndef LIBBASE_STREAM_HH
+#define LIBBASE_STREAM_HH
 
 #include <algorithm>
 #include <base/Assert.hh>
@@ -10,10 +11,7 @@ module;
 #include <string_view>
 #include <utility>
 
-export module base:stream;
-import :types;
-
-#define STRING_LITERAL(lit) [] {                            \
+#define LIBBASE_STREAM_STRING_LITERAL(lit) [] {             \
     if constexpr (std::is_same_v<char_type, char>)          \
         return lit;                                         \
     else if constexpr (std::is_same_v<char_type, wchar_t>)  \
@@ -28,7 +26,7 @@ import :types;
         static_assert(false, "Unsupported character type"); \
 }()
 
-export namespace base {
+namespace base {
 /// \brief A stream of characters.
 ///
 /// This is a non-owning wrapper around a blob of text intended for simple
@@ -47,9 +45,9 @@ private:
 
     static consteval auto _s_default_line_separator() -> text_type {
 #ifndef _WIN32
-        return STRING_LITERAL("\n");
+        return LIBBASE_STREAM_STRING_LITERAL("\n");
 #else
-        return STRING_LITERAL("\r\n");
+        return LIBBASE_STREAM_STRING_LITERAL("\r\n");
 #endif
     }
 
@@ -89,9 +87,7 @@ public:
     /// Iterate over the text in chunks.
     [[nodiscard]] constexpr auto
     chunks(size_type size) const noexcept {
-        return _m_text
-            | std::views::chunk(size)
-            | std::views::transform([](auto r) { return basic_stream(text_type(r)); });
+        return _m_text | std::views::chunk(size) | std::views::transform([](auto r) { return basic_stream(text_type(r)); });
     }
 
     /// Skip a character.
@@ -299,8 +295,7 @@ public:
     template <typename UnaryPredicate>
     requires requires (UnaryPredicate c) { c(char_type{}); }
     constexpr auto
-    drop_back_until(UnaryPredicate c)
-    noexcept(noexcept(c(char_type{}))) -> basic_stream& {
+    drop_back_until(UnaryPredicate c) noexcept(noexcept(c(char_type{}))) -> basic_stream& {
         (void) take_back_until(std::move(c));
         return *this;
     }
@@ -337,8 +332,7 @@ public:
     template <typename UnaryPredicate>
     requires requires (UnaryPredicate c) { c(char_type{}); }
     constexpr auto
-    drop_back_until_or_empty(UnaryPredicate c)
-    noexcept(noexcept(c(char_type{}))) -> basic_stream& {
+    drop_back_until_or_empty(UnaryPredicate c) noexcept(noexcept(c(char_type{}))) -> basic_stream& {
         (void) take_back_until_or_empty(std::move(c));
         return *this;
     }
@@ -371,8 +365,7 @@ public:
     template <typename UnaryPredicate>
     requires requires (UnaryPredicate c) { c(char_type{}); }
     constexpr auto
-    drop_until(UnaryPredicate c)
-    noexcept(noexcept(c(char_type{}))) -> basic_stream& {
+    drop_until(UnaryPredicate c) noexcept(noexcept(c(char_type{}))) -> basic_stream& {
         (void) take_until(std::move(c));
         return *this;
     }
@@ -409,8 +402,7 @@ public:
     template <typename UnaryPredicate>
     requires requires (UnaryPredicate c) { c(char_type{}); }
     constexpr auto
-    drop_until_or_empty(UnaryPredicate c)
-    noexcept(noexcept(c(char_type{}))) -> basic_stream& {
+    drop_until_or_empty(UnaryPredicate c) noexcept(noexcept(c(char_type{}))) -> basic_stream& {
         (void) take_until_or_empty(std::move(c));
         return *this;
     }
@@ -426,8 +418,7 @@ public:
     template <typename UnaryPredicate>
     requires requires (UnaryPredicate c) { c(char_type{}); }
     constexpr auto
-    drop_while(UnaryPredicate c)
-    noexcept(noexcept(c(char_type{}))) -> basic_stream& {
+    drop_while(UnaryPredicate c) noexcept(noexcept(c(char_type{}))) -> basic_stream& {
         (void) take_while(std::move(c));
         return *this;
     }
@@ -467,9 +458,9 @@ public:
     }
 
     /// Extract a series of characters from a stream.
-    template <std::same_as<CharType> ...Chars>
+    template <std::same_as<CharType>... Chars>
     [[nodiscard]] constexpr auto
-    extract(Chars& ...chars) noexcept -> bool {
+    extract(Chars&... chars) noexcept -> bool {
         if (not has(sizeof...(Chars))) return false;
         auto extracted = take(sizeof...(Chars));
         auto it = extracted.begin();
@@ -584,9 +575,7 @@ public:
     /// Split the stream into parts.
     [[nodiscard]] constexpr auto
     split(text_type delimiter) const noexcept {
-        return _m_text
-            | std::views::split(delimiter)
-            | std::views::transform([](auto r) { return basic_stream(text_type(r)); });
+        return _m_text | std::views::split(delimiter) | std::views::transform([](auto r) { return basic_stream(text_type(r)); });
     }
 
     ///@{
@@ -782,8 +771,7 @@ public:
     template <typename UnaryPredicate>
     requires requires (UnaryPredicate c) { c(char_type{}); }
     [[nodiscard]] constexpr auto
-    take_until(UnaryPredicate c)
-    noexcept(noexcept(c(char_type{}))) -> text_type {
+    take_until(UnaryPredicate c) noexcept(noexcept(c(char_type{}))) -> text_type {
         return _m_take_until_cond<false>(std::move(c));
     }
 
@@ -821,8 +809,7 @@ public:
     template <typename UnaryPredicate>
     requires requires (UnaryPredicate c) { c(char_type{}); }
     [[nodiscard]] constexpr auto
-    take_until_or_empty(UnaryPredicate c)
-    noexcept(noexcept(c(char_type{}))) -> text_type {
+    take_until_or_empty(UnaryPredicate c) noexcept(noexcept(c(char_type{}))) -> text_type {
         return _m_take_until_cond<true>(std::move(c));
     }
 
@@ -836,8 +823,7 @@ public:
     template <typename UnaryPredicate>
     requires requires (UnaryPredicate c) { c(char_type{}); }
     [[nodiscard]] constexpr auto
-    take_while(UnaryPredicate c)
-    noexcept(noexcept(c(char_type{}))) -> text_type {
+    take_while(UnaryPredicate c) noexcept(noexcept(c(char_type{}))) -> text_type {
         return _m_take_while_cond(std::move(c));
     }
 
@@ -888,7 +874,7 @@ public:
     /// \return A string view containing ASCII whitespace characters
     /// as appropriate for the character type of this stream.
     [[nodiscard]] static consteval auto whitespace() -> text_type {
-        return STRING_LITERAL(" \t\n\r\v\f");
+        return LIBBASE_STREAM_STRING_LITERAL(" \t\n\r\v\f");
     }
 
     /// Get a character from the stream.
@@ -966,8 +952,7 @@ private:
     template <bool _or_empty, typename UnaryPredicate>
     requires requires (UnaryPredicate c) { c(char_type{}); }
     [[nodiscard]] constexpr auto
-    _m_take_until_cond(UnaryPredicate c)
-    noexcept(noexcept(c(char_type{}))) -> text_type {
+    _m_take_until_cond(UnaryPredicate c) noexcept(noexcept(c(char_type{}))) -> text_type {
         std::size_t i = 1;
         for (; i <= size(); ++i)
             if (c(_m_text[i - 1]))
@@ -998,8 +983,7 @@ private:
     template <typename UnaryPredicate>
     requires requires (UnaryPredicate c) { c(char_type{}); }
     [[nodiscard]] constexpr auto
-    _m_take_while_cond(UnaryPredicate c)
-    noexcept(noexcept(c(char_type{}))) -> text_type {
+    _m_take_while_cond(UnaryPredicate c) noexcept(noexcept(c(char_type{}))) -> text_type {
         std::size_t i = 1;
         for (; i <= size(); ++i)
             if (not c(_m_text[i - 1]))
@@ -1016,3 +1000,5 @@ using u8stream = basic_stream<char8_t>;
 using u16stream = basic_stream<char16_t>;
 using u32stream = basic_stream<char32_t>;
 } // namespace base
+
+#endif

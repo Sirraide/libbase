@@ -1,20 +1,30 @@
-module;
+#ifndef LIBBASE_FS_HH
+#define LIBBASE_FS_HH
 
 #include <base/Assert.hh>
 #include <base/detail/SystemInfo.hh>
 #include <base/Macros.hh>
+#include <base/Result.hh>
+#include <base/Types.hh>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <memory>
+#include <string_view>
+#include <vector>
 
-export module base.fs;
-import base;
-
-export namespace base::fs {
+namespace base::fs {
 class File;
 class FileContents;
+}
 
+#ifdef LIBBASE_FS_LINUX
+#    include <base/detail/FSLinux.hh>
+#else
+#    include <base/detail/FSGeneric.inc>
+#endif
+
+namespace base::fs {
 struct InputView;
 struct OutputView;
 
@@ -43,7 +53,7 @@ auto CurrentDirectory() -> Path;
 auto ExecutablePath() -> Result<Path>;
 } // namespace base::fs
 
-export namespace base {
+namespace base {
 using fs::File;
 }
 
@@ -113,19 +123,12 @@ struct base::fs::OutputView : std::span<std::byte> {
           ) {}
 };
 
-#ifdef LIBBASE_FS_LINUX
-#    include "FSLinux.inc"
-#else
-#    include "FSGeneric.inc"
-#endif
-
 /// A handle to a file on disk.
 ///
 /// The file is closed when this goes out of scope. This should
 /// only be used for actual files, not for (named) pipes, sockets,
 /// etc.
 class base::fs::File {
-public:
 private:
     OpenMode open_mode;
     std::unique_ptr<FILE, decltype(&std::fclose)> handle{nullptr, std::fclose};
@@ -211,3 +214,5 @@ public:
     /// directories that do not exist.
     static auto Write(PathRef path, InputView data) noexcept -> Result<>;
 };
+
+#endif

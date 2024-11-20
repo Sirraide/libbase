@@ -1,13 +1,10 @@
-module;
-
-#include <base/Macros.hh>
+#include <base/Base.hh>
+#include <base/Text.hh>
 #include <unicode/translit.h>
 #include <unicode/uchar.h>
 #include <unicode/unistr.h>
 #include <functional>
 
-module base.text;
-import base;
 using namespace base;
 using namespace base::text;
 

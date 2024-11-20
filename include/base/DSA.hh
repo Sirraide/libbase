@@ -1,6 +1,8 @@
-module;
+#ifndef LIBBASE_DSA_HH
+#define LIBBASE_DSA_HH
 
 #include <base/Assert.hh>
+#include <base/Utils.hh>
 #include <deque>
 #include <generator>
 #include <map>
@@ -15,10 +17,7 @@ module;
 /// anything about the implementation of those data structures;
 /// this also means that it is safe to e.g. slice a base::Queue
 /// down to a std::queue.
-export module base:dsa;
-import :utils;
-
-export namespace base {
+namespace base {
 template <
     typename KeyTy,
     typename ValueTy,
@@ -154,3 +153,5 @@ public:
         return std::visit(std::forward<Visitor>(visitor), std::forward<Self>(self));
     }
 };
+
+#endif

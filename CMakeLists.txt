@@ -11,12 +11,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 ##  Main library.
 ## ============================================================================
 file(GLOB_RECURSE _libbase_headers include/*.hh)
-file(GLOB_RECURSE _libbase_modules lib/*.ccm)
 file(GLOB_RECURSE _libbase_sources src/*.cc)
 add_library(libbase STATIC ${_libbase_sources})
 target_sources(libbase PUBLIC
     FILE_SET HEADERS FILES ${_libbase_headers}
-    FILE_SET CXX_MODULES FILES ${_libbase_modules}
 )
 set_target_properties(libbase PROPERTIES PREFIX "")
 target_include_directories(libbase PUBLIC include)

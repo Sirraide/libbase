@@ -1,11 +1,9 @@
 #include "TestCommon.hh"
-
+#include <base/FS.hh>
 #include <fstream>
 #include <filesystem>
 #include <base/detail/SystemInfo.hh>
 
-import base;
-import base.fs;
 using namespace base;
 using namespace base::fs;
 

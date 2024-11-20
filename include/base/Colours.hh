@@ -1,9 +1,11 @@
-module;
+#ifndef LIBBASE_COLOURS_HH
+#define LIBBASE_COLOURS_HH
 
+#include <format>
 #include <print>
+#include <string>
 
-export module base.colours;
-export namespace base::text {
+namespace base::text {
 /// Mixin to simplify formatting strings with colours.
 ///
 /// A formatting code starts with a per cent sign, and the text to
@@ -111,3 +113,5 @@ public:
         os << self.format(fmt, std::forward<Args>(args)...);
     }
 };
+
+#endif

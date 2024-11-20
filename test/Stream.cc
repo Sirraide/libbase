@@ -1,6 +1,5 @@
 #include "TestCommon.hh"
 
-import base;
 using namespace base;
 
 using Catch::Matchers::RangeEquals;

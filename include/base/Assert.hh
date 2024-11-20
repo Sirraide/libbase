@@ -1,5 +1,5 @@
-#ifndef LIBBASE_ASSERT_HH_
-#define LIBBASE_ASSERT_HH_
+#ifndef LIBBASE_ASSERT_HH
+#define LIBBASE_ASSERT_HH
 
 #include <libassert/assert.hpp>
 
@@ -14,4 +14,4 @@
 #define Unreachable(...)       LIBASSERT_UNREACHABLE(__VA_OPT__(std::format(__VA_ARGS__)))
 #define Todo(...)              Unreachable("TODO: " __VA_OPT__(": " __VA_ARGS__))
 
-#endif // LIBBASE_ASSERT_HH_
+#endif // LIBBASE_ASSERT_HH

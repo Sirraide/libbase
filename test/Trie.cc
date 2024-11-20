@@ -1,6 +1,6 @@
 #include "TestCommon.hh"
+#include <base/Trie.hh>
 
-import base.trie;
 using namespace base;
 
 Trie<std::string> t{{"foo", "bar"}};

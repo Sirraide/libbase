@@ -3,8 +3,7 @@
 
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
-
-import base;
+#include <base/Base.hh>
 
 // Like string view, but escape chars are printed escaped.
 struct RawString {

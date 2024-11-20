@@ -1,15 +1,14 @@
-module;
+#ifndef LIBBASE_UTILS_HH
+#define LIBBASE_UTILS_HH
 
 #include <algorithm>
 #include <ranges>
 #include <source_location>
 #include <string>
 #include <variant>
+#include <base/Types.hh>
 
-export module base:utils;
-import :types;
-
-export namespace base::utils {
+namespace base::utils {
 template <typename T, typename... Us>
 concept is = (std::is_same_v<std::remove_cvref_t<T>, std::remove_cvref_t<Us>> or ...);
 
@@ -115,3 +114,5 @@ constexpr decltype(auto) Visit(Visitor&& visitor, Variant&& variant) {
     return std::visit(std::forward<Variant>(variant), std::forward<Visitor>(visitor));
 }
 } // namespace base::utils
+
+#endif // LIBBASE_UTILS_HH

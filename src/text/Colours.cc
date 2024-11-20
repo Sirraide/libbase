@@ -1,11 +1,6 @@
-module;
-
-#include <base/Assert.hh>
+#include <base/Base.hh>
+#include <base/Colours.hh>
 #include <print>
-
-module base.colours;
-import base.text;
-import base;
 
 using namespace base;
 
@@ -195,8 +190,6 @@ struct Context {
         );
     }
 };
-
-
 
 /// Render colours in a string.
 auto text::RenderColours(bool use_colours, std::string_view fmt) -> std::string {

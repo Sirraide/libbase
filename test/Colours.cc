@@ -1,6 +1,6 @@
 #include "TestCommon.hh"
+#include <base/Colours.hh>
 
-import base.colours;
 using namespace base::text;
 using Catch::Matchers::ContainsSubstring;
 

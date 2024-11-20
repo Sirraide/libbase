@@ -1,4 +1,5 @@
-module;
+#ifndef LIBBASE_TRIE_HH
+#define LIBBASE_TRIE_HH
 
 #include <base/Assert.hh>
 #include <base/Macros.hh>
@@ -6,11 +7,10 @@ module;
 #include <ranges>
 #include <unordered_map>
 #include <vector>
+#include <base/DSA.hh>
+#include <base/Types.hh>
 
-export module base.trie;
-import base;
-
-export namespace base {
+namespace base {
 template <typename Range>
 class Trie;
 }
@@ -250,3 +250,5 @@ private:
 
     auto root() -> Node& { return nodes[0]; }
 };
+
+#endif // LIBBASE_TRIE_HH

@@ -1,12 +1,12 @@
-module;
+#ifndef LIBBASE_TYPES_HH
+#define LIBBASE_TYPES_HH
 
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
 #include <ranges>
 
-export module base:types;
-export namespace base {
+namespace base {
 namespace rgs = std::ranges;
 namespace vws = std::ranges::views;
 
@@ -27,3 +27,5 @@ using iptr = std::intptr_t;
 using f32 = float;
 using f64 = double;
 }
+
+#endif // LIBBASE_TYPES_HH

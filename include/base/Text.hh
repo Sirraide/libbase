@@ -1,14 +1,14 @@
-module;
+#ifndef LIBBASE_TEXT_HH
+#define LIBBASE_TEXT_HH
 
+#include <base/Result.hh>
+#include <base/Types.hh>
 #include <concepts>
 #include <format>
 #include <functional>
 #include <string>
 
-export module base.text;
-import base;
-
-export namespace base::text {
+namespace base::text {
 enum struct NormalisationForm {
     None, /// No normalisation.
     NFC,  /// Normalisation Form C.
@@ -124,11 +124,11 @@ struct c32 {
 [[nodiscard]] auto ToUTF8(c32 str) -> std::string;
 } // namespace base::text
 
-export namespace base {
+namespace base {
 using text::c32;
 } // namespace base
 
-export template <>
+template <>
 struct std::formatter<base::c32> : formatter<base::u32> {
     template <typename FormatContext>
     auto format(base::c32 c, FormatContext& ctx) const {
@@ -136,7 +136,7 @@ struct std::formatter<base::c32> : formatter<base::u32> {
     }
 };
 
-export template <>
+template <>
 struct std::formatter<char32_t> : formatter<base::u32> {
     template <typename FormatContext>
     auto format(char32_t c, FormatContext& ctx) const {
@@ -144,7 +144,7 @@ struct std::formatter<char32_t> : formatter<base::u32> {
     }
 };
 
-export template <>
+template <>
 struct std::formatter<std::u32string_view> : formatter<std::string_view> {
     template <typename FormatContext>
     auto format(std::u32string_view s, FormatContext& ctx) const {
@@ -155,10 +155,12 @@ struct std::formatter<std::u32string_view> : formatter<std::string_view> {
     }
 };
 
-export template <>
+template <>
 struct std::formatter<std::u32string> : formatter<std::u32string_view> {
     template <typename FormatContext>
     auto format(std::u32string_view s, FormatContext& ctx) const {
         return formatter<std::u32string_view>::format(s, ctx);
     }
 };
+
+#endif // LIBBASE_TEXT_HH

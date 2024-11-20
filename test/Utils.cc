@@ -5,7 +5,6 @@
 #include <string>
 #include <array>
 
-import base;
 using namespace base;
 
 TEST_CASE("erase_unordered()") {

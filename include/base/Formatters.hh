@@ -1,11 +1,8 @@
-module;
+#ifndef LIBBASE_FORMATTERS_HH
+#define LIBBASE_FORMATTERS_HH
 
 #include <format>
-#include <print>
-#include <string>
 #include <vector>
-
-export module base:formatters;
 
 template <typename Inner>
 struct std::formatter<std::vector<Inner>> : std::formatter<Inner> {
@@ -22,3 +19,5 @@ struct std::formatter<std::vector<Inner>> : std::formatter<Inner> {
         return ctx.out();
     }
 };
+
+#endif // LIBBASE_FORMATTERS_HH

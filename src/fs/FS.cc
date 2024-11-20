@@ -1,7 +1,5 @@
-module;
-
-#include <base/detail/SystemInfo.hh>
-#include <base/Macros.hh>
+#include <base/Base.hh>
+#include <base/FS.hh>
 #include <cerrno>
 #include <cstring>
 #include <filesystem>
@@ -14,8 +12,6 @@ module;
 #    include <unistd.h>
 #endif
 
-module base.fs;
-import base;
 using namespace base;
 using namespace base::fs;
 

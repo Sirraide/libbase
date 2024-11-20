@@ -1,12 +1,10 @@
-module;
+#ifndef LIBBASE_RESULT_HH
+#define LIBBASE_RESULT_HH
 
 #include <expected>
 #include <format>
 #include <string>
 #include <type_traits>
-
-export module base:result;
-import :utils;
 
 namespace base::detail {
 template <typename Ty>
@@ -57,7 +55,7 @@ struct ResultImpl<ReferenceWrapper<Ty>> {
 };
 } // namespace base::detail
 
-export namespace base {
+namespace base {
 /// A result type that stores either a value or an error message.
 ///
 /// You can create a new result using the 'Error()' function and
@@ -112,3 +110,5 @@ template <typename... Args>
     return std::unexpected(std::format(fmt, std::forward<Args>(args)...));
 }
 } // namespace base
+
+#endif // LIBBASE_RESULT_HH

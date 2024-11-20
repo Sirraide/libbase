@@ -1,13 +1,12 @@
-module;
+#ifndef LIBBASE_NUMERIC_HH
+#define LIBBASE_NUMERIC_HH
 
+#include <base/Result.hh>
+#include <base/Types.hh>
 #include <string_view>
 #include <utility>
 
-export module base:numeric;
-import :result;
-import :types;
-
-export namespace base {
+namespace base {
 /// Convert a value of enumeration type to its underlying type.
 template <typename Ty>
 requires std::is_enum_v<Ty>
@@ -36,3 +35,5 @@ template <> auto Parse<u64>(std::string_view sv) -> Result<u64>;
 template <> auto Parse<f32>(std::string_view sv) -> Result<f32>;
 template <> auto Parse<f64>(std::string_view sv) -> Result<f64>;
 } // namespace base
+
+#endif // LIBBASE_NUMERIC_HH

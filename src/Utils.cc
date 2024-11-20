@@ -1,11 +1,7 @@
-module;
-
-#include <base/Assert.hh>
+#include <base/Base.hh>
 #include <print>
 #include <source_location>
 #include <stdexcept>
-
-module base;
 
 void base::utils::ReplaceAll(
     std::string& str,
