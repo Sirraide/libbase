@@ -250,6 +250,15 @@ public:
         return const_iterator(data.end());
     }
 
+    /// Erase an element from the vector. This compares elements by *identity*,
+    /// not by equivalence (see index_of). Returns whether an element was removed.
+    constexpr bool erase(const ValueTy& value) {
+        auto it = rgs::find_if(data, [&](const auto& ptr) { return ptr.get() == &value; });
+        if (it == data.end()) return false;
+        data.erase(it);
+        return true;
+    }
+
     /// Erase all elements that satisfy a predicate.
     template <typename Predicate>
     constexpr auto erase_if(Predicate pred) -> void {

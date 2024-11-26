@@ -108,6 +108,28 @@ TEST_CASE("StableVector::emplace_back") {
     CHECK(s2.back().sum == 7);
 }
 
+TEST_CASE("StableVector::erase") {
+    StableVector<int> s1;
+    StableVector<Immovable> s2;
+
+    s1.push_back(1);
+    s1.push_back(2);
+    s2.emplace_back(1, 2);
+    s2.emplace_back(3, 4);
+
+    // This checks for address identity, so these should fail.
+    CHECK(not s1.erase(1));
+    CHECK(not s1.erase(2));
+    CHECK(not s2.erase(Immovable(1, 2)));
+    CHECK(not s2.erase(Immovable(3, 4)));
+
+    // These should succeed.
+    CHECK(s1.erase(s1[1]));
+    CHECK(s1.erase(s1[0]));
+    CHECK(s2.erase(s2[1]));
+    CHECK(s2.erase(s2[0]));
+}
+
 TEST_CASE("StableVector::erase_if") {
     StableVector<int> s1;
     StableVector<Immovable> s2;
