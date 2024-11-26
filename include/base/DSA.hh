@@ -286,6 +286,11 @@ public:
         std::swap(data[idx1], data[idx2]);
     }
 
+    /// Swap the elements at two iterators.
+    constexpr void swap_iterators(Iterator it1, Iterator it2) {
+        std::iter_swap(it1.it, it2.it);
+    }
+
     /// Get the element at an index.
     [[nodiscard]] constexpr auto operator[](this auto&& self, std::unsigned_integral auto idx) -> ValueTy& {
         Assert(idx < self.size(), "Index {} out of bounds!", idx);

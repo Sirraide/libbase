@@ -243,6 +243,44 @@ TEST_CASE("StableVector::swap_indices") {
     CHECK_THROWS(s2.swap_indices(3, 0));
 }
 
+TEST_CASE("StableVector::swap_iterators") {
+    StableVector<int> s1;
+    StableVector<Immovable> s2;
+
+    s1.push_back(1);
+    s1.push_back(2);
+    s1.push_back(3);
+    s2.emplace_back(1, 2);
+    s2.emplace_back(3, 4);
+    s2.emplace_back(5, 6);
+
+    s1.swap_iterators(s1.begin(), s1.begin() + 2);
+    s2.swap_iterators(s2.begin(), s2.begin() + 2);
+
+    REQUIRE(s1.size() == 3);
+    CHECK(s1[0] == 3);
+    CHECK(s1[1] == 2);
+    CHECK(s1[2] == 1);
+
+    REQUIRE(s2.size() == 3);
+    CHECK(s2[0].sum == 11);
+    CHECK(s2[1].sum == 7);
+    CHECK(s2[2].sum == 3);
+
+    s1.swap_iterators(s1.begin() + 1, s1.begin() + 1);
+    s2.swap_iterators(s2.begin() + 1, s2.begin() + 1);
+
+    REQUIRE(s1.size() == 3);
+    CHECK(s1[0] == 3);
+    CHECK(s1[1] == 2);
+    CHECK(s1[2] == 1);
+
+    REQUIRE(s2.size() == 3);
+    CHECK(s2[0].sum == 11);
+    CHECK(s2[1].sum == 7);
+    CHECK(s2[2].sum == 3);
+}
+
 TEST_CASE("StableVector::operator[]") {
     StableVector<int> s1;
     StableVector<Immovable> s2;
