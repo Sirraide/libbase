@@ -389,7 +389,7 @@ TEST_CASE("StableVector: Sorting immovable ranges") {
     CHECK(s[3].x == 47);
 }
 
-TEST_CASE("Stable vector: const overloads") {
+TEST_CASE("StableVector: const overloads") {
     const StableVector<int> s = [] {
         StableVector<int> s;
         s.push_back(1);

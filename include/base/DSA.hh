@@ -193,7 +193,7 @@ class base::StableVector {
         }
 
         [[nodiscard]] constexpr auto operator[](difference_type n) const -> reference {
-            return it[n];
+            return *it[n];
         }
 
         [[nodiscard]] constexpr auto operator<=>(const Iterator& other) const = default;
