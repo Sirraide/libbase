@@ -356,3 +356,18 @@ TEST_CASE("StableVector: Sorting immovable ranges") {
     CHECK(s[2].x == 19);
     CHECK(s[3].x == 47);
 }
+
+TEST_CASE("Stable vector: const overloads") {
+    const StableVector<int> s = [] {
+        StableVector<int> s;
+        s.push_back(1);
+        s.push_back(2);
+        return s;
+    }();
+
+    CHECK(s[0] == 1);
+    CHECK(s.front() == 1);
+    CHECK(s.back() == 2);
+    CHECK(rgs::any_of(s, [](int i) { return i == 1; }));
+    CHECK(rgs::any_of(s.elements(), [](const auto& i) { return *i == 1; }));
+}

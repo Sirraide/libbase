@@ -119,24 +119,24 @@ requires (not std::is_reference_v<ValueTy>)
 class base::StableVector {
     using UniquePtr = std::unique_ptr<ValueTy>;
     using VectorTy = std::vector<UniquePtr, AllocTemplate<UniquePtr>>;
-    using VectorIt = VectorTy::iterator;
     VectorTy data;
 
+    template <typename VectorIt, typename ValueType>
     class Iterator {
         VectorIt it;
         friend StableVector;
         explicit Iterator(VectorIt it) : it(it) {}
 
     public:
-        using value_type = ValueTy;
+        using value_type = ValueType;
         using difference_type = std::ptrdiff_t;
-        using pointer = ValueTy*;
-        using reference = ValueTy&;
+        using pointer = ValueType*;
+        using reference = ValueType&;
 
         Iterator() = default;
 
-        [[nodiscard]] constexpr auto operator*() const -> ValueTy& { return **it; }
-        [[nodiscard]] constexpr auto operator->() const -> ValueTy* { return it->get(); }
+        [[nodiscard]] constexpr auto operator*() const -> reference { return **it; }
+        [[nodiscard]] constexpr auto operator->() const -> pointer { return it->get(); }
         constexpr auto operator++() -> Iterator& {
             ++it;
             return *this;
@@ -192,7 +192,7 @@ class base::StableVector {
             return *this;
         }
 
-        [[nodiscard]] constexpr auto operator[](difference_type n) const -> ValueTy& {
+        [[nodiscard]] constexpr auto operator[](difference_type n) const -> reference {
             return it[n];
         }
 
@@ -201,19 +201,26 @@ class base::StableVector {
 
 public:
     using value_type = ValueTy;
-    using iterator = Iterator;
+    using iterator = Iterator<typename VectorTy::iterator, ValueTy>;
+    using const_iterator = Iterator<typename VectorTy::const_iterator, const ValueTy>;
 
     /// Create an empty stable vector.
     constexpr StableVector() = default;
 
     /// Get the last element in the vector.
-    [[nodiscard]] constexpr auto back() -> ValueTy& {
-        Assert(not empty(), "Vector is empty!");
-        return *data.back();
+    [[nodiscard]] constexpr auto back(this auto& self) -> decltype(auto) {
+        Assert(not self.empty(), "Vector is empty!");
+        return std::forward_like<decltype(self)>(*self.data.back());
     }
 
     /// Get an iterator to the start of the vector.
-    [[nodiscard]] constexpr auto begin() -> Iterator { return Iterator(data.begin()); }
+    [[nodiscard]] constexpr auto begin() -> iterator {
+        return iterator(data.begin());
+    }
+
+    [[nodiscard]] constexpr auto begin() const -> const_iterator {
+        return const_iterator(data.begin());
+    }
 
     /// Clear all elements from the vector.
     constexpr auto clear() -> void { data.clear(); }
@@ -227,15 +234,21 @@ public:
     /// Get a range to the underlying element storage; this can be passed
     /// to algorithms such as 'std::sort' or 'std::shuffle' so they can operate
     /// on the elements directly.
-    [[nodiscard]] constexpr auto elements() {
-        return data | vws::all;
+    [[nodiscard]] constexpr auto elements(this auto& self) {
+        return std::forward_like<decltype(self)>(self.data) | vws::all;
     }
 
     /// Check if the vector is empty.
     [[nodiscard]] constexpr auto empty() const -> bool { return data.empty(); }
 
     /// Get an iterator to the end of the vector.
-    [[nodiscard]] constexpr auto end() -> Iterator { return Iterator(data.end()); }
+    [[nodiscard]] constexpr auto end() -> iterator {
+        return iterator(data.end());
+    }
+
+    [[nodiscard]] constexpr auto end() const -> const_iterator {
+        return const_iterator(data.end());
+    }
 
     /// Erase all elements that satisfy a predicate.
     template <typename Predicate>
@@ -244,9 +257,9 @@ public:
     }
 
     /// Get the first element in the vector.
-    [[nodiscard]] constexpr auto front() -> ValueTy& {
-        Assert(not empty(), "Vector is empty!");
-        return *data.front();
+    [[nodiscard]] constexpr auto front(this auto& self) -> decltype(auto) {
+        Assert(not self.empty(), "Vector is empty!");
+        return std::forward_like<decltype(self)>(*self.data.front());
     }
 
     /// Get the index of an element in the vector, if it is in the vector;
@@ -287,17 +300,17 @@ public:
     }
 
     /// Swap the elements at two iterators.
-    constexpr void swap_iterators(Iterator it1, Iterator it2) {
+    constexpr void swap_iterators(iterator it1, iterator it2) {
         std::iter_swap(it1.it, it2.it);
     }
 
     /// Get the element at an index.
-    [[nodiscard]] constexpr auto operator[](this auto&& self, std::unsigned_integral auto idx) -> ValueTy& {
+    [[nodiscard]] constexpr auto operator[](this auto&& self, std::unsigned_integral auto idx) -> decltype(auto) {
         Assert(idx < self.size(), "Index {} out of bounds!", idx);
         return std::forward_like<decltype(self)>(*self.data[idx]);
     }
 
-    [[nodiscard]] constexpr auto operator[](this auto&& self, std::signed_integral auto idx) -> ValueTy& {
+    [[nodiscard]] constexpr auto operator[](this auto&& self, std::signed_integral auto idx) -> decltype(auto) {
         Assert(idx >= 0, "Index {} out of bounds!", idx);
         Assert(usz(idx) < self.size(), "Index {} out of bounds!", usz(idx));
         return std::forward_like<decltype(self)>(*self.data[usz(idx)]);
