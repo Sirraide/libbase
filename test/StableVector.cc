@@ -1,6 +1,7 @@
 #include "TestCommon.hh"
 
 #include <base/DSA.hh>
+#include <random>
 
 using namespace base;
 
@@ -285,4 +286,35 @@ TEST_CASE("Interfacing w/ std::views works") {
 
     auto concat = s | vws::transform(&Immovable::sum) | rgs::to<std::vector>();
     CHECK(concat == std::vector{4, 8});
+}
+
+TEST_CASE("std::shuffle works") {
+    StableVector<int> s1;
+    StableVector<Immovable> s2;
+    auto rng = std::mt19937{std::random_device{}()};
+    s1.push_back(1);
+    s1.push_back(2);
+    s1.push_back(3);
+    s2.emplace_back(1, 2);
+    s2.emplace_back(3, 4);
+    s2.emplace_back(5, 6);
+
+    // Only check that this compiles.
+    rgs::shuffle(s1, rng);
+    rgs::shuffle(s2.elements(), rng);
+}
+
+TEST_CASE("StableVector: Sorting immovable ranges") {
+    struct Fixed { const int x; };
+    StableVector<Fixed> s;
+    s.emplace_back(47);
+    s.emplace_back(8);
+    s.emplace_back(19);
+    s.emplace_back(3);
+
+    rgs::sort(s.elements(), {}, &Fixed::x);
+    CHECK(s[0].x == 3);
+    CHECK(s[1].x == 8);
+    CHECK(s[2].x == 19);
+    CHECK(s[3].x == 47);
 }

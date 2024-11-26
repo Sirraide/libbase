@@ -38,7 +38,7 @@ class Queue;
 
 /// Vector that stores its elements in a way that prevents them from
 /// moving around in memory.
-template <typename ValueTy,  template <typename> class AllocTemplate = std::allocator>
+template <typename ValueTy, template <typename> class AllocTemplate = std::allocator>
 requires (not std::is_reference_v<ValueTy>)
 class StableVector;
 
@@ -114,7 +114,7 @@ public:
     }
 };
 
-template <typename ValueTy,  template <typename> class AllocTemplate>
+template <typename ValueTy, template <typename> class AllocTemplate>
 requires (not std::is_reference_v<ValueTy>)
 class base::StableVector {
     using UniquePtr = std::unique_ptr<ValueTy>;
@@ -137,7 +137,7 @@ class base::StableVector {
 
         [[nodiscard]] constexpr auto operator*() const -> ValueTy& { return **it; }
         [[nodiscard]] constexpr auto operator->() const -> ValueTy* { return it->get(); }
-        [[nodiscard]] constexpr auto operator++() -> Iterator& {
+        constexpr auto operator++() -> Iterator& {
             ++it;
             return *this;
         }
@@ -148,30 +148,52 @@ class base::StableVector {
             return tmp;
         }
 
-        [[nodiscard]] constexpr auto operator+(usz n) const -> Iterator {
+        constexpr auto operator--() -> Iterator& {
+            --it;
+            return *this;
+        }
+
+        [[nodiscard]] constexpr auto operator--(int) -> Iterator {
+            auto tmp = *this;
+            --*this;
+            return tmp;
+        }
+
+        [[nodiscard]] constexpr auto operator+(difference_type n) const -> Iterator {
             auto tmp = *this;
             tmp.it += n;
             return tmp;
         }
 
-        [[nodiscard]] constexpr auto operator-(usz n) const -> Iterator {
+        [[nodiscard]] friend constexpr auto operator+(
+            difference_type n,
+            const Iterator& it
+        ) -> Iterator {
+            return it + n;
+        }
+
+        [[nodiscard]] constexpr auto operator-(difference_type n) const -> Iterator {
             auto tmp = *this;
             tmp.it -= n;
             return tmp;
         }
 
-        [[nodiscard]] constexpr auto operator-(const Iterator& other) const -> usz {
+        [[nodiscard]] constexpr auto operator-(const Iterator& other) const -> difference_type {
             return it - other.it;
         }
 
-        [[nodiscard]] constexpr auto operator+=(usz n) -> Iterator& {
+        [[nodiscard]] constexpr auto operator+=(difference_type n) -> Iterator& {
             it += n;
             return *this;
         }
 
-        [[nodiscard]] constexpr auto operator-=(usz n) -> Iterator& {
+        [[nodiscard]] constexpr auto operator-=(difference_type n) -> Iterator& {
             it -= n;
             return *this;
+        }
+
+        [[nodiscard]] constexpr auto operator[](difference_type n) const -> ValueTy& {
+            return it[n];
         }
 
         [[nodiscard]] constexpr auto operator<=>(const Iterator& other) const = default;
@@ -200,6 +222,13 @@ public:
     template <typename... Args>
     constexpr auto emplace_back(Args&&... args) -> ValueTy& {
         return push_back(std::make_unique<ValueTy>(std::forward<Args>(args)...));
+    }
+
+    /// Get a range to the underlying element storage; this can be passed
+    /// to algorithms such as 'std::sort' or 'std::shuffle' so they can operate
+    /// on the elements directly.
+    [[nodiscard]] constexpr auto elements() {
+        return data | vws::all;
     }
 
     /// Check if the vector is empty.
