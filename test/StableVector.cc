@@ -154,7 +154,7 @@ TEST_CASE("StableVector::erase_if") {
     s2.emplace_back(4, 4);
 
     s1.erase_if([](int i) { return i % 2 == 0; });
-    s2.erase_if([](const Immovable& i) { return i.sum % 2 == 0; });
+    s2.erase_if(&Immovable::is_even);
 
     CHECK(s1.size() == 2);
     CHECK(s2.size() == 2);

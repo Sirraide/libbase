@@ -4,6 +4,7 @@
 #include <base/Assert.hh>
 #include <base/Utils.hh>
 #include <deque>
+#include <functional>
 #include <generator>
 #include <map>
 #include <queue>
@@ -263,7 +264,7 @@ public:
     /// Erase all elements that satisfy a predicate.
     template <typename Predicate>
     constexpr auto erase_if(Predicate pred) -> void {
-        std::erase_if(data, [&](const auto& ptr) { return pred(*ptr); });
+        std::erase_if(data, [&](const auto& ptr) { return std::invoke(pred, *ptr); });
     }
 
     /// Get the first element in the vector.
