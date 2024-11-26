@@ -7,8 +7,14 @@ using namespace base;
 struct Immovable {
     LIBBASE_IMMOVABLE(Immovable);
     int sum = 0;
+    bool is_even = false;
+    bool is_odd;
     Immovable() = default;
-    Immovable(int x, int y) { sum = x + y; }
+    Immovable(int x, int y) {
+        sum = x + y;
+        is_even = sum % 2 == 0;
+        is_odd = not is_even;
+    }
 };
 
 TEST_CASE("StableVector is initially empty") {
@@ -260,4 +266,23 @@ TEST_CASE("StableVector::operator[]") {
     CHECK(s2[1l].sum == 7);
     CHECK_THROWS(s2[-1l]);
     CHECK_THROWS(s2[2l]);
+}
+
+TEST_CASE("Interfacing w/ std::ranges works") {
+    StableVector<Immovable> s;
+    s.emplace_back(2, 2);
+    s.emplace_back(4, 4);
+
+    CHECK(rgs::any_of(s, &Immovable::is_even));
+    CHECK(rgs::all_of(s, &Immovable::is_even));
+    CHECK(rgs::none_of(s, &Immovable::is_odd));
+}
+
+TEST_CASE("Interfacing w/ std::views works") {
+    StableVector<Immovable> s;
+    s.emplace_back(2, 2);
+    s.emplace_back(4, 4);
+
+    auto concat = s | vws::transform(&Immovable::sum) | rgs::to<std::vector>();
+    CHECK(concat == std::vector{4, 8});
 }

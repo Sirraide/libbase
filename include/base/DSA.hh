@@ -128,6 +128,13 @@ class base::StableVector {
         explicit Iterator(VectorIt it) : it(it) {}
 
     public:
+        using value_type = ValueTy;
+        using difference_type = std::ptrdiff_t;
+        using pointer = ValueTy*;
+        using reference = ValueTy&;
+
+        Iterator() = default;
+
         [[nodiscard]] constexpr auto operator*() const -> ValueTy& { return **it; }
         [[nodiscard]] constexpr auto operator->() const -> ValueTy* { return it->get(); }
         [[nodiscard]] constexpr auto operator++() -> Iterator& {

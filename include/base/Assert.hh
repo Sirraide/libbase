@@ -15,8 +15,10 @@
                 throw std::runtime_error(__VA_OPT__(std::format(__VA_ARGS__))); \
             }                                                                   \
         } while (false)
+#    define LIBBASE_NOEXCEPT_UNLESS_TESTING
 #else
-#    define Assert(cond, ...) LIBASSERT_ASSERT(cond __VA_OPT__(, std::format(__VA_ARGS__)))
+#    define Assert(cond, ...)               LIBASSERT_ASSERT(cond __VA_OPT__(, std::format(__VA_ARGS__)))
+#    define LIBBASE_NOEXCEPT_UNLESS_TESTING noexcept(true)
 #endif
 
 #define DebugAssert(cond, ...) LIBASSERT_DEBUG_ASSERT(cond __VA_OPT__(, std::format(__VA_ARGS__)))
