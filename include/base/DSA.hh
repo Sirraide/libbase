@@ -226,9 +226,10 @@ public:
     constexpr auto clear() -> void { data.clear(); }
 
     /// Construct a new element at the back of the vector.
-    template <typename... Args>
-    constexpr auto emplace_back(Args&&... args) -> ValueTy& {
-        return push_back(std::make_unique<ValueTy>(std::forward<Args>(args)...));
+    template <typename T = ValueTy, typename... Args>
+    constexpr auto emplace_back(Args&&... args) -> T& {
+        auto& ref = push_back(std::make_unique<T>(std::forward<Args>(args)...));
+        return static_cast<T&>(ref);
     }
 
     /// Get a range to the underlying element storage; this can be passed

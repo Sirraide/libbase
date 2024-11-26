@@ -18,6 +18,10 @@ struct Immovable {
     }
 };
 
+struct Derived : Immovable {
+    Derived(int x) : Immovable(x, x) {}
+};
+
 TEST_CASE("StableVector is initially empty") {
     StableVector<int> s1;
     StableVector<Immovable> s2;
@@ -106,6 +110,12 @@ TEST_CASE("StableVector::emplace_back") {
     CHECK(s2.size() == 2);
     CHECK(s2.front().sum == 3);
     CHECK(s2.back().sum == 7);
+}
+
+TEST_CASE("StableVector::emplace_back<T>") {
+    StableVector<Immovable> s;
+    [[maybe_unused]] Derived& d = s.emplace_back<Derived>(1);
+    CHECK(s.front().sum == 2);
 }
 
 TEST_CASE("StableVector::erase") {
