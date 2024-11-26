@@ -8,7 +8,17 @@
 #    define __builtin_expect_with_probability(x, y, z) __builtin_expect(x, y)
 #endif
 
-#define Assert(cond, ...)      LIBASSERT_ASSERT(cond __VA_OPT__(, std::format(__VA_ARGS__)))
+#ifdef LIBBASE_IS_BUILDING_TESTS
+#    define Assert(cond, ...)                                                   \
+        do {                                                                    \
+            if (not(cond)) {                                                    \
+                throw std::runtime_error(__VA_OPT__(std::format(__VA_ARGS__))); \
+            }                                                                   \
+        } while (false)
+#else
+#    define Assert(cond, ...) LIBASSERT_ASSERT(cond __VA_OPT__(, std::format(__VA_ARGS__)))
+#endif
+
 #define DebugAssert(cond, ...) LIBASSERT_DEBUG_ASSERT(cond __VA_OPT__(, std::format(__VA_ARGS__)))
 #define Fatal(...)             LIBASSERT_PANIC(__VA_OPT__(std::format(__VA_ARGS__)))
 #define Unreachable(...)       LIBASSERT_UNREACHABLE(__VA_OPT__(std::format(__VA_ARGS__)))

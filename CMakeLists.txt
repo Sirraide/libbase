@@ -209,6 +209,7 @@ if (DEFINED BUILD_TESTS)
     target_compile_options(tests PRIVATE -fms-extensions -fdeclspec)
     target_compile_definitions(tests PRIVATE
         "LIBBASE_TESTING_BINARY_DIR=\"${CMAKE_CURRENT_BINARY_DIR}\""
+        "LIBBASE_IS_BUILDING_TESTS"
     )
     catch_discover_tests(tests)
 endif()

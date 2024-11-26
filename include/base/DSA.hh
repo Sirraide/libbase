@@ -12,12 +12,17 @@
 #include <variant>
 #include <vector>
 
+/// ====================================================================
+///  API
+/// ====================================================================
 /// This module provides wrappers around STL data structures
 /// that add additional functionality, but don’t actually change
 /// anything about the implementation of those data structures;
 /// this also means that it is safe to e.g. slice a base::Queue
 /// down to a std::queue.
 namespace base {
+/// Wrapper around 'std::unordered_map' that provides 'get()',
+/// and 'get_or()'.
 template <
     typename KeyTy,
     typename ValueTy,
@@ -26,9 +31,18 @@ template <
     typename Alloc = std::allocator<std::pair<const KeyTy, ValueTy>>>
 class HashMap;
 
+/// Wrapper around 'std::queue' that provides 'dequeue()' to remove
+/// and return an element because not having that is annoying...
 template <typename ValueType, typename Sequence = std::deque<ValueType>>
 class Queue;
 
+/// Vector that stores its elements in a way that prevents them from
+/// moving around in memory.
+template <typename ValueTy,  template <typename> class AllocTemplate = std::allocator>
+requires (not std::is_reference_v<ValueTy>)
+class StableVector;
+
+/// Wrapper around 'std::map' that provides 'get()', and 'get_or()'.
 template <
     typename KeyTy,
     typename ValueTy,
@@ -36,10 +50,15 @@ template <
     typename Alloc = std::allocator<std::pair<const KeyTy, ValueTy>>>
 class TreeMap;
 
+/// Wrapper around 'std::variant' w/ members to access and check for
+/// individual variant members.
 template <typename... Types>
 class Variant;
-}
+} // namespace base
 
+/// ====================================================================
+///  Implementation
+/// ====================================================================
 namespace base::detail {
 template <typename KeyTy, typename ValueTy>
 struct MapMixin {
@@ -59,8 +78,6 @@ struct MapMixin {
 };
 } // namespace base::detail
 
-/// Wrapper around 'std::unordered_map' that provides 'get()',
-/// and 'get_or()'.
 template <
     typename KeyTy,
     typename ValueTy,
@@ -75,8 +92,6 @@ public:
     using Base::Base;
 };
 
-/// Wrapper around 'std::queue' that provides 'dequeue()' to remove
-/// and return an element because not having that is anoying...
 template <typename ValueType, typename Sequence>
 class base::Queue : public std::queue<ValueType, Sequence> {
     using Base = std::queue<ValueType, Sequence>;
@@ -99,7 +114,155 @@ public:
     }
 };
 
-/// Wrapper around 'std::map' that provides 'get()', and 'get_or()'.
+template <typename ValueTy,  template <typename> class AllocTemplate>
+requires (not std::is_reference_v<ValueTy>)
+class base::StableVector {
+    using UniquePtr = std::unique_ptr<ValueTy>;
+    using VectorTy = std::vector<UniquePtr, AllocTemplate<UniquePtr>>;
+    using VectorIt = VectorTy::iterator;
+    VectorTy data;
+
+    class Iterator {
+        VectorIt it;
+        friend StableVector;
+        explicit Iterator(VectorIt it) : it(it) {}
+
+    public:
+        [[nodiscard]] constexpr auto operator*() const -> ValueTy& { return **it; }
+        [[nodiscard]] constexpr auto operator->() const -> ValueTy* { return it->get(); }
+        [[nodiscard]] constexpr auto operator++() -> Iterator& {
+            ++it;
+            return *this;
+        }
+
+        [[nodiscard]] constexpr auto operator++(int) -> Iterator {
+            auto tmp = *this;
+            ++*this;
+            return tmp;
+        }
+
+        [[nodiscard]] constexpr auto operator+(usz n) const -> Iterator {
+            auto tmp = *this;
+            tmp.it += n;
+            return tmp;
+        }
+
+        [[nodiscard]] constexpr auto operator-(usz n) const -> Iterator {
+            auto tmp = *this;
+            tmp.it -= n;
+            return tmp;
+        }
+
+        [[nodiscard]] constexpr auto operator-(const Iterator& other) const -> usz {
+            return it - other.it;
+        }
+
+        [[nodiscard]] constexpr auto operator+=(usz n) -> Iterator& {
+            it += n;
+            return *this;
+        }
+
+        [[nodiscard]] constexpr auto operator-=(usz n) -> Iterator& {
+            it -= n;
+            return *this;
+        }
+
+        [[nodiscard]] constexpr auto operator<=>(const Iterator& other) const = default;
+    };
+
+public:
+    using value_type = ValueTy;
+    using iterator = Iterator;
+
+    /// Create an empty stable vector.
+    constexpr StableVector() = default;
+
+    /// Get the last element in the vector.
+    [[nodiscard]] constexpr auto back() -> ValueTy& {
+        Assert(not empty(), "Vector is empty!");
+        return *data.back();
+    }
+
+    /// Get an iterator to the start of the vector.
+    [[nodiscard]] constexpr auto begin() -> Iterator { return Iterator(data.begin()); }
+
+    /// Clear all elements from the vector.
+    constexpr auto clear() -> void { data.clear(); }
+
+    /// Construct a new element at the back of the vector.
+    template <typename... Args>
+    constexpr auto emplace_back(Args&&... args) -> ValueTy& {
+        return push_back(std::make_unique<ValueTy>(std::forward<Args>(args)...));
+    }
+
+    /// Check if the vector is empty.
+    [[nodiscard]] constexpr auto empty() const -> bool { return data.empty(); }
+
+    /// Get an iterator to the end of the vector.
+    [[nodiscard]] constexpr auto end() -> Iterator { return Iterator(data.end()); }
+
+    /// Erase all elements that satisfy a predicate.
+    template <typename Predicate>
+    constexpr auto erase_if(Predicate pred) -> void {
+        std::erase_if(data, [&](const auto& ptr) { return pred(*ptr); });
+    }
+
+    /// Get the first element in the vector.
+    [[nodiscard]] constexpr auto front() -> ValueTy& {
+        Assert(not empty(), "Vector is empty!");
+        return *data.front();
+    }
+
+    /// Get the index of an element in the vector, if it is in the vector;
+    /// this compares elements by *identity*, not by equivalence: it only
+    /// succeeds if passed a reference to an element that is actually stored
+    /// in this vector.
+    [[nodiscard]] constexpr auto index_of(const ValueTy& value) const -> std::optional<usz> {
+        auto it = rgs::find_if(data, [&](const auto& ptr) { return ptr.get() == &value; });
+        if (it == data.end()) return std::nullopt;
+        return it - data.begin();
+    }
+
+    /// Remove the last element from the vector.
+    constexpr auto pop_back() -> UniquePtr {
+        auto val = std::move(data.back());
+        data.pop_back();
+        return val;
+    }
+
+    /// Push a new element to the back of the vector.
+    constexpr auto push_back(ValueTy value) -> ValueTy& {
+        return push_back(std::make_unique<ValueTy>(std::move(value)));
+    }
+
+    constexpr auto push_back(std::unique_ptr<ValueTy> value) -> ValueTy& {
+        data.push_back(std::move(value));
+        return *data.back();
+    }
+
+    /// Get the number of elements in the vector.
+    [[nodiscard]] constexpr auto size() const -> usz { return data.size(); }
+
+    /// Swap the elements at two indices.
+    constexpr void swap_indices(usz idx1, usz idx2) {
+        Assert(idx1 < size(), "Index {} out of bounds!", idx1);
+        Assert(idx2 < size(), "Index {} out of bounds!", idx2);
+        std::swap(data[idx1], data[idx2]);
+    }
+
+    /// Get the element at an index.
+    [[nodiscard]] constexpr auto operator[](this auto&& self, std::unsigned_integral auto idx) -> ValueTy& {
+        Assert(idx < self.size(), "Index {} out of bounds!", idx);
+        return std::forward_like<decltype(self)>(*self.data[idx]);
+    }
+
+    [[nodiscard]] constexpr auto operator[](this auto&& self, std::signed_integral auto idx) -> ValueTy& {
+        Assert(idx >= 0, "Index {} out of bounds!", idx);
+        Assert(usz(idx) < self.size(), "Index {} out of bounds!", usz(idx));
+        return std::forward_like<decltype(self)>(*self.data[usz(idx)]);
+    }
+};
+
 template <
     typename KeyTy,
     typename ValueTy,

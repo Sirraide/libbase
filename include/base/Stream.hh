@@ -923,7 +923,7 @@ private:
     // Return characters until position `n` (exclusive)
     // and remove them from the stream.
     constexpr auto _m_advance(size_type n) noexcept -> text_type {
-        Assert(n <= size());
+        Assert(n <= size(), "Should never get an out-of-bounds index here");
         auto txt = _m_text.substr(0, n);
         _m_text.remove_prefix(n);
         return txt;
