@@ -5,6 +5,7 @@
 #include <format>
 #include <string>
 #include <type_traits>
+#include <base/Utils.hh>
 
 namespace base::detail {
 template <typename Ty>
