@@ -1002,6 +1002,9 @@ public:
     operator==(Ty other) const noexcept {
         return _m_text == other;
     }
+
+    [[nodiscard]] constexpr auto
+    operator<=>(const basic_stream& other) const = default;
     /// @}
 
 private:
