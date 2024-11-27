@@ -470,6 +470,22 @@ TEST_CASE("stream::take_until_or_empty") {
     CHECK(stream{s}.take_until_or_empty([](char c) { return c == 'h'; }) == ""sv);
 }
 
+TEST_CASE("stream::take_until_ws") {
+    stream s = "a  b\t\t c\td\r\v\f\ne \r \v \n f"sv;
+    CHECK(s.take_until_ws() == "a"sv);
+    s.trim_front();
+    CHECK(s.take_until_ws() == "b"sv);
+    s.trim_front();
+    CHECK(s.take_until_ws() == "c"sv);
+    s.trim_front();
+    CHECK(s.take_until_ws() == "d"sv);
+    s.trim_front();
+    CHECK(s.take_until_ws() == "e"sv);
+    s.trim_front();
+    CHECK(s.take_until_ws() == "f"sv);
+    CHECK(s.empty());
+}
+
 TEST_CASE("stream::take_while") {
     std::string s = "hello world";
 

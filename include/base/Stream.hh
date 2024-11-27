@@ -427,6 +427,13 @@ public:
 
     /// \see take_until(char_type)
     constexpr auto
+    drop_until_ws() noexcept -> basic_stream& {
+        (void) take_until_ws();
+        return *this;
+    }
+
+    /// \see take_until(char_type)
+    constexpr auto
     drop_while(char_type c) noexcept -> basic_stream& {
         (void) take_while(c);
         return *this;
@@ -883,6 +890,12 @@ public:
     [[nodiscard]] constexpr auto
     take_until_or_empty(UnaryPredicate c) noexcept(noexcept(c(char_type{}))) -> text_type {
         return _m_take_until_cond<true>(std::move(c));
+    }
+
+    /// \see take_until(char_type)
+    [[nodiscard]] constexpr auto
+    take_until_ws() noexcept -> text_type {
+        return take_until_any(whitespace());
     }
 
     /// \see take_until(char_type)
