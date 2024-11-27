@@ -43,6 +43,10 @@ template <typename ValueTy, template <typename> class AllocTemplate = std::alloc
 requires (not std::is_reference_v<ValueTy>)
 class StableVector;
 
+/// Map whose keys are strings.
+template <typename ValueTy>
+class StringMap;
+
 /// Wrapper around 'std::map' that provides 'get()', and 'get_or()'.
 template <
     typename KeyTy,
@@ -75,6 +79,15 @@ struct MapMixin {
         auto it = self.find(key);
         if (it == self.end()) return std::move(def);
         return it->second;
+    }
+};
+
+struct StringHash {
+    using is_transparent = void;
+    template <typename T>
+    requires requires (const T& t) { std::string_view{t}; }
+    auto operator()(const T& t) const -> usz {
+        return std::hash<std::string_view>{}(std::string_view{t});
     }
 };
 } // namespace base::detail
@@ -325,6 +338,44 @@ public:
         Assert(idx >= 0, "Index {} out of bounds!", idx);
         Assert(usz(idx) < self.size(), "Index {} out of bounds!", usz(idx));
         return std::forward_like<decltype(self)>(*self.data[usz(idx)]);
+    }
+};
+
+template <typename ValueType>
+class base::StringMap : public HashMap<std::string, ValueType, detail::StringHash, std::equal_to<>> {
+    using Base = HashMap<std::string, ValueType, detail::StringHash, std::equal_to<>>;
+
+public:
+    using Base::Base;
+    using Base::operator[];
+    using Base::at;
+    using Base::get;
+    using Base::get_or;
+
+    auto operator[](this auto& self, std::string_view sv) -> decltype(auto) {
+        return self[std::string{sv}];
+    }
+
+    auto at(this auto& self, std::string_view sv) -> decltype(auto) {
+        return self.at(std::string{sv});
+    }
+
+    auto get(this auto& self, std::string_view sv) -> decltype(auto) {
+        return self.get(std::string{sv});
+    }
+
+    template <usz n>
+    auto get(this auto& self, const char (&str)[n]) -> decltype(auto) {
+        return self.get(std::string_view{str, n - 1});
+    }
+
+    auto get_or(this auto& self, std::string_view sv, ValueType def) -> decltype(auto) {
+        return self.get_or(std::string{sv}, std::move(def));
+    }
+
+    template <usz n>
+    auto get_or(this auto& self, const char (&str)[n], ValueType def) -> decltype(auto) {
+        return self.get_or(std::string_view{str, n - 1}, std::move(def));
     }
 };
 
