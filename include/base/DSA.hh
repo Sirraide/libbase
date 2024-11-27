@@ -9,6 +9,7 @@
 #include <map>
 #include <queue>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -46,6 +47,9 @@ class StableVector;
 /// Map whose keys are strings.
 template <typename ValueTy>
 class StringMap;
+
+/// Set whose elements are strings.
+class StringSet;
 
 /// Wrapper around 'std::map' that provides 'get()', and 'get_or()'.
 template <
@@ -376,6 +380,23 @@ public:
     template <usz n>
     auto get_or(this auto& self, const char (&str)[n], ValueType def) -> decltype(auto) {
         return self.get_or(std::string_view{str, n - 1}, std::move(def));
+    }
+};
+
+class base::StringSet : public std::unordered_set<std::string, detail::StringHash, std::equal_to<>> {
+    using Base = std::unordered_set<std::string, detail::StringHash, std::equal_to<>>;
+
+public:
+    using Base::Base;
+    using Base::insert;
+
+    template <usz n>
+    auto insert(const char (&str)[n]) -> std::pair<iterator, bool> {
+        return Base::insert(std::string{str, n - 1});
+    }
+
+    auto insert(std::string_view sv) -> std::pair<iterator, bool> {
+        return Base::insert(std::string{sv});
     }
 };
 

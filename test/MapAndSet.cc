@@ -24,3 +24,16 @@ TEST_CASE("StringMap: Access using different string types") {
     CHECK(s.find("bar"s) != s.end());
     CHECK(s.find("baz"sv) != s.end());
 }
+
+TEST_CASE("StringSet: Access using different string types") {
+    StringSet s;
+    s.insert("foo");
+    s.insert("bar"s);
+    s.insert("baz"sv);
+    CHECK(s.contains("foo"));
+    CHECK(s.contains("bar"s));
+    CHECK(s.contains("baz"sv));
+    CHECK(s.find("foo") != s.end());
+    CHECK(s.find("bar"s) != s.end());
+    CHECK(s.find("baz"sv) != s.end());
+}
