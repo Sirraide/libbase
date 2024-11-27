@@ -25,6 +25,8 @@ struct Catch::StringMaker<stream> {
     }
 };
 
+using Views = std::vector<std::string_view>;
+
 TEST_CASE("stream(string&)") {
     std::string s;
     CHECK(stream{s}.empty());
@@ -382,17 +384,28 @@ TEST_CASE("stream::starts_with_any") {
 
 TEST_CASE("stream::take_until") {
     std::string s = "hello world";
+    const Views v{"lx", "llox"};
 
     CHECK(stream{s}.take_until(' ') == "hello"sv);
     CHECK(stream{s}.take_until('o') == "hell"sv);
     CHECK(stream{s}.take_until('x') == "hello world"sv);
     CHECK(stream{s}.take_until('h') == ""sv);
 
+    CHECK(stream{s}.take_until_any("") == "hello world"sv);
     CHECK(stream{s}.take_until_any(" ") == "hello"sv);
     CHECK(stream{s}.take_until_any("eo") == "h"sv);
     CHECK(stream{s}.take_until_any("x") == "hello world"sv);
     CHECK(stream{s}.take_until_any("rw") == "hello "sv);
 
+    CHECK(stream{s}.take_until_any(Views{}) == "hello world"sv);
+    CHECK(stream{s}.take_until_any(Views{"e", "o"}) == "h"sv);
+    CHECK(stream{s}.take_until_any(Views{"lo", "el"}) == "h"sv);
+    CHECK(stream{s}.take_until_any(Views{"lo", "llo"}) == "he"sv);
+    CHECK(stream{s}.take_until_any(v) == "hello world"sv);
+    CHECK(stream{s}.take_until_any(v | vws::transform([](auto x) { return x; })) == "hello world"sv);
+    CHECK(stream{s}.take_until_any(v | vws::filter([](auto x) { return true; })) == "hello world"sv);
+
+    CHECK(stream{s}.take_until("") == ""sv);
     CHECK(stream{s}.take_until(" ") == "hello"sv);
     CHECK(stream{s}.take_until("lo") == "hel"sv);
     CHECK(stream{s}.take_until("ld") == "hello wor"sv);
@@ -406,6 +419,7 @@ TEST_CASE("stream::take_until") {
 
 TEST_CASE("stream::take_until_or_empty") {
     std::string s = "hello world";
+    const Views v{"lx", "llox"};
 
     CHECK(stream{s}.take_until_or_empty(' ') == "hello"sv);
     CHECK(stream{s}.take_until_or_empty('o') == "hell"sv);
@@ -421,6 +435,14 @@ TEST_CASE("stream::take_until_or_empty") {
     CHECK(stream{s}.take_until_or_empty("lo") == "hel"sv);
     CHECK(stream{s}.take_until_or_empty("ld") == "hello wor"sv);
     CHECK(stream{s}.take_until_or_empty("lx") == ""sv);
+
+    CHECK(stream{s}.take_until_any_or_empty(Views{}) == ""sv);
+    CHECK(stream{s}.take_until_any_or_empty(Views{"e", "o"}) == "h"sv);
+    CHECK(stream{s}.take_until_any_or_empty(Views{"lo", "el"}) == "h"sv);
+    CHECK(stream{s}.take_until_any_or_empty(Views{"lo", "llo"}) == "he"sv);
+    CHECK(stream{s}.take_until_any_or_empty(v) == ""sv);
+    CHECK(stream{s}.take_until_any_or_empty(v | vws::transform([](auto x) { return x; })) == ""sv);
+    CHECK(stream{s}.take_until_any_or_empty(v | vws::filter([](auto x) { return true; })) == ""sv);
 
     CHECK(stream{s}.take_until_or_empty([](char c) { return c == ' '; }) == "hello"sv);
     CHECK(stream{s}.take_until_or_empty([](char c) { return c == 'o'; }) == "hell"sv);

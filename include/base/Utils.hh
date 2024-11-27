@@ -12,6 +12,22 @@ namespace base::utils {
 template <typename T, typename... Us>
 concept is = (std::is_same_v<std::remove_cvref_t<T>, std::remove_cvref_t<Us>> or ...);
 
+/// Range of things that are convertible to a certain type.
+template <typename T, typename ElemTy>
+concept ConvertibleRange = rgs::range<T> and std::convertible_to<rgs::range_value_t<T>, ElemTy>;
+
+/// Check if a range is empty. This circumvents the stupid
+/// amortised time constraint that the standard library’s
+/// rgs::empty() has.
+template <typename Range>
+bool Empty(Range&& range) {
+    if constexpr (requires { rgs::empty(std::forward<Range>(range)); }) {
+        return rgs::empty(std::forward<Range>(range));
+    } else {
+        return range.begin() == range.end();
+    }
+}
+
 template <typename... Types>
 struct Overloaded : Types... {
     using Types::operator()...;

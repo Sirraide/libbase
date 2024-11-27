@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <base/Assert.hh>
+#include <base/Utils.hh>
 #include <cstddef>
 #include <format>
 #include <optional>
@@ -377,10 +378,22 @@ public:
         return *this;
     }
 
+    constexpr auto
+    drop_until_any(utils::ConvertibleRange<text_type> auto&& strings) noexcept -> basic_stream {
+        (void) take_until_any(LIBBASE_FWD(strings));
+        return *this;
+    }
+
     /// \see take_until(char_type)
     constexpr auto
     drop_until_any_or_empty(text_type chars) noexcept -> basic_stream& {
         (void) take_until_any_or_empty(chars);
+        return *this;
+    }
+
+    constexpr auto
+    drop_until_any_or_empty(utils::ConvertibleRange<text_type> auto&& strings) noexcept -> basic_stream {
+        (void) take_until_any_or_empty(LIBBASE_FWD(strings));
         return *this;
     }
 
@@ -735,7 +748,7 @@ public:
     /// These take either
     ///
     ///     1. a single character,
-    ///     2. a string view, or
+    ///     2. a string view (or possibly a range of string views), or
     ///     3. a unary predicate.
     ///
     /// The stream is advanced until (in the case of the \c _until overloads)
@@ -753,6 +766,13 @@ public:
     /// the entire text is returned (excepting the _while overloads, which return
     /// nothing instead). The \c _or_empty overloads, return an empty string instead,
     /// and the stream is not advanced at all.
+    ///
+    /// If an empty string view or range of string views is passed to the \c _any
+    /// overloads, the entire stream is returned for the regular overloads, and
+    /// nothing is returned for the \c _or_empty overloads (the choice as to what
+    /// should happen in the former case is mostly arbitrary, but it seems like a
+    /// reasonable counterpart what the \c _or_empty overloads naturally do in that
+    /// case).
     ///
     /// \param c A character, \c string_view, or unary predicate.
     /// \return The matched characters.
@@ -783,10 +803,29 @@ public:
 
     /// \see take_until(char_type)
     [[nodiscard]] constexpr auto
+    take_until_any(utils::ConvertibleRange<text_type> auto&& strings) noexcept -> text_type {
+        if (utils::Empty(strings)) return _m_advance(size());
+        auto idx_range = vws::transform(LIBBASE_FWD(strings), [this](text_type t) { return _m_text.find(t); });
+        auto pos = rgs::min(idx_range);
+        return _m_advance(std::min(pos, size()));
+    }
+
+    /// \see take_until(char_type)
+    [[nodiscard]] constexpr auto
     take_until_any_or_empty(text_type chars) noexcept -> text_type {
         auto pos = _m_text.find_first_of(chars);
         if (pos == text_type::npos) return {};
         return _m_advance(pos);
+    }
+
+    /// \see take_until(char_type)
+    [[nodiscard]] constexpr auto
+    take_until_any_or_empty(utils::ConvertibleRange<text_type> auto&& strings) noexcept -> text_type {
+        if (utils::Empty(strings)) return {};
+        auto idx_range = vws::transform(LIBBASE_FWD(strings), [this](text_type t) { return _m_text.find(t); });
+        auto pos = rgs::min(idx_range);
+        if (pos == text_type::npos) return {};
+        return _m_advance(std::min(pos, size()));
     }
 
     /// \see take_until(char_type)

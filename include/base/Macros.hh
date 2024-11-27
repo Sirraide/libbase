@@ -78,6 +78,8 @@ private:
 
 #define LIBBASE_VA_FIRST(first, ...) first
 
+#define LIBBASE_FWD(...) std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
+
 /// Macro that propagates errors up the call stack.
 ///
 /// The second optional argument to the macro, if present, should be an
