@@ -263,6 +263,26 @@ TEST_CASE("stream::extract()") {
     CHECK((c1 == 'l' and c2 == 'o' and c3 == ' ' and c4 == 'w'));
 }
 
+TEST_CASE("stream::fold_any()") {
+    std::string s = "abcdaabbccddabcd";
+
+    CHECK(stream{s}.fold_any("", 'q') == s);
+    CHECK(stream{s}.fold_any("xyzw", 'q') == s);
+    CHECK(stream{s}.fold_any("a", 'a') == "abcdabbccddabcd");
+    CHECK(stream{s}.fold_any("a", 'q') == "qbcdqbbccddqbcd");
+    CHECK(stream{s}.fold_any("a", "q") == "qbcdqbbccddqbcd");
+    CHECK(stream{s}.fold_any("abcd", 'q') == "q");
+    CHECK(stream{s}.fold_any("dbca", 'q') == "q");
+    CHECK(stream{s}.fold_any("ab", "q") == "qcdqccddqcd");
+    CHECK(stream{s}.fold_any("ad", "q") == "qbcqbbccqbcq");
+}
+
+TEST_CASE("stream::fold_ws()") {
+    auto s = "   a  b\t\t c\td\r\v\f\ne \r \v \n f  "s;
+    CHECK(stream{s}.fold_ws() == " a b c d e f ");
+    CHECK(stream{s}.fold_ws("q") == "qaqbqcqdqeqfq");
+}
+
 TEST_CASE("stream::front()") {
     std::string s1 = "hello world";
     std::string s2;

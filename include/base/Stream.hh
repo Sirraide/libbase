@@ -69,6 +69,11 @@ public:
     constexpr basic_stream(const char_type* chars, size_type size) noexcept
         : _m_text(chars, size) {}
 
+    /// Construct a new stream from a string literal.
+    template <usz n>
+    constexpr basic_stream(const char_type (&chars)[n]) noexcept
+        : _m_text(chars, n - 1) {}
+
     /// \return The last character of the stream, or an empty optional
     ///         if the stream is empty.
     [[nodiscard]] constexpr auto
@@ -479,6 +484,34 @@ public:
         auto it = extracted.begin();
         ((chars = *it++), ...);
         return true;
+    }
+
+    ///@{
+    /// Delete all occurrences of consecutive characters, replacing them
+    /// with another string.
+    [[nodiscard]] constexpr auto
+    fold_any(text_type chars, text_type replacement) const noexcept -> string_type {
+        string_type ret;
+        basic_stream s{*this};
+        while (not s.empty()) {
+            ret += s.take_until_any(chars);
+            if (not s.take_while_any(chars).empty()) ret += replacement;
+        }
+        return ret;
+    }
+
+    /// Delete all occurrences of consecutive characters, replacing them
+    /// with another character.
+    [[nodiscard]] constexpr auto
+    fold_any(text_type chars, char_type replacement) const noexcept -> string_type {
+        return fold_any(chars, text_type{&replacement, 1});
+    }
+    ///@}
+
+    /// Equivalent to `fold(basic_stream::whitespace())`.
+    [[nodiscard]] constexpr auto
+    fold_ws(text_type replacement = " ") const noexcept -> string_type {
+        return fold_any(whitespace(), replacement);
     }
 
     /// \return The first character of the stream, or an empty optional
