@@ -989,22 +989,8 @@ public:
         return basic_stream{_m_text.substr(start, end - start)};
     }
 
-    /// @{
-    /// Compare the contents of this stream.
-    template <std::convertible_to<text_type> Ty>
     [[nodiscard]] constexpr auto
-    operator<=>(Ty other) const noexcept {
-        return _m_text <=> other;
-    }
-
-    template <std::convertible_to<text_type> Ty>
-    [[nodiscard]] constexpr auto
-    operator==(Ty other) const noexcept {
-        return _m_text == other;
-    }
-
-    [[nodiscard]] constexpr auto
-    operator<=>(const basic_stream& other) const = default;
+    operator<=>(const basic_stream& other) const noexcept = default;
     /// @}
 
 private:

@@ -644,3 +644,16 @@ TEST_CASE("stream::take_back_until: whitespace") {
     CHECK(s.take_back_until_any_or_empty(ws) == ""sv);
     CHECK(s == "foo");
 }
+
+TEST_CASE("stream::operator<=>") {
+    stream s1{"hello world"};
+    stream s2{"hello world"};
+    stream s3{"hello"};
+
+    CHECK(s1 == s2);
+    CHECK(s1 != s3);
+    CHECK(s1 == s2.text());
+    CHECK(s1 != s3.text());
+    CHECK(s1.text() == s2);
+    CHECK(s1.text() != s3);
+}
