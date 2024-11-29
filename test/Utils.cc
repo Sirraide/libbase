@@ -48,6 +48,17 @@ TEST_CASE("join()") {
     CHECK(utils::join(std::span{arr}, "") == "abc");
 }
 
+TEST_CASE("join(): non-strings") {
+    std::vector vec{1, 2, 3};
+    std::deque deq{4.0, 5.0, 6.0};
+    std::array arr{vec, vec, vec};
+
+    CHECK(utils::join(vec) == "1, 2, 3");
+    CHECK(utils::join(vec, ", ") == "1, 2, 3");
+    CHECK(utils::join(deq, "|") == "4|5|6");
+    CHECK(utils::join(arr, "+") == "[1, 2, 3]+[1, 2, 3]+[1, 2, 3]");
+}
+
 TEST_CASE("ReplaceAll") {
     std::string foo = "barbarbarbar";
 
