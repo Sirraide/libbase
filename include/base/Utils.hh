@@ -6,6 +6,7 @@
 #include <source_location>
 #include <string>
 #include <variant>
+#include <format>
 #include <base/Types.hh>
 
 namespace base::utils {
