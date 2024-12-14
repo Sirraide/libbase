@@ -1,6 +1,7 @@
 #include "TestCommon.hh"
 
 #include <base/Macros.hh>
+#include <base/Properties.hh>
 #include <deque>
 #include <string>
 #include <array>
