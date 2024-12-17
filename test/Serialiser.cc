@@ -83,10 +83,55 @@ TEST_CASE("Serialisation: Enums") {
 }
 
 TEST_CASE("Serialisation: Floats") {
-    CHECK(SerialiseBE(3.14f) == Bytes(0x40, 0x48, 0xF5, 0xC3));
-    CHECK(SerialiseLE(3.14f) == Bytes(0xC3, 0xF5, 0x48, 0x40));
-    CHECK(SerialiseBE(3.14) == Bytes(0x40, 0x09, 0x1e, 0xb8, 0x51, 0xeb, 0x85, 0x1f));
-    CHECK(SerialiseLE(3.14) == Bytes(0x1f, 0x85, 0xeb, 0x51, 0xb8, 0x1e, 0x09, 0x40));
+    SECTION("Simple values") {
+        CHECK(SerialiseBE(3.14f) == Bytes(0x40, 0x48, 0xF5, 0xC3));
+        CHECK(SerialiseLE(3.14f) == Bytes(0xC3, 0xF5, 0x48, 0x40));
+        CHECK(SerialiseBE(3.14) == Bytes(0x40, 0x09, 0x1e, 0xb8, 0x51, 0xeb, 0x85, 0x1f));
+        CHECK(SerialiseLE(3.14) == Bytes(0x1f, 0x85, 0xeb, 0x51, 0xb8, 0x1e, 0x09, 0x40));
+    }
+
+    SECTION("Zero") {
+        CHECK(SerialiseBE(0.0f) == Bytes(0, 0, 0, 0));
+        CHECK(SerialiseLE(0.0f) == Bytes(0, 0, 0, 0));
+        CHECK(SerialiseBE(0.0) == Bytes(0, 0, 0, 0, 0, 0, 0, 0));
+        CHECK(SerialiseLE(0.0) == Bytes(0, 0, 0, 0, 0, 0, 0, 0));
+
+        // If signed zeroes are enabled, also check for those.
+        if (std::bit_cast<u32>(0.f) != std::bit_cast<u32>(-0.f)) {
+            CHECK(SerialiseBE(-0.0f) == Bytes(0x80, 0, 0, 0));
+            CHECK(SerialiseLE(-0.0f) == Bytes(0, 0, 0, 0x80));
+            CHECK(SerialiseBE(-0.0) == Bytes(0x80, 0, 0, 0, 0, 0, 0, 0));
+            CHECK(SerialiseLE(-0.0) == Bytes(0, 0, 0, 0, 0, 0, 0, 0x80));
+        }
+    }
+
+    SECTION("+Inf") {
+        CHECK(SerialiseBE(std::numeric_limits<float>::infinity()) == Bytes(0x7F, 0x80, 0, 0));
+        CHECK(SerialiseLE(std::numeric_limits<float>::infinity()) == Bytes(0, 0, 0x80, 0x7F));
+        CHECK(SerialiseBE(std::numeric_limits<double>::infinity()) == Bytes(0x7F, 0xF0, 0, 0, 0, 0, 0, 0));
+        CHECK(SerialiseLE(std::numeric_limits<double>::infinity()) == Bytes(0, 0, 0, 0, 0, 0, 0xF0, 0x7F));
+    }
+
+    SECTION("-Inf") {
+        CHECK(SerialiseBE(-std::numeric_limits<float>::infinity()) == Bytes(0xFF, 0x80, 0, 0));
+        CHECK(SerialiseLE(-std::numeric_limits<float>::infinity()) == Bytes(0, 0, 0x80, 0xFF));
+        CHECK(SerialiseBE(-std::numeric_limits<double>::infinity()) == Bytes(0xFF, 0xF0, 0, 0, 0, 0, 0, 0));
+        CHECK(SerialiseLE(-std::numeric_limits<double>::infinity()) == Bytes(0, 0, 0, 0, 0, 0, 0xF0, 0xFF));
+    }
+
+    SECTION("NaN") {
+        CHECK(SerialiseBE(std::numeric_limits<float>::quiet_NaN()) == Bytes(0x7F, 0xC0, 0, 0));
+        CHECK(SerialiseLE(std::numeric_limits<float>::quiet_NaN()) == Bytes(0, 0, 0xC0, 0x7F));
+        CHECK(SerialiseBE(std::numeric_limits<double>::quiet_NaN()) == Bytes(0x7F, 0xF8, 0, 0, 0, 0, 0, 0));
+        CHECK(SerialiseLE(std::numeric_limits<double>::quiet_NaN()) == Bytes(0, 0, 0, 0, 0, 0, 0xF8, 0x7F));
+    }
+
+    SECTION("SNaN") {
+        CHECK(SerialiseBE(std::numeric_limits<float>::signaling_NaN()) == Bytes(0x7F, 0xA0, 0, 0));
+        CHECK(SerialiseLE(std::numeric_limits<float>::signaling_NaN()) == Bytes(0, 0, 0xA0, 0x7F));
+        CHECK(SerialiseBE(std::numeric_limits<double>::signaling_NaN()) == Bytes(0x7F, 0xF4, 0, 0, 0, 0, 0, 0));
+        CHECK(SerialiseLE(std::numeric_limits<double>::signaling_NaN()) == Bytes(0, 0, 0, 0, 0, 0, 0xF4, 0x7F));
+    }
 }
 
 TEST_CASE("Serialisation: std::string") {

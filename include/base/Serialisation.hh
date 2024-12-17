@@ -322,11 +322,11 @@ extern template class base::ser::Writer<std::endian::big>;
 
 template <typename T, std::endian SerialisedEndianness>
 auto base::ser::Deserialise(InputSpan data) -> Result<T> {
-    Result<T> t{T{}};
+    Result<T> ret{T{}};
     Reader<SerialisedEndianness> r{data};
-    r >> t.value();
-    if (not r.result) return r.result;
-    return t;
+    r >> ret.value();
+    if (not r) ret = std::unexpected(std::move(r.result).error());
+    return ret;
 }
 
 template <std::endian SerialisedEndianness, typename T>
