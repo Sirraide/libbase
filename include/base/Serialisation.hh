@@ -165,7 +165,7 @@ public:
     template <typename T>
     requires (sizeof(T) == sizeof(std::byte))
     auto operator>>(std::basic_string<T>& s) -> Reader& {
-        auto sz = read<usz>();
+        auto sz = read<u64>();
         if (sz > s.max_size()) [[unlikely]] {
             result = Error("Input size {} exceeds maximum size {} of std::basic_string<>", sz, s.max_size());
             return *this;
@@ -215,7 +215,7 @@ private:
 
     template <typename T>
     auto ReadRange(T& range) -> Reader& {
-        auto sz = read<usz>();
+        auto sz = read<u64>();
         if (sz > range.max_size()) [[unlikely]] {
             result = Error("Input size {} exceeds maximum size {} of range", sz, range.max_size());
             return *this;
@@ -283,7 +283,7 @@ public:
     template <typename T>
     requires (sizeof(T) == sizeof(std::byte))
     auto operator<<(const std::basic_string<T>& s) -> Writer& {
-        *this << s.size();
+        *this << u64(s.size());
         Append(s.data(), s.size() * sizeof(T));
         return *this;
     }
@@ -293,7 +293,7 @@ public:
     auto operator<<(const std::basic_string<T>& s) -> Writer& { return AppendRange(s); }
 
     /// Serialise an array.
-    template <typename T, usz n>
+    template <typename T, u64 n>
     auto operator<<(const std::array<T, n>& a) -> Writer& {
         for (const auto& elem : a) *this << elem;
         return *this;
@@ -304,11 +304,11 @@ public:
     auto operator<<(const std::vector<T>& v) -> Writer& { return AppendRange(v); }
 
 private:
-    void Append(const void* ptr, usz count);
+    void Append(const void* ptr, u64 count);
 
     template <typename T>
     auto AppendRange(const T& range) -> Writer& {
-        *this << range.size();
+        *this << u64(range.size());
         for (const auto& elem : range) *this << elem;
         return *this;
     }
