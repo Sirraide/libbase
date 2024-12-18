@@ -3,6 +3,7 @@
 #include <base/Serialisation.hh>
 
 using namespace base;
+using Catch::Matchers::ContainsSubstring;
 
 enum class u8enum : u8 {};
 enum class u16enum : u16 {};
@@ -266,5 +267,154 @@ TEST_CASE("Deserialisation: std::string") {
         CHECK_NOTHROW(DeserialiseLE<std::string>(2, 0, 0, 0, 0, 0, 0, 0, 'x', 'y'));
         CHECK_NOTHROW(DeserialiseBE<std::string>(0, 0, 0, 0, 0, 0, 0, 4, 'a', 'b', 'c', 'y', 'y'));
         CHECK_NOTHROW(DeserialiseLE<std::string>(4, 0, 0, 0, 0, 0, 0, 0, 'a', 'b', 'c', 'y', 'y'));
+    }
+
+    SECTION("Too big") {
+        CHECK_THROWS_WITH(
+            DeserialiseBE<std::string>(0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff),
+            ContainsSubstring(std::format(
+                "Input size {} exceeds maximum size {} of std::basic_string<>",
+                std::numeric_limits<u64>::max(),
+                std::string{}.max_size()
+            ))
+        );
+    }
+}
+
+TEST_CASE("Deserialisation: std::u32string") {
+    SECTION("Empty") {
+        CHECK(DeserialiseBE<std::u32string>(0, 0, 0, 0, 0, 0, 0, 0) == U"");
+        CHECK(DeserialiseLE<std::u32string>(0, 0, 0, 0, 0, 0, 0, 0) == U"");
+    }
+
+    SECTION("Simple values") {
+        CHECK(DeserialiseBE<std::u32string>(0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 'x') == U"x");
+        CHECK(DeserialiseLE<std::u32string>(1, 0, 0, 0, 0, 0, 0, 0, 'x', 0, 0, 0) == U"x");
+        CHECK(
+            DeserialiseBE<std::u32string>(
+                0, 0, 0, 0, 0, 0, 0, 3,
+                0, 0, 0, 'a',
+                0, 0, 0, 'b',
+                0, 0, 0, 'c'
+            )
+            ==
+            U"abc"
+        );
+
+        CHECK(
+            DeserialiseLE<std::u32string>(
+                3, 0, 0, 0, 0, 0, 0, 0,
+                'a', 0, 0, 0,
+                'b', 0, 0, 0,
+                'c', 0, 0, 0
+            )
+            ==
+            U"abc"
+        );
+
+        CHECK(
+            DeserialiseBE<std::u32string>(
+                0, 0, 0, 0, 0, 0, 0, 11,
+                0, 0, 0, 'H',
+                0, 0, 0, 'e',
+                0, 0, 0, 'l',
+                0, 0, 0, 'l',
+                0, 0, 0, 'o',
+                0, 0, 0, ' ',
+                0, 0, 0, 'w',
+                0, 0, 0, 'o',
+                0, 0, 0, 'r',
+                0, 0, 0, 'l',
+                0, 0, 0, 'd'
+            ) ==
+            U"Hello world"
+        );
+
+        CHECK(
+            DeserialiseLE<std::u32string>(
+                11, 0, 0, 0, 0, 0, 0, 0,
+                'H', 0, 0, 0,
+                'e', 0, 0, 0,
+                'l', 0, 0, 0,
+                'l', 0, 0, 0,
+                'o', 0, 0, 0,
+                ' ', 0, 0, 0,
+                'w', 0, 0, 0,
+                'o', 0, 0, 0,
+                'r', 0, 0, 0,
+                'l', 0, 0, 0,
+                'd', 0, 0, 0
+            ) ==
+            U"Hello world"
+        );
+    }
+
+    SECTION("Extra trailing data") {
+        CHECK(DeserialiseBE<std::u32string>(0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 'x', 0xff) == U"x");
+        CHECK(DeserialiseLE<std::u32string>(1, 0, 0, 0, 0, 0, 0, 0, 'x', 0, 0, 0, 0xff) == U"x");
+        CHECK(
+            DeserialiseBE<std::u32string>(
+                0, 0, 0, 0, 0, 0, 0, 3,
+                0, 0, 0, 'a',
+                0, 0, 0, 'b',
+                0, 0, 0, 'c',
+                0xff
+            )
+            ==
+            U"abc"
+        );
+
+        CHECK(
+            DeserialiseLE<std::u32string>(
+                3, 0, 0, 0, 0, 0, 0, 0,
+                'a', 0, 0, 0,
+                'b', 0, 0, 0,
+                'c', 0, 0, 0,
+                0xff
+            )
+            ==
+            U"abc"
+        );
+    }
+
+    SECTION("Size incomplete") {
+        CHECK_THROWS(DeserialiseBE<std::u32string>());
+        CHECK_THROWS(DeserialiseLE<std::u32string>());
+        CHECK_THROWS(DeserialiseBE<std::u32string>(1));
+        CHECK_THROWS(DeserialiseLE<std::u32string>(1));
+        CHECK_THROWS(DeserialiseBE<std::u32string>(0, 0, 0, 0, 0, 0, 0));
+        CHECK_THROWS(DeserialiseBE<std::u32string>(0, 0, 0, 0, 0, 0, 0));
+    }
+
+    SECTION("Data incomplete") {
+        CHECK_THROWS(DeserialiseBE<std::u32string>(0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 'x'));
+        CHECK_THROWS(DeserialiseLE<std::u32string>(1, 0, 0, 0, 0, 0, 0, 0, 'x', 0, 0));
+        CHECK_THROWS(
+            DeserialiseBE<std::u32string>(
+                0, 0, 0, 0, 0, 0, 0, 3,
+                0, 0, 0, 'a',
+                0, 0, 0, 'b',
+                0
+            )
+        );
+
+        CHECK_THROWS(
+            DeserialiseLE<std::u32string>(
+                3, 0, 0, 0, 0, 0, 0, 0,
+                'a', 0, 0, 0,
+                'b', 0, 0, 0
+            )
+        );
+    }
+
+    SECTION("Too big") {
+        CHECK_THROWS_WITH(
+            DeserialiseBE<std::u32string>(0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff),
+            ContainsSubstring(std::format(
+                "Input size {} exceeds maximum size {} of range",
+                std::numeric_limits<u64>::max(),
+                std::u32string{}.max_size()
+            ))
+        );
     }
 }
