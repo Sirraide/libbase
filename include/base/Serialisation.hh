@@ -211,7 +211,32 @@ public:
         return *this;
     }
 
-    // TODO: Maps, variants.
+    // Deserialise a variant.
+    template <typename ...Ts>
+    auto operator>>(std::variant<Ts...>& v) -> Reader& {
+        using VariantTy = std::remove_cvref_t<decltype(v)>;
+        auto index = read<u64>();
+        if (index >= sizeof...(Ts)) [[unlikely]] {
+            result = Error("Variant index {} exceeds number of alternatives {}", index, sizeof...(Ts));
+            return *this;
+        }
+
+        [&]<usz ...I>(std::index_sequence<I...>) {
+            ([&] {
+                if (index == I) {
+                    v = read<std::variant_alternative_t<I, VariantTy>>();
+                    return true;
+                }
+                return false;
+            }() or ...);
+        }(std::index_sequence_for<Ts...>());
+        return *this;
+    }
+
+    // Deserialise std::monostate.
+    auto operator>>(std::monostate) -> Reader& { return *this; }
+
+    // TODO: Maps.
 
     /// Check if we could read the entire thing.
     [[nodiscard]] explicit operator bool() { return result.has_value(); }
@@ -324,6 +349,17 @@ public:
         if (o) *this << *o;
         return *this;
     }
+
+    /// Serialise a variant.
+    template <typename ...Ts>
+    auto operator<<(const std::variant<Ts...>& v) {
+        static_assert(sizeof...(Ts) > 0, "Cannot serialise a variant with no alternatives");
+        *this << u64(v.index());
+        std::visit([&](const auto& alt) { *this << alt; }, v);
+    }
+
+    /// Serialise std::monostate.
+    auto operator<<(std::monostate) -> Writer& { return *this; }
 
 private:
     void Append(const void* ptr, u64 count);

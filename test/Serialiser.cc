@@ -398,3 +398,16 @@ TEST_CASE("Serialisation: std::optional<>") {
         Test(std::optional<std::optional<int>>{{4}}, Bytes(1, 1, 0, 0, 0, 4), Bytes(1, 1, 4, 0, 0, 0));
     }
 }
+
+TEST_CASE("Serialisation: std::variant") {
+    using V1 = std::variant<u8, int, std::monostate, std::string>;
+
+    Test(V1(u8(42)), Bytes(0, 0, 0, 0, 0, 0, 0, 0, 42));
+    Test(V1(int(42)), Bytes(0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 42), Bytes(1, 0, 0, 0, 0, 0, 0, 0, 42, 0, 0, 0));
+    Test(V1(std::monostate{}), Bytes(0, 0, 0, 0, 0, 0, 0, 2), Bytes(2, 0, 0, 0, 0, 0, 0, 0));
+    Test(
+        V1("foobar"s),
+        Bytes(0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 6, 'f', 'o', 'o', 'b', 'a', 'r'),
+        Bytes(3, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 'f', 'o', 'o', 'b', 'a', 'r')
+    );
+}
