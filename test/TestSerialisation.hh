@@ -50,4 +50,14 @@ auto DeserialiseLE(Vals ...v) -> T {
     return DeserialiseLE<T>(Bytes(v...));
 }
 
+template <typename T>
+auto Test(const T& t, const ByteBuffer& big, const ByteBuffer& little) {
+    CHECK(SerialiseBE(t) == big);
+    CHECK(SerialiseLE(t) == little);
+    CHECK(DeserialiseBE<T>(big) == t);
+    CHECK(DeserialiseLE<T>(little) == t);
+    CHECK(DeserialiseBE<T>(SerialiseBE(t)) == t);
+    CHECK(DeserialiseLE<T>(SerialiseLE(t)) == t);
+}
+
 #endif //SERIALISATION_HH
