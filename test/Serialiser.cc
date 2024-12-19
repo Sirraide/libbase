@@ -1,30 +1,4 @@
-#include "TestCommon.hh"
-
-#include <base/Serialisation.hh>
-
-using namespace base;
-
-enum class u8enum : u8 {};
-enum class u16enum : u16 {};
-enum class u32enum : u32 {};
-enum class u64enum : u64 {};
-
-using ByteBuffer = std::vector<std::byte>;
-
-template <std::integral ...T>
-auto Bytes(T... vals) -> ByteBuffer {
-    return {std::byte(vals)...};
-}
-
-template <typename T>
-auto SerialiseBE(const T& t) -> ByteBuffer {
-    return ser::Serialise<std::endian::big>(t);
-}
-
-template <typename T>
-auto SerialiseLE(const T& t) -> ByteBuffer {
-    return ser::Serialise<std::endian::little>(t);
-}
+#include "TestSerialisation.hh"
 
 TEST_CASE("Serialisation: Zero integer") {
     CHECK(SerialiseBE(u8(0)) == Bytes(0));
@@ -212,4 +186,17 @@ TEST_CASE("Serialisation: std::vector") {
     CHECK(SerialiseLE(a) == Bytes(6, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6));
     CHECK(SerialiseBE(b) == Bytes(0, 0, 0, 0, 0, 0, 0, 6, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6));
     CHECK(SerialiseLE(b) == Bytes(6, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0));
+}
+
+TEST_CASE("Serialisation: Roundtrip") {
+    auto Test = []<typename T>(T val) {
+        CHECK(DeserialiseLE<T>(SerialiseLE(val)) == val);
+        CHECK(DeserialiseBE<T>(SerialiseBE(val)) == val);
+    };
+
+    Test(0);
+    Test(u8enum(42));
+    Test("foobar"s);
+    Test(std::array<u16, 4>{11, 22, 33, 44});
+    Test(std::vector<std::string>{"foo", "bar", "baz"});
 }

@@ -1,41 +1,4 @@
-#include "TestCommon.hh"
-
-#include <base/Serialisation.hh>
-
-using namespace base;
-using Catch::Matchers::ContainsSubstring;
-
-enum class u8enum : u8 {};
-enum class u16enum : u16 {};
-enum class u32enum : u32 {};
-enum class u64enum : u64 {};
-
-using ByteBuffer = std::vector<std::byte>;
-
-template <std::integral ...T>
-auto Bytes(T... vals) -> ByteBuffer {
-    return {std::byte(vals)...};
-}
-
-template <typename T>
-auto DeserialiseBE(const ByteBuffer& b) -> T {
-    return ser::Deserialise<T, std::endian::big>(b).value();
-}
-
-template <typename T, std::integral ...Vals>
-auto DeserialiseBE(Vals ...v) -> T {
-    return DeserialiseBE<T>(Bytes(v...));
-}
-
-template <typename T>
-auto DeserialiseLE(const ByteBuffer& b) -> T {
-    return ser::Deserialise<T, std::endian::little>(b).value();
-}
-
-template <typename T, std::integral ...Vals>
-auto DeserialiseLE(Vals ...v) -> T {
-    return DeserialiseLE<T>(Bytes(v...));
-}
+#include "TestSerialisation.hh"
 
 TEST_CASE("Deserialisation: Zero integer") {
     CHECK(DeserialiseBE<u8>(0) == u8(0));
