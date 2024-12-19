@@ -57,19 +57,24 @@ auto Test(const T& t, const ByteBuffer& big, const ByteBuffer& little) {
     CHECK(DeserialiseLE<T>(SerialiseLE(t)) == t);
 }
 
+template <typename T>
+auto Test(const T& t, const ByteBuffer& both) {
+    Test(t, both, both);
+}
+
 TEST_CASE("Serialisation: Zero integer") {
-    Test(u8(0), Bytes(0), Bytes(0));
-    Test(u16(0), Bytes(0, 0), Bytes(0, 0));
-    Test(u32(0), Bytes(0, 0, 0, 0), Bytes(0, 0, 0, 0));
-    Test(u64(0), Bytes(0, 0, 0, 0, 0, 0, 0, 0), Bytes(0, 0, 0, 0, 0, 0, 0, 0));
+    Test(u8(0), Bytes(0));
+    Test(u16(0), Bytes(0, 0));
+    Test(u32(0), Bytes(0, 0, 0, 0));
+    Test(u64(0), Bytes(0, 0, 0, 0, 0, 0, 0, 0));
 }
 
 TEST_CASE("Serialisation: Integers") {
     // u8
-    Test(char(47), Bytes(47), Bytes(47));
-    Test(char8_t(47), Bytes(47), Bytes(47));
-    Test(u8(47), Bytes(47), Bytes(47));
-    Test(std::byte(47), Bytes(47), Bytes(47));
+    Test(char(47), Bytes(47));
+    Test(char8_t(47), Bytes(47));
+    Test(u8(47), Bytes(47));
+    Test(std::byte(47), Bytes(47));
 
     // u16
     Test(char16_t(0x1234), Bytes(0x12, 0x34), Bytes(0x34, 0x12));
@@ -110,7 +115,7 @@ TEST_CASE("Serialisation: Integers") {
 
 
 TEST_CASE("Serialisation: Enums") {
-    Test(u8enum(0x12), Bytes(0x12), Bytes(0x12));
+    Test(u8enum(0x12), Bytes(0x12));
     Test(u16enum(0x1234), Bytes(0x12, 0x34), Bytes(0x34, 0x12));
     Test(u32enum(0x12345678), Bytes(0x12, 0x34, 0x56, 0x78), Bytes(0x78, 0x56, 0x34, 0x12));
     Test(u64enum(0x123456789ABCDEF0), Bytes(0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0), Bytes(0xF0, 0xDE, 0xBC, 0x9A, 0x78, 0x56, 0x34, 0x12));
@@ -123,8 +128,8 @@ TEST_CASE("Serialisation: Floats") {
     }
 
     SECTION("Zero") {
-        Test(0.0f, Bytes(0, 0, 0, 0), Bytes(0, 0, 0, 0));
-        Test(0.0, Bytes(0, 0, 0, 0, 0, 0, 0, 0), Bytes(0, 0, 0, 0, 0, 0, 0, 0));
+        Test(0.0f, Bytes(0, 0, 0, 0));
+        Test(0.0, Bytes(0, 0, 0, 0, 0, 0, 0, 0));
 
         // If signed zeroes are enabled, also check for those.
         if (std::bit_cast<u32>(0.f) != std::bit_cast<u32>(-0.f)) {
@@ -169,7 +174,7 @@ TEST_CASE("Serialisation: Floats") {
 
 
 TEST_CASE("Serialisation: std::string") {
-    Test(""s, Bytes(0, 0, 0, 0, 0, 0, 0, 0), Bytes(0, 0, 0, 0, 0, 0, 0, 0));
+    Test(""s, Bytes(0, 0, 0, 0, 0, 0, 0, 0));
     Test("x"s, Bytes(0, 0, 0, 0, 0, 0, 0, 1, 'x'), Bytes(1, 0, 0, 0, 0, 0, 0, 0, 'x'));
 
     Test("Hello, world"s, Bytes(
@@ -229,7 +234,7 @@ TEST_CASE("Serialisation: std::string") {
 }
 
 TEST_CASE("Serialisation: std::u32string") {
-    Test(U""s, Bytes(0, 0, 0, 0, 0, 0, 0, 0), Bytes(0, 0, 0, 0, 0, 0, 0, 0));
+    Test(U""s, Bytes(0, 0, 0, 0, 0, 0, 0, 0));
     Test(U"x"s, Bytes(0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 'x'), Bytes(1, 0, 0, 0, 0, 0, 0, 0, 'x', 0, 0, 0));
 
     Test(U"Hello, world"s, Bytes(
@@ -318,8 +323,8 @@ TEST_CASE("Serialisation: std::array") {
     std::array<u8, 6> a{1, 2, 3, 4, 5, 6};
     std::array<u16, 6> b{1, 2, 3, 4, 5, 6};
 
-    Test(std::array<u8, 6>{}, Bytes(0, 0, 0, 0, 0, 0), Bytes(0, 0, 0, 0, 0, 0));
-    Test(std::array<u16, 6>{}, Bytes(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), Bytes(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+    Test(std::array<u8, 6>{}, Bytes(0, 0, 0, 0, 0, 0));
+    Test(std::array<u16, 6>{}, Bytes(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
 
     Test(a, Bytes(1, 2, 3, 4, 5, 6), Bytes(1, 2, 3, 4, 5, 6));
     Test(b, Bytes(0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6), Bytes(1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0));
@@ -345,8 +350,8 @@ TEST_CASE("Serialisation: std::vector") {
     std::vector<u8> a{1, 2, 3, 4, 5, 6};
     std::vector<u16> b{1, 2, 3, 4, 5, 6};
 
-    Test(std::vector<u8>{}, Bytes(0, 0, 0, 0, 0, 0, 0, 0), Bytes(0, 0, 0, 0, 0, 0, 0, 0));
-    Test(std::vector<u16>{}, Bytes(0, 0, 0, 0, 0, 0, 0, 0), Bytes(0, 0, 0, 0, 0, 0, 0, 0));
+    Test(std::vector<u8>{}, Bytes(0, 0, 0, 0, 0, 0, 0, 0));
+    Test(std::vector<u16>{}, Bytes(0, 0, 0, 0, 0, 0, 0, 0));
 
     Test(a, Bytes(0, 0, 0, 0, 0, 0, 0, 6, 1, 2, 3, 4, 5, 6), Bytes(6, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6));
     Test(b, Bytes(0, 0, 0, 0, 0, 0, 0, 6, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6), Bytes(6, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0));
@@ -369,17 +374,18 @@ TEST_CASE("Serialisation: std::vector") {
 }
 
 TEST_CASE("Serialisation: std::optional<>") {
-    Test(std::optional<int>{}, Bytes(0), Bytes(0));
+    Test(std::optional<int>{}, Bytes(0));
+    Test(std::optional<std::string>{}, Bytes(0));
+    Test(std::optional<std::vector<u8>>{}, Bytes(0));
+
     Test(std::optional<int>{42}, Bytes(1, 0, 0, 0, 42), Bytes(1, 42, 0, 0, 0));
 
-    Test(std::optional<std::string>{}, Bytes(0), Bytes(0));
     Test(
         std::optional<std::string>{"foobar"},
         Bytes(1, 0, 0, 0, 0, 0, 0, 0, 6, 'f', 'o', 'o', 'b', 'a', 'r'),
         Bytes(1, 6, 0, 0, 0, 0, 0, 0, 0, 'f', 'o', 'o', 'b', 'a', 'r')
     );
 
-    Test(std::optional<std::vector<u8>>{}, Bytes(0), Bytes(0));
     Test(
         std::optional<std::vector<u8>>{{1, 2, 3, 4, 5, 6}},
         Bytes(1, 0, 0, 0, 0, 0, 0, 0, 6, 1, 2, 3, 4, 5, 6),
