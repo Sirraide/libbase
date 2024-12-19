@@ -391,4 +391,10 @@ TEST_CASE("Serialisation: std::optional<>") {
         Bytes(1, 0, 0, 0, 0, 0, 0, 0, 6, 1, 2, 3, 4, 5, 6),
         Bytes(1, 6, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6)
     );
+
+    SECTION("Nested optionals") {
+        Test(std::optional<std::optional<int>>{}, Bytes(0));
+        Test(std::optional<std::optional<int>>{std::optional<int>{std::nullopt}}, Bytes(1, 0));
+        Test(std::optional<std::optional<int>>{{4}}, Bytes(1, 1, 0, 0, 0, 4), Bytes(1, 1, 4, 0, 0, 0));
+    }
 }
