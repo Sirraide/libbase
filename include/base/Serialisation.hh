@@ -104,7 +104,7 @@ class base::ser::Reader {
     InputSpan data;
 
 public:
-    Result<> result;
+    Result<> result; // TODO: Do we want to use exceptions here?
     explicit Reader(InputSpan data) : data(data) {}
 
     /// Read several fields from the buffer.
@@ -199,7 +199,19 @@ public:
         return ReadRange(s);
     }
 
-    // TODO: Maps, variants, optionals.
+    // Deserialise an optional.
+    template <typename T>
+    auto operator>>(std::optional<T>& o) -> Reader& {
+        if (not read<bool>()) {
+            o = std::nullopt;
+            return *this;
+        }
+
+        o = read<T>();
+        return *this;
+    }
+
+    // TODO: Maps, variants.
 
     /// Check if we could read the entire thing.
     [[nodiscard]] explicit operator bool() { return result.has_value(); }
@@ -304,6 +316,14 @@ public:
     /// Serialise a vector.
     template <typename T>
     auto operator<<(const std::vector<T>& v) -> Writer& { return AppendRange(v); }
+
+    /// Serialise an optional.
+    template <typename T>
+    auto operator<<(const std::optional<T>& o) -> Writer& {
+        *this << o.has_value();
+        if (o) *this << *o;
+        return *this;
+    }
 
 private:
     void Append(const void* ptr, u64 count);

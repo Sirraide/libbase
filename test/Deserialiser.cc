@@ -445,3 +445,39 @@ TEST_CASE("Deserialisation: std::vector") {
         CHECK_THROWS(DeserialiseLE<std::vector<u16>>(6, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 3, 0));
     }
 }
+
+TEST_CASE("Deserialization: std::optional<>") {
+    CHECK(DeserialiseBE<std::optional<int>>(0) == std::nullopt);
+    CHECK(DeserialiseLE<std::optional<int>>(0) == std::nullopt);
+    CHECK(DeserialiseBE<std::optional<int>>(1, 0, 0, 0, 42) == std::optional<int>{42});
+    CHECK(DeserialiseLE<std::optional<int>>(1, 42, 0, 0, 0) == std::optional<int>{42});
+
+    CHECK(DeserialiseBE<std::optional<std::string>>(0) == std::nullopt);
+    CHECK(DeserialiseLE<std::optional<std::string>>(0) == std::nullopt);
+
+    CHECK(DeserialiseBE<std::optional<std::string>>
+        (1, 0, 0, 0, 0, 0, 0, 0, 6, 'f', 'o', 'o', 'b', 'a', 'r')
+        ==
+        std::optional<std::string>{"foobar"}
+    );
+
+    CHECK(DeserialiseLE<std::optional<std::string>>
+        (1, 6, 0, 0, 0, 0, 0, 0, 0, 'f', 'o', 'o', 'b', 'a', 'r')
+        ==
+        std::optional<std::string>{"foobar"}
+    );
+
+    CHECK(DeserialiseBE<std::optional<std::vector<uint8_t>>>(0) == std::nullopt);
+    CHECK(DeserialiseLE<std::optional<std::vector<uint8_t>>>(0) == std::nullopt);
+    CHECK(DeserialiseBE<std::optional<std::vector<uint8_t>>>
+        (1, 0, 0, 0, 0, 0, 0, 0, 6, 1, 2, 3, 4, 5, 6)
+        ==
+        std::optional<std::vector<uint8_t>>{{1, 2, 3, 4, 5, 6}}
+    );
+
+    CHECK(DeserialiseLE<std::optional<std::vector<uint8_t>>>
+        (1, 6, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6)
+        ==
+        std::optional<std::vector<uint8_t>>{{1, 2, 3, 4, 5, 6}}
+    );
+}

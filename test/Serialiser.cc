@@ -188,6 +188,41 @@ TEST_CASE("Serialisation: std::vector") {
     CHECK(SerialiseLE(b) == Bytes(6, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0));
 }
 
+TEST_CASE("Serialisation: std::optional<>") {
+    CHECK(SerialiseBE(std::optional<int>{}) == Bytes(0));
+    CHECK(SerialiseLE(std::optional<int>{}) == Bytes(0));
+    CHECK(SerialiseBE(std::optional<int>{42}) == Bytes(1, 0, 0, 0, 42));
+    CHECK(SerialiseLE(std::optional<int>{42}) == Bytes(1, 42, 0, 0, 0));
+
+    CHECK(SerialiseBE(std::optional<std::string>{}) == Bytes(0));
+    CHECK(SerialiseLE(std::optional<std::string>{}) == Bytes(0));
+    CHECK(
+        SerialiseBE(std::optional<std::string>{"foobar"})
+        ==
+        Bytes(1, 0, 0, 0, 0, 0, 0, 0, 6, 'f', 'o', 'o', 'b', 'a', 'r')
+    );
+
+    CHECK(
+        SerialiseLE(std::optional<std::string>{"foobar"})
+        ==
+        Bytes(1, 6, 0, 0, 0, 0, 0, 0, 0, 'f', 'o', 'o', 'b', 'a', 'r')
+    );
+
+    CHECK(SerialiseBE(std::optional<std::vector<u8>>{}) == Bytes(0));
+    CHECK(SerialiseLE(std::optional<std::vector<u8>>{}) == Bytes(0));
+    CHECK(
+        SerialiseBE(std::optional<std::vector<u8>>{{1, 2, 3, 4, 5, 6}})
+        ==
+        Bytes(1, 0, 0, 0, 0, 0, 0, 0, 6, 1, 2, 3, 4, 5, 6)
+    );
+
+    CHECK(
+        SerialiseLE(std::optional<std::vector<u8>>{{1, 2, 3, 4, 5, 6}})
+        ==
+        Bytes(1, 6, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6)
+    );
+}
+
 TEST_CASE("Serialisation: Roundtrip") {
     auto Test = []<typename T>(T val) {
         CHECK(DeserialiseLE<T>(SerialiseLE(val)) == val);
