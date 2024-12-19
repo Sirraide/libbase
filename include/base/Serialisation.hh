@@ -82,6 +82,8 @@ template <std::endian SerialisedEndianness = std::endian::little, typename T>
 auto Serialise(const T& t) -> std::vector<std::byte>;
 }
 
+// TODO: Pass version number to deserialise().
+
 /// ====================================================================
 ///  Reader/Writer
 /// ====================================================================

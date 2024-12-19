@@ -418,3 +418,67 @@ TEST_CASE("Deserialisation: std::u32string") {
         );
     }
 }
+
+TEST_CASE("Deserialisation: std::array") {
+    std::array<u8, 6> a{1, 2, 3, 4, 5, 6};
+    std::array<u16, 6> b{1, 2, 3, 4, 5, 6};
+
+    CHECK(DeserialiseBE<std::array<u8, 6>>(0, 0, 0, 0, 0, 0) == std::array<u8, 6>{});
+    CHECK(DeserialiseLE<std::array<u8, 6>>(0, 0, 0, 0, 0, 0) == std::array<u8, 6>{});
+    CHECK(DeserialiseBE<std::array<u16, 6>>(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) == std::array<u16, 6>{});
+    CHECK(DeserialiseLE<std::array<u16, 6>>(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) == std::array<u16, 6>{});
+
+    CHECK(DeserialiseBE<std::array<u8, 6>>(1, 2, 3, 4, 5, 6) == a);
+    CHECK(DeserialiseLE<std::array<u8, 6>>(1, 2, 3, 4, 5, 6) == a);
+
+    CHECK(DeserialiseBE<std::array<u16, 6>>(0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6) == b);
+    CHECK(DeserialiseLE<std::array<u16, 6>>(1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0) == b);
+
+    SECTION("Extra trailing data") {
+        CHECK(DeserialiseBE<std::array<u8, 6>>(1, 2, 3, 4, 5, 6, 0xff) == a);
+        CHECK(DeserialiseLE<std::array<u8, 6>>(1, 2, 3, 4, 5, 6, 0xff) == a);
+        CHECK(DeserialiseBE<std::array<u16, 6>>(0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 0xff) == b);
+        CHECK(DeserialiseLE<std::array<u16, 6>>(1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 0xff) == b);
+    }
+
+    SECTION("Not enough data") {
+        CHECK_THROWS(DeserialiseBE<std::array<u8, 6>>());
+        CHECK_THROWS(DeserialiseLE<std::array<u8, 6>>());
+        CHECK_THROWS(DeserialiseBE<std::array<u8, 6>>(1, 2, 3, 4, 5));
+        CHECK_THROWS(DeserialiseLE<std::array<u8, 6>>(1, 2, 3, 4, 5));
+        CHECK_THROWS(DeserialiseBE<std::array<u16, 6>>(0, 1, 0, 2, 0, 3, 0, 4, 0, 5));
+        CHECK_THROWS(DeserialiseLE<std::array<u16, 6>>(1, 0, 2, 0, 3, 0));
+    }
+}
+
+TEST_CASE("Deserialisation: std::vector") {
+    std::vector<u8> a{1, 2, 3, 4, 5, 6};
+    std::vector<u16> b{1, 2, 3, 4, 5, 6};
+
+    CHECK(DeserialiseBE<std::vector<u8>>(0, 0, 0, 0, 0, 0, 0, 0) == std::vector<u8>{});
+    CHECK(DeserialiseLE<std::vector<u8>>(0, 0, 0, 0, 0, 0, 0, 0) == std::vector<u8>{});
+    CHECK(DeserialiseBE<std::vector<u16>>(0, 0, 0, 0, 0, 0, 0, 0) == std::vector<u16>{});
+    CHECK(DeserialiseLE<std::vector<u16>>(0, 0, 0, 0, 0, 0, 0, 0) == std::vector<u16>{});
+
+    CHECK(DeserialiseBE<std::vector<u8>>(0, 0, 0, 0, 0, 0, 0, 6, 1, 2, 3, 4, 5, 6) == a);
+    CHECK(DeserialiseLE<std::vector<u8>>(6, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6) == a);
+
+    CHECK(DeserialiseBE<std::vector<u16>>(0, 0, 0, 0, 0, 0, 0, 6, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6) == b);
+    CHECK(DeserialiseLE<std::vector<u16>>(6, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0) == b);
+
+    SECTION("Extra trailing data") {
+        CHECK(DeserialiseBE<std::vector<u8>>(0, 0, 0, 0, 0, 0, 0, 6, 1, 2, 3, 4, 5, 6, 0xff) == a);
+        CHECK(DeserialiseLE<std::vector<u8>>(6, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 0xff) == a);
+        CHECK(DeserialiseBE<std::vector<u16>>(0, 0, 0, 0, 0, 0, 0, 6, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 0xff) == b);
+        CHECK(DeserialiseLE<std::vector<u16>>(6, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 0, 0xff) == b);
+    }
+
+    SECTION("Not enough data") {
+        CHECK_THROWS(DeserialiseBE<std::vector<u8>>(0, 0, 0, 0, 0, 0, 0));
+        CHECK_THROWS(DeserialiseLE<std::vector<u8>>(0, 0, 0, 0, 0, 0));
+        CHECK_THROWS(DeserialiseBE<std::vector<u8>>(0, 0, 0, 0, 0, 0, 0, 7, 1, 2, 3, 4, 5));
+        CHECK_THROWS(DeserialiseLE<std::vector<u8>>(7, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5));
+        CHECK_THROWS(DeserialiseBE<std::vector<u16>>(0, 0, 0, 0, 0, 0, 0, 6, 1, 0, 2, 0, 3, 0, 4, 0, 5));
+        CHECK_THROWS(DeserialiseLE<std::vector<u16>>(6, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 3, 0));
+    }
+}
