@@ -109,11 +109,11 @@ auto c32::swap_case() const -> c32 {
 }
 
 auto c32::to_lower() const -> c32 {
-    return u_tolower(UChar32(value));
+    return char32_t(u_tolower(UChar32(value)));
 }
 
 auto c32::to_upper() const -> c32 {
-    return u_toupper(UChar32(value));
+    return char32_t(u_toupper(UChar32(value)));
 }
 
 auto c32::width() const -> unsigned {
@@ -141,7 +141,7 @@ auto text::FindCharsByName(
     std::vector<c32> chars;
     struct Ctx {
         std::vector<c32>& chars; // Not the actual vector to support NRVO.
-        decltype(filter) filter;
+        decltype(filter) f;
     } ctx{chars, std::move(filter)};
 
     auto Enum = []( // clang-format off
@@ -152,7 +152,7 @@ auto text::FindCharsByName(
         int32_t length
     ) -> UBool {
         auto& ctx = *static_cast<Ctx*>(context);
-        if (ctx.filter(c32(code), std::string_view{name, usz(length)}))
+        if (ctx.f(c32(code), std::string_view{name, usz(length)}))
             ctx.chars.push_back(c32(code));
         return true;
     }; // clang-format on
