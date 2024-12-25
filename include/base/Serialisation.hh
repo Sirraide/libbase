@@ -35,8 +35,8 @@
 ///     static void deserialise(Reader<E>& r, const Foo& f) { ... }
 /// };
 namespace base::ser {
-template <std::endian SerialisedEndianness = std::endian::little>  class Reader;
-template <std::endian SerialisedEndianness = std::endian::little>  class Writer;
+template <std::endian SerialisedEndianness>  class Reader;
+template <std::endian SerialisedEndianness>  class Writer;
 
 using ReaderLE = Reader<std::endian::little>;
 using ReaderBE = Reader<std::endian::big>;
@@ -100,19 +100,19 @@ struct Serialiser;
 /// Deserialise a type from a span of bytes.
 ///
 /// @tparam SerialisedEndianness The output endianness of the serialised data.
-template <typename T, std::endian SerialisedEndianness = std::endian::little>
+template <typename T, std::endian SerialisedEndianness>
 auto Deserialise(InputSpan data) -> Result<T>;
 
 /// Serialise a type to a vector of bytes.
 ///
 /// @tparam SerialisedEndianness The input endianness of the serialised data.
-template <std::endian SerialisedEndianness = std::endian::little, typename T>
+template <std::endian SerialisedEndianness, typename T>
 void Serialise(std::vector<std::byte>& into, const T& t);
 
 /// Serialise a type to a new vector of bytes.
 ///
 /// @tparam SerialisedEndianness The input endianness of the serialised data.
-template <std::endian SerialisedEndianness = std::endian::little, typename T>
+template <std::endian SerialisedEndianness, typename T>
 auto Serialise(const T& t) -> std::vector<std::byte>;
 }
 
