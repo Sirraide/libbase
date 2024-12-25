@@ -60,6 +60,21 @@ TEST_CASE("join(): non-strings") {
     CHECK(utils::join(arr, "+") == "[1, 2, 3]+[1, 2, 3]+[1, 2, 3]");
 }
 
+TEST_CASE("join(): format string") {
+    std::vector vec{1, 2, 3};
+    CHECK(utils::join(vec, ", ", "{:#x}") == "0x1, 0x2, 0x3");
+}
+
+TEST_CASE("join(): projection") {
+    std::vector vec{1, 2, 3};
+    CHECK(utils::join(vec, ", ", "{}", [](int i) { return i * 2; }) == "2, 4, 6");
+}
+
+TEST_CASE("join(): format string and projection") {
+    std::vector vec{1, 2, 3};
+    CHECK(utils::join(vec, ", ", "{:#x}", [](int i) { return i * 2; }) == "0x2, 0x4, 0x6");
+}
+
 TEST_CASE("ReplaceAll") {
     std::string foo = "barbarbarbar";
 

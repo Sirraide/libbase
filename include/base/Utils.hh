@@ -2,12 +2,13 @@
 #define LIBBASE_UTILS_HH
 
 #include <algorithm>
+#include <base/Types.hh>
+#include <format>
+#include <functional>
 #include <ranges>
 #include <source_location>
 #include <string>
 #include <variant>
-#include <format>
-#include <base/Types.hh>
 
 namespace base::utils {
 template <typename T, typename... Us>
@@ -48,16 +49,30 @@ void erase_unordered(Container& container, Iterator it) {
 }
 
 /// Join a range of strings.
+///
+/// \param range The range whose elements should be joined.
+/// \param sep The separator to insert between elements.
+/// \param fmt The format string to use for each element.
+/// \param proj A projection to apply to each element before formatting.
 template <typename Range, typename Proj = std::identity>
-std::string join(const Range& range, std::string_view sep = ", ", Proj proj = {}) {
-    using V = rgs::range_value_t<Range>;
+requires std::is_invocable_v<Proj, rgs::range_value_t<Range>>
+std::string join(
+    Range&& range,
+    std::string_view sep = ", ",
+    std::format_string<decltype(
+        std::invoke(
+            std::declval<Proj>(),
+            *rgs::begin(std::declval<Range>())
+        )
+    )> fmt = "{}",
+    Proj proj = {}
+) {
     std::string result;
     auto begin = rgs::begin(range);
     auto end = rgs::end(range);
     for (auto it = begin; it != end; ++it) {
         if (it != begin) result += sep;
-        if constexpr (is<V, std::string, std::string_view, char>) result += proj(*it);
-        else result += std::format("{}", proj(*it));
+        result += std::format(fmt, proj(*it));
     }
     return result;
 }

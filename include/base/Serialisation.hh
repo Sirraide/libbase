@@ -434,11 +434,10 @@ template <std::endian E>
 void base::ser::Magic<n>::deserialise(Reader<E>& r) const {
     auto buf = r.template read<std::array<char, n>>();
     if (r and buf != magic) {
-        auto TransformByte = [](u8 x) { return std::format("{:#02x}", x); };
         r.fail(std::format(
             "Magic number mismatch! Got [{}], expected [{}]",
-            utils::join(buf, ", ", TransformByte),
-            utils::join(magic, ", ", TransformByte)
+            utils::join(buf, ", ", "{:#x}"),
+            utils::join(magic, ", ", "{:#x}")
         ));
     }
 }
