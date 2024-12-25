@@ -38,6 +38,11 @@ namespace base::ser {
 template <std::endian SerialisedEndianness = std::endian::little>  class Reader;
 template <std::endian SerialisedEndianness = std::endian::little>  class Writer;
 
+using ReaderLE = Reader<std::endian::little>;
+using ReaderBE = Reader<std::endian::big>;
+using WriterLE = Writer<std::endian::little>;
+using WriterBE = Writer<std::endian::big>;
+
 /// Span of bytes that can be constructed from various other
 /// representations of ‘a blob of data’.
 struct InputSpan : std::span<const std::byte> {
