@@ -35,6 +35,9 @@
 ///     static void deserialise(Reader<E>& r, const Foo& f) { ... }
 /// };
 namespace base::ser {
+template <std::endian SerialisedEndianness = std::endian::little>  class Reader;
+template <std::endian SerialisedEndianness = std::endian::little>  class Writer;
+
 /// Span of bytes that can be constructed from various other
 /// representations of ‘a blob of data’.
 struct InputSpan : std::span<const std::byte> {
@@ -54,6 +57,32 @@ struct InputSpan : std::span<const std::byte> {
     explicit InputSpan(const char (&str)[n])
         : std::span<const std::byte>(reinterpret_cast<const std::byte*>(str), n) {}
 };
+
+/// Magic number to check the serialised data is valid.
+template <usz n>
+class Magic {
+    static_assert(n > 0, "Magic number must have at least one byte.");
+    std::array<char, n> magic{};
+
+public:
+    template <usz sz>
+    consteval explicit Magic(const char (&m)[sz]) {
+        static_assert(sz == n + 1);
+        std::copy_n(m, n, magic.begin());
+    }
+
+    template <utils::is<char, u8, std::byte>... Vals>
+    consteval explicit Magic(Vals... vals) : magic{char(vals)...} {}
+
+    template <std::endian E> void deserialise(Reader<E>& r) const;
+    template <std::endian E> void serialise(Writer<E>& w) const;
+};
+
+template <usz n>
+Magic(const char (&)[n]) -> Magic<n - 1>;
+
+template <utils::is<char, u8, std::byte> ...Vals>
+Magic(Vals...) -> Magic<sizeof...(Vals)>;
 
 /// Class template that can be specialised to make custom types
 /// serialisable.
@@ -88,9 +117,6 @@ auto Serialise(const T& t) -> std::vector<std::byte>;
 ///  Reader/Writer
 /// ====================================================================
 namespace base::ser {
-template <std::endian SerialisedEndianness = std::endian::little>  class Reader;
-template <std::endian SerialisedEndianness = std::endian::little>  class Writer;
-
 /// Guard against invalid enum values.
 consteval bool CheckEndianness(std::endian e) {
     return e == std::endian::big or e == std::endian::little;
@@ -400,5 +426,27 @@ void base::ser::Serialise(std::vector<std::byte>& into, const T& t) {
     w << t;
 }
 
+/// ====================================================================
+///  Built-in types
+/// ====================================================================
+template <base::usz n>
+template <std::endian E>
+void base::ser::Magic<n>::deserialise(Reader<E>& r) const {
+    auto buf = r.template read<std::array<char, n>>();
+    if (r and buf != magic) {
+        auto TransformByte = [](u8 x) { return std::format("{:#02x}", x); };
+        r.fail(std::format(
+            "Magic number mismatch! Got [{}], expected [{}]",
+            utils::join(buf, ", ", TransformByte),
+            utils::join(magic, ", ", TransformByte)
+        ));
+    }
+}
+
+template <base::usz n>
+template <std::endian E>
+void base::ser::Magic<n>::serialise(Writer<E>& w) const {
+    w << magic;
+}
 
 #endif // LIBBASE_SERIALISATION_HH

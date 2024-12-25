@@ -48,16 +48,16 @@ void erase_unordered(Container& container, Iterator it) {
 }
 
 /// Join a range of strings.
-template <typename Range>
-std::string join(const Range& range, std::string_view sep = ", ") {
+template <typename Range, typename Proj = std::identity>
+std::string join(const Range& range, std::string_view sep = ", ", Proj proj = {}) {
     using V = rgs::range_value_t<Range>;
     std::string result;
     auto begin = rgs::begin(range);
     auto end = rgs::end(range);
     for (auto it = begin; it != end; ++it) {
         if (it != begin) result += sep;
-        if constexpr (is<V, std::string, std::string_view, char>) result += *it;
-        else result += std::format("{}", *it);
+        if constexpr (is<V, std::string, std::string_view, char>) result += proj(*it);
+        else result += std::format("{}", proj(*it));
     }
     return result;
 }

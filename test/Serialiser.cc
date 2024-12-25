@@ -17,6 +17,12 @@ auto Bytes(T... vals) -> ByteBuffer {
     return {std::byte(vals)...};
 }
 
+template <typename Callable>
+void EndianBoth(Callable C) {
+    C.template operator()<std::endian::big>();
+    C.template operator()<std::endian::little>();
+}
+
 template <typename T>
 auto SerialiseBE(const T& t) -> ByteBuffer {
     return ser::Serialise<std::endian::big>(t);
@@ -410,4 +416,38 @@ TEST_CASE("Serialisation: std::variant") {
         Bytes(0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 6, 'f', 'o', 'o', 'b', 'a', 'r'),
         Bytes(3, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 'f', 'o', 'o', 'b', 'a', 'r')
     );
+}
+
+TEST_CASE("Serialisation: Magic number") {
+    static constexpr auto M1 = ser::Magic("1234");
+    static constexpr auto M2 = ser::Magic{'1', u8(2), std::byte(3), '4'};
+
+    auto m1_bytes = Bytes('1', '2', '3', '4');
+    auto m2_bytes = Bytes('1', 2, 3, '4');
+    REQUIRE(SerialiseBE(M1) == m1_bytes);
+    REQUIRE(SerialiseLE(M2) == m2_bytes);
+
+    // This type is meant to be read in this manner rather than on its own.
+    SECTION("Reading") {
+        EndianBoth([&]<std::endian E> {
+            (ser::Reader<E>{m1_bytes} >> M1).result.value();
+            (ser::Reader<E>{m2_bytes} >> M2).result.value();
+        });
+    }
+
+    SECTION("Wrong magic number errors") {
+        static constexpr auto M3 = ser::Magic{"4321"};
+        EndianBoth([&]<std::endian E> {
+            CHECK(
+                (ser::Reader<E>{m1_bytes} >> M3).result.error()
+                ==
+                "Magic number mismatch! Got [0x31, 0x32, 0x33, 0x34], expected [0x34, 0x33, 0x32, 0x31]"s
+            );
+            CHECK(
+                (ser::Reader<E>{m2_bytes} >> M3).result.error()
+                ==
+                "Magic number mismatch! Got [0x31, 0x2, 0x3, 0x34], expected [0x34, 0x33, 0x32, 0x31]"
+            );
+        });
+    }
 }
