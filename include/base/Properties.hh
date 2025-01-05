@@ -6,6 +6,11 @@
 #endif
 
 #if LIBBASE_PROPERTIES
+#define LIBBASE_DEFINE_PROPERTY_ACCESSORS(ty, name)                                                                    \
+    [[nodiscard]] decltype(auto) get_##name() const { return ::base::detail::PropertyType<ty>::get(_##name); } \
+    void set_##name(ty new_value);                                                                             \
+    __declspec(property(get = get_##name, put = set_##name)) ty name;                                          \
+
 #define ComputedProperty(type, name, ...)                               \
 public:                                                                 \
     [[nodiscard]] type get_##name() const __VA_OPT__({ return ) LIBBASE_VA_FIRST(__VA_ARGS__ __VA_OPT__(,) ;) __VA_OPT__(;}) \
@@ -13,13 +18,16 @@ public:                                                                 \
     __declspec(property(get = get_##name, put = set_##name)) type name; \
 private:
 
+#define PrivateProperty(ty, name, ...)                                                                         \
+private:                                                                                                       \
+    ::base::detail::PropertyType<ty>::type _##name __VA_OPT__(=) __VA_ARGS__;                                  \
+    LIBBASE_DEFINE_PROPERTY_ACCESSORS(ty, name)                                                                \
+
 #define Property(ty, name, ...)                                                                                \
 private:                                                                                                       \
     ::base::detail::PropertyType<ty>::type _##name __VA_OPT__(=) __VA_ARGS__;                                  \
 public:                                                                                                        \
-    [[nodiscard]] decltype(auto) get_##name() const { return ::base::detail::PropertyType<ty>::get(_##name); } \
-    void set_##name(ty new_value);                                                                             \
-    __declspec(property(get = get_##name, put = set_##name)) ty name;                                          \
+    LIBBASE_DEFINE_PROPERTY_ACCESSORS(ty, name)                                                                \
 private:
 
 #define ComputedReadonly(type, name, ...)             \
