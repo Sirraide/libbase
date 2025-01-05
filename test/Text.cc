@@ -130,6 +130,24 @@ TEST_CASE("c32::width") {
     CHECK(c32(U'🌈').width() == 2);
 }
 
+TEST_CASE("CCType functions") {
+    for (u8 c = 0;; c++) {
+        CHECK(text::IsAlnum(u8(c)) == !!std::isalnum(c));
+        CHECK(text::IsAlpha(u8(c)) == !!std::isalpha(c));
+        CHECK(text::IsBlank(u8(c)) == !!std::isblank(c));
+        CHECK(text::IsCntrl(u8(c)) == !!std::iscntrl(c));
+        CHECK(text::IsDigit(u8(c)) == !!std::isdigit(c));
+        CHECK(text::IsGraph(u8(c)) == !!std::isgraph(c));
+        CHECK(text::IsLower(u8(c)) == !!std::islower(c));
+        CHECK(text::IsPrint(u8(c)) == !!std::isprint(c));
+        CHECK(text::IsPunct(u8(c)) == !!std::ispunct(c));
+        CHECK(text::IsSpace(u8(c)) == !!std::isspace(c));
+        CHECK(text::IsUpper(u8(c)) == !!std::isupper(c));
+        CHECK(text::IsXDigit(u8(c)) == !!std::isxdigit(c));
+        if (c == std::numeric_limits<u8>::max()) break;
+    }
+}
+
 TEST_CASE("FindCharsByName") {
     auto res = FindCharsByName([](c32 c, std::string_view name) {
         return std::ranges::contains(Chars, c) or (name.starts_with("LATIN") and c < 128);

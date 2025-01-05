@@ -104,6 +104,29 @@ struct c32 {
     c32 to = c32::max()
 ) -> std::vector<c32>;
 
+/// <cctype> functions.
+///
+/// We provide separate definition of these for several reasons. Unlike the C
+/// standard library equivalents, these are constexpr, can be inlined by the
+/// compiler, are not locale-dependent, and don’t experience undefined behaviour
+/// if you pass in a signed char whose value is > 127.
+///
+/// We also provide a few more functions than cctype for convenience.
+[[nodiscard]] constexpr bool IsDigit(char c) { return c >= '0' and c <= '9'; }
+[[nodiscard]] constexpr bool IsLower(char c) { return c >= 'a' and c <= 'z'; }
+[[nodiscard]] constexpr bool IsUpper(char c) { return c >= 'A' and c <= 'Z'; }
+[[nodiscard]] constexpr bool IsAlpha(char c) { return IsLower(c) or IsUpper(c); }
+[[nodiscard]] constexpr bool IsAlnum(char c) { return IsAlpha(c) or IsDigit(c); }
+[[nodiscard]] constexpr bool IsSpace(char c) { return c == ' ' or c == '\t' or c == '\n' or c == '\r' or c == '\v' or c == '\f'; }
+[[nodiscard]] constexpr bool IsPunct(char c) { return (c >= '!' and c <= '/') or (c >= ':' and c <= '@') or (c >= '[' and c <= '`') or (c >= '{' and c <= '~'); }
+[[nodiscard]] constexpr bool IsGraph(char c) { return IsAlnum(c) or IsPunct(c); }
+[[nodiscard]] constexpr bool IsPrint(char c) { return IsGraph(c) or c == ' '; }
+[[nodiscard]] constexpr bool IsCntrl(char c) { return u8(c) < ' ' or c == 0x7F; }
+[[nodiscard]] constexpr bool IsBlank(char c) { return c == ' ' or c == '\t'; }
+[[nodiscard]] constexpr bool IsXDigit(char c) { return IsDigit(c) or (c >= 'a' and c <= 'f') or (c >= 'A' and c <= 'F'); }
+[[nodiscard]] constexpr bool IsBinary(char c) { return c == '0' or c == '1'; }
+[[nodiscard]] constexpr bool IsOctal(char c) { return c >= '0' and c <= '7'; }
+
 /// Convert a string to a normalised form.
 [[nodiscard]] auto Normalise(std::string_view str, NormalisationForm form) -> Result<std::string>;
 [[nodiscard]] auto Normalise(std::u32string_view str, NormalisationForm form) -> Result<std::u32string>;
