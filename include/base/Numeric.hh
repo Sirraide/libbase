@@ -5,6 +5,7 @@
 #include <base/Types.hh>
 #include <string_view>
 #include <utility>
+#include <bit>
 
 namespace base {
 /// Convert a value of enumeration type to its underlying type.
@@ -12,6 +13,13 @@ template <typename Ty>
 requires std::is_enum_v<Ty>
 [[nodiscard]] constexpr auto operator+(Ty ty) noexcept -> std::underlying_type_t<Ty> {
     return std::to_underlying(ty);
+}
+
+/// Compute the floor base-2 logarithm of an integer >=1. If given 0, returns -1.
+template <std::integral T>
+[[nodiscard]] constexpr auto Log2Floor(T n) -> u32 {
+    using U = std::make_unsigned_t<T>;
+    return u32(std::numeric_limits<U>::digits - 1 - std::countl_zero(U(n)));
 }
 
 /// Parse a 'Ty' from a string.

@@ -11,12 +11,24 @@
 #include <variant>
 
 namespace base::utils {
+
+/// Check if one or more types are the same, ignoring top-level references
+/// and cv qualifiers.
 template <typename T, typename... Us>
 concept is = (std::is_same_v<std::remove_cvref_t<T>, std::remove_cvref_t<Us>> or ...);
 
 /// Range of things that are convertible to a certain type.
 template <typename T, typename ElemTy>
 concept ConvertibleRange = rgs::range<T> and std::convertible_to<rgs::range_value_t<T>, ElemTy>;
+
+/// A list of types.
+template <typename... Types>
+struct list {
+    template <typename Callable>
+    static void each(Callable&& callable) {
+        (callable.template operator()<Types>(), ...);
+    }
+};
 
 /// Check if a range is empty. This circumvents the stupid
 /// amortised time constraint that the standard library’s

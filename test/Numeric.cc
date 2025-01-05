@@ -12,6 +12,20 @@ using L = std::numeric_limits<Ty>;
 #define OK(F, S) CHECK(F(STR(S)).value() == S)
 #define ERR(F, S, E) CHECK(F(S).error() == "Failed to parse number from string '" S "': " E)
 
+TEST_CASE("Log2Floor") {
+    utils::list<i8, u8, i16, u16, i32, u32, i64, u64>::each([]<typename T>{
+        CHECK(Log2Floor(T(0)) == -1);
+        for (T i = 1; i < 100; ++i) CHECK(Log2Floor(i) == std::floor(std::log2(i)));
+
+        // Powers of 2.
+        T t = 1;
+        for (u32 i = 0; i < L<T>::digits; ++i) {
+            CHECK(Log2Floor(t) == i);
+            t <<= 1;
+        }
+    });
+}
+
 TEST_CASE("Parse<bool>") {
     CHECK(Parse<bool>("true").value() == true);
     CHECK(Parse<bool>("false").value() == false);
