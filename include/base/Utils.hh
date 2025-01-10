@@ -74,7 +74,7 @@ std::string join(
     std::format_string<decltype(
         std::invoke(
             std::declval<Proj>(),
-            *rgs::begin(std::declval<Range>())
+            *rgs::begin(range)
         )
     )> fmt = "{}",
     Proj proj = {}

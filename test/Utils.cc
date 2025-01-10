@@ -84,6 +84,15 @@ TEST_CASE("join(): member projection") {
     CHECK(utils::join(vec, ", ", "{}", &S::text) == "a, b, c");
 }
 
+TEST_CASE("join(): transform view of const objects") {
+    struct S {
+        std::string value;
+    };
+
+    const std::vector<S> vec{{"a"}, {"b"}, {"c"}};
+    CHECK(utils::join(vec | vws::transform(&S::value), ", ") == "a, b, c");
+}
+
 TEST_CASE("ReplaceAll") {
     std::string foo = "barbarbarbar";
 
