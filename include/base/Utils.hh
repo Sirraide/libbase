@@ -84,7 +84,7 @@ std::string join(
     auto end = rgs::end(range);
     for (auto it = begin; it != end; ++it) {
         if (it != begin) result += sep;
-        result += std::format(fmt, proj(*it));
+        result += std::format(fmt, std::invoke(proj, *it));
     }
     return result;
 }

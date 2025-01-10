@@ -75,6 +75,15 @@ TEST_CASE("join(): format string and projection") {
     CHECK(utils::join(vec, ", ", "{:#x}", [](int i) { return i * 2; }) == "0x2, 0x4, 0x6");
 }
 
+TEST_CASE("join(): member projection") {
+    struct S {
+        std::string text;
+    };
+
+    std::vector vec {S{"a"}, S{"b"}, S{"c"}};
+    CHECK(utils::join(vec, ", ", "{}", &S::text) == "a, b, c");
+}
+
 TEST_CASE("ReplaceAll") {
     std::string foo = "barbarbarbar";
 
