@@ -75,3 +75,21 @@ TEST_CASE("tempset compound assignment ops") {
 
     CHECK(x == 3);
 }
+
+TEST_CASE("Tempset two lvalues") {
+    struct S {
+        bool b1, b2;
+    };
+
+    S s{true, false};
+    {
+        tempset s.b1 = s.b2;
+        CHECK(s.b1 == false);
+    }
+    CHECK(s.b1 == true);
+    {
+        tempset s.b2 = s.b1;
+        CHECK(s.b2 == true);
+    }
+    CHECK(s.b2 == false);
+}

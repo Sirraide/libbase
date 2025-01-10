@@ -133,28 +133,28 @@ public:
     ~DeferImpl() { c(); }
 };
 
-template <typename T, typename U>
+template <typename T>
 class TempsetStage2 {
     T& lvalue;
     T old_value;
 
 public:
-    TempsetStage2(T& lvalue, U&& value)
+    TempsetStage2(T& lvalue, auto&& value)
         : lvalue(lvalue),
-          old_value(std::exchange(lvalue, std::forward<U>(value))) {}
+          old_value(std::exchange(lvalue, LIBBASE_FWD(value))) {}
     ~TempsetStage2() { lvalue = std::move(old_value); }
 };
 
-#define DEFINE_ASSIGN_OP(op)                                                          \
-    auto operator op##=(auto&& value) {                                               \
-        return TempsetStage2{lvalue, lvalue op std::forward<decltype(value)>(value)}; \
+#define DEFINE_ASSIGN_OP(op)                                        \
+    auto operator op##=(auto&& value) {                             \
+        return TempsetStage2{lvalue, lvalue op LIBBASE_FWD(value)}; \
     }
 
 template <typename T>
 struct TempsetStage1 {
     T& lvalue;
     auto operator=(auto&& value) {
-        return TempsetStage2{lvalue, std::forward<decltype(value)>(value)};
+        return TempsetStage2{lvalue, LIBBASE_FWD(value)};
     }
 
     DEFINE_ASSIGN_OP(|);
