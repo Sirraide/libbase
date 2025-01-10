@@ -168,6 +168,16 @@ TEST_CASE("Normalise") {
     CHECK(Normalise(U"áéẹḍțöźȕ", NormalisationForm::NFC) == U"áéẹḍțöźȕ"sv);
     CHECK(Normalise( "áéẹḍțöźȕ", NormalisationForm::NFD) ==  "áéẹḍțöźȕ"sv);
     CHECK(Normalise(U"áéẹḍțöźȕ", NormalisationForm::NFD) == U"áéẹḍțöźȕ"sv);
+    CHECK(Normalise(U"ﬁﬁﬁﬁ", NormalisationForm::NFKC) == U"fifififi"sv);
+    CHECK(Normalise(U"ﬁﬁﬁﬁ", NormalisationForm::NFKD) == U"fifififi"sv);
+
+    // Examples from the unicode documentation.
+    CHECK(Normalise(U"\u1e9b\u0323", NormalisationForm::NFD) == U"\u017f\u0323\u0307"sv);
+    CHECK(Normalise(U"\u1e9b\u0323", NormalisationForm::NFC) == U"\u1e9b\u0323"sv);
+    CHECK(Normalise(U"\u1e9b\u0323", NormalisationForm::NFKD) == U"s\u0323\u0307"sv);
+    CHECK(Normalise(U"\u1e9b\u0323", NormalisationForm::NFKC) == U"\u1e69"sv);
+    CHECK(Normalise(U"\u212B", NormalisationForm::NFKC) == U"\u00C5"sv);
+    CHECK(Normalise(U"\u212B", NormalisationForm::NFKD) == U"A\u030A"sv);
 }
 
 TEST_CASE("ToLower") {

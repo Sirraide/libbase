@@ -190,7 +190,15 @@ namespace {
 [[nodiscard]] auto GetTransliterator(
     NormalisationForm nf
 ) -> Result<icu::Transliterator*> {
-    return GetTransliterator(nf == NormalisationForm::NFC ? "NFC" : "NFD");
+    return GetTransliterator([&] {
+        switch (nf) {
+            case NormalisationForm::NFC: return "NFC";
+            case NormalisationForm::NFD: return "NFD";
+            case NormalisationForm::NFKC: return "NFKC";
+            case NormalisationForm::NFKD: return "NFKD";
+            default: return "Any-Normalization";
+        }
+    }());
 }
 
 [[nodiscard]] auto UStr(std::string_view str) -> icu::UnicodeString {

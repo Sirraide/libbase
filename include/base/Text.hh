@@ -13,6 +13,8 @@ enum struct NormalisationForm {
     None, /// No normalisation.
     NFC,  /// Normalisation Form C.
     NFD,  /// Normalisation Form D.
+    NFKC, /// Normalisation Form KC.
+    NFKD, /// Normalisation Form KD.
 };
 
 enum struct CharCategory {
