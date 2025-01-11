@@ -402,39 +402,69 @@ TEST_CASE("stream::starts_with_any") {
     CHECK_FALSE(stream{s}.starts_with_any("x"));
 }
 
-TEST_CASE("stream::take_until") {
+TEST_CASE("stream::take_until(_any)(_and_drop)") {
     std::string s = "hello world";
     const Views v{"lx", "llox"};
 
-    CHECK(stream{s}.take_until(' ') == "hello"sv);
-    CHECK(stream{s}.take_until('o') == "hell"sv);
-    CHECK(stream{s}.take_until('x') == "hello world"sv);
-    CHECK(stream{s}.take_until('h') == ""sv);
+    SECTION("take_until") {
+        CHECK(stream{s}.take_until(' ') == "hello"sv);
+        CHECK(stream{s}.take_until('o') == "hell"sv);
+        CHECK(stream{s}.take_until('x') == "hello world"sv);
+        CHECK(stream{s}.take_until('h') == ""sv);
 
-    CHECK(stream{s}.take_until_any("") == "hello world"sv);
-    CHECK(stream{s}.take_until_any(" ") == "hello"sv);
-    CHECK(stream{s}.take_until_any("eo") == "h"sv);
-    CHECK(stream{s}.take_until_any("x") == "hello world"sv);
-    CHECK(stream{s}.take_until_any("rw") == "hello "sv);
+        CHECK(stream{s}.take_until("") == ""sv);
+        CHECK(stream{s}.take_until(" ") == "hello"sv);
+        CHECK(stream{s}.take_until("lo") == "hel"sv);
+        CHECK(stream{s}.take_until("ld") == "hello wor"sv);
+        CHECK(stream{s}.take_until("lx") == "hello world"sv);
 
-    CHECK(stream{s}.take_until_any(Views{}) == "hello world"sv);
-    CHECK(stream{s}.take_until_any(Views{"e", "o"}) == "h"sv);
-    CHECK(stream{s}.take_until_any(Views{"lo", "el"}) == "h"sv);
-    CHECK(stream{s}.take_until_any(Views{"lo", "llo"}) == "he"sv);
-    CHECK(stream{s}.take_until_any(v) == "hello world"sv);
-    CHECK(stream{s}.take_until_any(v | vws::transform([](auto x) { return x; })) == "hello world"sv);
-    CHECK(stream{s}.take_until_any(v | vws::filter([](auto x) { return true; })) == "hello world"sv);
+        CHECK(stream{s}.take_until([](char c) { return c == ' '; }) == "hello"sv);
+        CHECK(stream{s}.take_until([](char c) { return c == 'o'; }) == "hell"sv);
+        CHECK(stream{s}.take_until([](char c) { return c == 'x'; }) == "hello world"sv);
+        CHECK(stream{s}.take_until([](char c) { return c == 'h'; }) == ""sv);
+    }
 
-    CHECK(stream{s}.take_until("") == ""sv);
-    CHECK(stream{s}.take_until(" ") == "hello"sv);
-    CHECK(stream{s}.take_until("lo") == "hel"sv);
-    CHECK(stream{s}.take_until("ld") == "hello wor"sv);
-    CHECK(stream{s}.take_until("lx") == "hello world"sv);
+    SECTION("any") {
+        CHECK(stream{s}.take_until_any("") == "hello world"sv);
+        CHECK(stream{s}.take_until_any(" ") == "hello"sv);
+        CHECK(stream{s}.take_until_any("eo") == "h"sv);
+        CHECK(stream{s}.take_until_any("x") == "hello world"sv);
+        CHECK(stream{s}.take_until_any("rw") == "hello "sv);
 
-    CHECK(stream{s}.take_until([](char c) { return c == ' '; }) == "hello"sv);
-    CHECK(stream{s}.take_until([](char c) { return c == 'o'; }) == "hell"sv);
-    CHECK(stream{s}.take_until([](char c) { return c == 'x'; }) == "hello world"sv);
-    CHECK(stream{s}.take_until([](char c) { return c == 'h'; }) == ""sv);
+        CHECK(stream{s}.take_until_any(Views{}) == "hello world"sv);
+        CHECK(stream{s}.take_until_any(Views{"e", "o"}) == "h"sv);
+        CHECK(stream{s}.take_until_any(Views{"lo", "el"}) == "h"sv);
+        CHECK(stream{s}.take_until_any(Views{"lo", "llo"}) == "he"sv);
+        CHECK(stream{s}.take_until_any(v) == "hello world"sv);
+        CHECK(stream{s}.take_until_any(v | vws::transform([](auto x) { return x; })) == "hello world"sv);
+        CHECK(stream{s}.take_until_any(v | vws::filter([](auto x) { return true; })) == "hello world"sv);
+    }
+
+    SECTION("and_drop") {
+        stream s1{s};
+        CHECK(s1.take_until_and_drop("wo") == "hello "sv);
+        CHECK(s1 == "rld");
+
+        s1 = s;
+        CHECK(s1.take_until_and_drop("") == ""sv);
+        CHECK(s1 == "hello world");
+
+        s1 = s;
+        CHECK(s1.take_until_and_drop('o') == "hell"sv);
+        CHECK(s1 == " world");
+
+        s1 = s;
+        CHECK(s1.take_until_and_drop('x') == "hello world"sv);
+        CHECK(s1 == "");
+
+        s1 = s;
+        CHECK(s1.take_until_and_drop('h') == ""sv);
+        CHECK(s1 == "ello world");
+
+        s1 = s;
+        CHECK(s1.take_until_and_drop(std::string{"l"}) == "he"sv);
+        CHECK(s1 == "lo world");
+    }
 }
 
 TEST_CASE("stream::take_until_or_empty") {

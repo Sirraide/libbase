@@ -805,7 +805,8 @@ public:
     /// If the condition is not \c true for any of the characters in the stream,
     /// the entire text is returned (excepting the _while overloads, which return
     /// nothing instead). The \c _or_empty overloads, return an empty string instead,
-    /// and the stream is not advanced at all.
+    /// and the stream is not advanced at all. The \c _and_drop overloads additionally
+    /// drop the delimiter afterwards if it is present.
     ///
     /// If an empty string view or range of string views is passed to the \c _any
     /// overloads, the entire stream is returned for the regular overloads, and
@@ -833,6 +834,23 @@ public:
     [[nodiscard]] constexpr auto
     take_until(UnaryPredicate c) noexcept(noexcept(c(char_type{}))) -> text_type {
         return _m_take_until_cond<false>(std::move(c));
+    }
+
+    /// \see take_until(char_type)
+    ///
+    /// There currently is no _any overload for this since with those you typically
+    /// *do* care what you actually found, unlike with this one where you might want
+    /// to simply discard something that only serves as a delimiter.
+    [[nodiscard]] constexpr auto
+    take_until_and_drop(utils::convertible_to_any<char_type, text_type> auto c)
+    noexcept -> text_type {
+        // There are two cases to handle here. If the delimiter was found, the string
+        // now starts with that delimiter, so consume() it will drop it; otherwise, we
+        // have grabbed the entire string, and the stream is now empty, so consume() is
+        // a no-op.
+        auto res = take_until(c);
+        (void) consume(c);
+        return res;
     }
 
     /// \see take_until(char_type)

@@ -17,6 +17,10 @@ namespace base::utils {
 template <typename T, typename... Us>
 concept is = (std::is_same_v<std::remove_cvref_t<T>, std::remove_cvref_t<Us>> or ...);
 
+/// Check if a type is convertible to any of a set of types.
+template <typename T, typename... Us>
+concept convertible_to_any = (std::convertible_to<T, Us> or ...);
+
 /// Range of things that are convertible to a certain type.
 template <typename T, typename ElemTy>
 concept ConvertibleRange = rgs::range<T> and std::convertible_to<rgs::range_value_t<T>, ElemTy>;
