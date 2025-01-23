@@ -451,3 +451,32 @@ TEST_CASE("Serialisation: Magic number") {
         });
     }
 }
+
+TEST_CASE("Serialisation: manual implementation") {
+    EndianBoth([&]<std::endian E> {
+        ByteBuffer buf;
+
+        ser::Writer<E> w{buf};
+        auto span = w.allocate(4);
+        span[0] = std::byte(1);
+        span[1] = std::byte(2);
+        span[2] = std::byte(3);
+        span[3] = std::byte(4);
+
+        SECTION("Reading") {
+            ser::Reader<E> r{buf};
+            auto read = r.read_bytes(4);
+            CHECK(read[0] == std::byte(1));
+            CHECK(read[1] == std::byte(2));
+            CHECK(read[2] == std::byte(3));
+            CHECK(read[3] == std::byte(4));
+            CHECK(r.size() == 0);
+        }
+
+        SECTION("Not enough bytes") {
+            ser::Reader<E> r{buf};
+            CHECK(r.read_bytes(5).empty());
+            CHECK(r.result.error() == "Not enough data to read 5 bytes (4 bytes left)");
+        }
+    });
+}

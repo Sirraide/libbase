@@ -4,7 +4,7 @@
 using namespace base::ser;
 
 template <std::endian E>
-auto Reader<E>::Copy(void* ptr, usz count) -> usz {
+auto Reader<E>::copy(void* ptr, usz count) -> usz {
     if (size() < count or not result) [[unlikely]] {
         result = Error("Not enough data to read {} bytes ({} bytes left)", count, size());
         return 0;
@@ -16,7 +16,26 @@ auto Reader<E>::Copy(void* ptr, usz count) -> usz {
 }
 
 template <std::endian E>
-void Writer<E>::Append(const void* ptr, usz count) {
+auto Reader<E>::read_bytes(usz count) -> std::span<const std::byte> {
+    if (size() < count or not result) [[unlikely]] {
+        result = Error("Not enough data to read {} bytes ({} bytes left)", count, size());
+        return {};
+    }
+
+    auto span = std::span{data.data(), count};
+    data = data.subspan(count);
+    return span;
+}
+
+template <std::endian E>
+auto Writer<E>::allocate(u64 bytes) -> std::span<std::byte> {
+    auto old_size = data.size();
+    data.resize(old_size + bytes);
+    return {data.data() + old_size, bytes};
+}
+
+template <std::endian E>
+void Writer<E>::append(const void* ptr, usz count) {
     auto* p = static_cast<const std::byte*>(ptr);
     data.insert(data.end(), p, p + count);
 }

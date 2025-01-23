@@ -157,7 +157,7 @@ public:
     /// Read an integer.
     template <std::integral T>
     auto operator>>(T& t) -> Reader& {
-        Reader::Copy(&t, sizeof(T));
+        Reader::copy(&t, sizeof(T));
         if constexpr (std::endian::native != E) t = std::byteswap(t);
         return *this;
     }
@@ -207,7 +207,7 @@ public:
 
         s.resize_and_overwrite(
             sz,
-            [&](T* ptr, usz count) { return Copy(ptr, count * sizeof(T)); }
+            [&](T* ptr, usz count) { return Reader::copy(ptr, count * sizeof(T)); }
         );
         return *this;
     }
@@ -215,7 +215,7 @@ public:
     /// Deserialise a string.
     template <typename T>
     auto operator>>(std::basic_string<T>& s) -> Reader& {
-        return ReadRange(s);
+        return Reader::read_range(s);
     }
 
     /// Deserialise an array.
@@ -228,7 +228,7 @@ public:
     /// Deserialise a vector.
     template <typename T>
     auto operator>>(std::vector<T>& s) -> Reader& {
-        return ReadRange(s);
+        return Reader::read_range(s);
     }
 
     // Deserialise an optional.
@@ -273,6 +273,9 @@ public:
     /// Check if we could read the entire thing.
     [[nodiscard]] explicit operator bool() { return result.has_value(); }
 
+    /// Copy data from the buffer into a pointer.
+    usz copy(void* ptr, usz count);
+
     /// Mark that serialisation has failed for whatever reason.
     void fail(std::string_view err) {
         if (result) result = Error("{}", err);
@@ -281,11 +284,13 @@ public:
     /// Check how many bytes are left in the buffer.
     [[nodiscard]] auto size() const -> usz { return data.size(); }
 
-protected:
-    usz Copy(void* ptr, usz count);
+    /// Read bytes from the buffer. Returns an empty span if there is
+    /// not enough data left in the buffer.
+    auto read_bytes(usz count) -> std::span<const std::byte>;
 
+    /// Read a range from the buffer, preceded by its size.
     template <typename T>
-    auto ReadRange(T& range) -> Reader& {
+    auto read_range(T& range) -> Reader& {
         auto sz = read<u64>();
         if (sz > range.max_size()) [[unlikely]] {
             result = Error("Input size {} exceeds maximum size {} of range", sz, range.max_size());
@@ -317,7 +322,7 @@ public:
     template <std::integral T>
     auto operator<<(T t) -> Writer& {
         if constexpr (E != std::endian::little) t = std::byteswap(t);
-        Append(&t, sizeof(T));
+        Writer::append(&t, sizeof(T));
         return *this;
     }
 
@@ -355,13 +360,13 @@ public:
     requires (sizeof(T) == sizeof(std::byte))
     auto operator<<(const std::basic_string<T>& s) -> Writer& {
         *this << u64(s.size());
-        Append(s.data(), s.size() * sizeof(T));
+        Writer::append(s.data(), s.size() * sizeof(T));
         return *this;
     }
 
     /// Serialise a string.
     template <typename T>
-    auto operator<<(const std::basic_string<T>& s) -> Writer& { return AppendRange(s); }
+    auto operator<<(const std::basic_string<T>& s) -> Writer& { return Writer::append_range(s); }
 
     /// Serialise an array.
     template <typename T, u64 n>
@@ -372,7 +377,7 @@ public:
 
     /// Serialise a vector.
     template <typename T>
-    auto operator<<(const std::vector<T>& v) -> Writer& { return AppendRange(v); }
+    auto operator<<(const std::vector<T>& v) -> Writer& { return Writer::append_range(v); }
 
     /// Serialise an optional.
     template <typename T>
@@ -393,11 +398,22 @@ public:
     /// Serialise std::monostate.
     auto operator<<(std::monostate) -> Writer& { return *this; }
 
-protected:
-    void Append(const void* ptr, u64 count);
+    /// Get a span of bytes to write data into; the span is valid until
+    /// the next call to a member function of Writer.
+    ///
+    /// Example usage:
+    ///
+    ///    auto buf = Allocate(value.size());
+    ///    ExternalSerialisationFunction(value, buf.data(), buf.size());
+    ///
+    auto allocate(u64 bytes) -> std::span<std::byte>;
 
+    /// Append raw bytes.
+    void append(const void* ptr, u64 count);
+
+    /// Append a range of values, preceded by its size.
     template <typename T>
-    auto AppendRange(const T& range) -> Writer& {
+    auto append_range(const T& range) -> Writer& {
         *this << u64(range.size());
         for (const auto& elem : range) *this << elem;
         return *this;
