@@ -281,7 +281,7 @@ public:
     /// Check how many bytes are left in the buffer.
     [[nodiscard]] auto size() const -> usz { return data.size(); }
 
-private:
+protected:
     usz Copy(void* ptr, usz count);
 
     template <typename T>
@@ -393,7 +393,7 @@ public:
     /// Serialise std::monostate.
     auto operator<<(std::monostate) -> Writer& { return *this; }
 
-private:
+protected:
     void Append(const void* ptr, u64 count);
 
     template <typename T>
