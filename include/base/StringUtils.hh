@@ -6,7 +6,7 @@
 
 namespace base::utils {
 /// Escape non-printable characters in a string.
-auto Escape(std::string_view str, bool escape_double_quotes) -> std::string;
+auto Escape(std::string_view str, bool escape_double_quotes = false) -> std::string;
 
 /// Escape elements in a range that need escaping.
 template <typename Range>
