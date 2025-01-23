@@ -30,17 +30,17 @@ std::string join(
     std::format_string<decltype(
         std::invoke(
             std::declval<Proj>(),
-            *rgs::begin(range)
+            std::declval<const rgs::range_value_t<Range>&>()
         )
     )> fmt = "{}",
     Proj proj = {}
 ) {
     std::string result;
-    auto begin = rgs::begin(range);
-    auto end = rgs::end(range);
-    for (auto it = begin; it != end; ++it) {
-        if (it != begin) result += sep;
-        result += std::format(fmt, std::invoke(proj, *it));
+    bool first = true;
+    for (const auto& val : range) {
+        if (first) first = false;
+        else result += sep;
+        result += std::format(fmt, std::invoke(proj, val));
     }
     return result;
 }

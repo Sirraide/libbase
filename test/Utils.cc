@@ -134,6 +134,17 @@ TEST_CASE("join(): transform view of const objects") {
     CHECK(utils::join(vec | vws::transform(&S::value), ", ") == "a, b, c");
 }
 
+TEST_CASE("join(): rvalues") {
+    std::vector v{1, 2, 3};
+    CHECK(utils::join(std::vector{1, 2, 3}) == "1, 2, 3");
+    CHECK(utils::join(std::move(v)) == "1, 2, 3");
+}
+
+TEST_CASE("join(): quote_escaped() range") {
+    std::vector<std::string_view> vec{"a", "b c", " d"};
+    CHECK(utils::join(utils::quote_escaped(vec), "|") == "a|\"b c\"|\" d\"");
+}
+
 TEST_CASE("quoted()") {
     using Vec = std::vector<std::string_view>;
 
