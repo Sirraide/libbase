@@ -480,3 +480,17 @@ TEST_CASE("Serialisation: manual implementation") {
         }
     });
 }
+
+class S {
+    LIBBASE_SERIALISE(x);
+    int x;
+
+public:
+    S() = default;
+    S(int x): x{x} {}
+    constexpr auto operator<=>(const S&) const = default;
+};
+
+TEST_CASE("Serialisation: private members") {
+    Test(S{42}, Bytes(0, 0, 0, 42), Bytes(42, 0, 0, 0));
+}

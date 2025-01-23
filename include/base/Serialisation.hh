@@ -10,6 +10,8 @@
 #include <vector>
 
 #define LIBBASE_SERIALISE(...)                                                                       \
+    template <std::endian E> friend class ::base::ser::Reader;                                       \
+    template <std::endian E> friend class ::base::ser::Writer;                                       \
     template <std::endian E> void serialise(::base::ser::Writer<E>& buf) const { buf(__VA_ARGS__); } \
     template <std::endian E> void deserialise(::base::ser::Reader<E>& buf) { buf(__VA_ARGS__); }
 
