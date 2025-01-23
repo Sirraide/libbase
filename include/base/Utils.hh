@@ -64,35 +64,6 @@ void erase_unordered(Container& container, Iterator it) {
     }
 }
 
-/// Join a range of strings.
-///
-/// \param range The range whose elements should be joined.
-/// \param sep The separator to insert between elements.
-/// \param fmt The format string to use for each element.
-/// \param proj A projection to apply to each element before formatting.
-template <typename Range, typename Proj = std::identity>
-requires std::is_invocable_v<Proj, rgs::range_value_t<Range>>
-std::string join(
-    Range&& range,
-    std::string_view sep = ", ",
-    std::format_string<decltype(
-        std::invoke(
-            std::declval<Proj>(),
-            *rgs::begin(range)
-        )
-    )> fmt = "{}",
-    Proj proj = {}
-) {
-    std::string result;
-    auto begin = rgs::begin(range);
-    auto end = rgs::end(range);
-    for (auto it = begin; it != end; ++it) {
-        if (it != begin) result += sep;
-        result += std::format(fmt, std::invoke(proj, *it));
-    }
-    return result;
-}
-
 /// Splice a value into a container at a specific position.
 ///
 /// This function performs insertion and erasure at the same
@@ -147,9 +118,6 @@ void splice(Container& container, Iterator begin_remove, Iterator end_remove, In
     // Finally, copy the new elements into the range.
     rgs::copy(std::forward<Input>(input_range), begin_remove);
 }
-
-/// Replace all occurrences of `from` with `to` in `str`.
-void ReplaceAll(std::string& str, std::string_view from, std::string_view to);
 
 /// Used instead of 'Assert()' in some places so we can catch the
 /// exception in unit tests.

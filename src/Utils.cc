@@ -1,7 +1,34 @@
 #include <base/Base.hh>
-#include <print>
+#include <base/Text.hh>
 #include <source_location>
 #include <stdexcept>
+#include <base/StringUtils.hh>
+
+auto base::utils::Escape(std::string_view str, bool escape_double_quotes) -> std::string {
+    std::string s;
+    for (auto c : str) {
+        switch (c) {
+            case '\n': s += "\\n"; break;
+            case '\r': s += "\\r"; break;
+            case '\t': s += "\\t"; break;
+            case '\v': s += "\\v"; break;
+            case '\f': s += "\\f"; break;
+            case '\a': s += "\\a"; break;
+            case '\b': s += "\\b"; break;
+            case '\\': s += "\\\\"; break;
+            case '\0': s += "\\0"; break;
+            case '\033': s += "\\e"; break;
+            case '"':
+                if (escape_double_quotes) s += "\\\"";
+                else s += c;
+            break;
+            default:
+                if (text::IsPrint(c)) s += c;
+                else s += std::format("\\x{:02x}", static_cast<u8>(c));
+        }
+    }
+    return s;
+}
 
 void base::utils::ReplaceAll(
     std::string& str,
@@ -12,7 +39,6 @@ void base::utils::ReplaceAll(
     for (usz i = 0; i = str.find(from, i), i != std::string::npos; i += to.size())
         str.replace(i, from.size(), to);
 }
-
 
 void base::utils::ThrowOrAbort(const std::string& message, std::source_location loc) {
 #ifdef __cpp_exceptions

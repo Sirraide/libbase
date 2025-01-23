@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <base/Assert.hh>
+#include <base/Macros.hh>
 #include <base/Utils.hh>
 #include <cstddef>
 #include <format>

@@ -1,9 +1,10 @@
 #ifndef LIBBASE_SERIALISATION_HH
 #define LIBBASE_SERIALISATION_HH
 
-#include <base/Utils.hh>
-#include <base/Types.hh>
 #include <base/Result.hh>
+#include <base/StringUtils.hh>
+#include <base/Types.hh>
+#include <base/Utils.hh>
 #include <span>
 #include <utility>
 #include <vector>

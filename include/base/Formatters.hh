@@ -1,9 +1,10 @@
 #ifndef LIBBASE_FORMATTERS_HH
 #define LIBBASE_FORMATTERS_HH
 
+#include <base/StringUtils.hh>
+#include <base/Utils.hh>
 #include <format>
 #include <vector>
-#include <base/Utils.hh>
 
 template <typename Inner>
 struct std::formatter<std::vector<Inner>> : std::formatter<Inner> {

@@ -1,12 +1,53 @@
 #include "TestCommon.hh"
 
+#include <array>
 #include <base/Macros.hh>
 #include <base/Properties.hh>
+#include <base/Text.hh>
 #include <deque>
 #include <string>
-#include <array>
+#include <base/StringUtils.hh>
 
 using namespace base;
+using Catch::Matchers::RangeEquals;
+
+TEST_CASE("Escape()") {
+    // 'sv' suffix is required here because of the \0 in the middle of the string.
+    static constexpr auto special = "\n\r\t\v\f\b\a\0\033"sv;
+
+    CHECK(utils::Escape("", true) == "");
+    CHECK(utils::Escape("", false) == "");
+    CHECK(utils::Escape("\"", false) == "\"");
+    CHECK(utils::Escape("\"", true) == "\\\"");
+
+    CHECK(utils::Escape(special, false) == "\\n\\r\\t\\v\\f\\b\\a\\0\\e");
+    CHECK(utils::Escape(special, true) == "\\n\\r\\t\\v\\f\\b\\a\\0\\e");
+    CHECK(utils::Escape("\x7f", false) == "\\x7f");
+    CHECK(utils::Escape("\x7f", true) == "\\x7f");
+
+    for (char c = 0; c < 32; c++) {
+        if (not text::IsPrint(c) and not special.contains(c)) {
+            CHECK(utils::Escape(std::string_view{&c, 1}, false) == std::format("\\x{:02x}", c));
+            CHECK(utils::Escape(std::string_view{&c, 1}, true) == std::format("\\x{:02x}", c));
+        }
+    }
+}
+
+TEST_CASE("escaped()") {
+    using Vec = std::vector<std::string_view>;
+    CHECK_THAT(utils::escaped(Vec{}, false), RangeEquals(Vec{}));
+    CHECK_THAT(utils::escaped(Vec{""}, false), RangeEquals(Vec{""}));
+    CHECK_THAT(utils::escaped(Vec{"a", "b", "c"}, false), RangeEquals(Vec{"a", "b", "c"}));
+    CHECK_THAT(utils::escaped(Vec{"a", "b", "c"}, true), RangeEquals(Vec{"a", "b", "c"}));
+    CHECK_THAT(utils::escaped(Vec{"\0"sv, "\b", "\n\r"}, false), RangeEquals(Vec{"\\0", "\\b", "\\n\\r"}));
+    CHECK_THAT(utils::escaped(Vec{"\0"sv, "\b", "\n\r"}, true), RangeEquals(Vec{"\\0", "\\b", "\\n\\r"}));
+    CHECK_THAT(utils::escaped(Vec{"\x7f", "\x80", "\xff"}, false), RangeEquals(Vec{"\\x7f", "\\x80", "\\xff"}));
+    CHECK_THAT(utils::escaped(Vec{"\x7f", "\x80", "\xff"}, true), RangeEquals(Vec{"\\x7f", "\\x80", "\\xff"}));
+    CHECK_THAT(
+        utils::escaped("\n\r\t\v\f\b\a\0\033"sv | vws::transform([](char c) { return std::format("[{}]", c); }), false),
+        RangeEquals(Vec{"[\\n]", "[\\r]", "[\\t]", "[\\v]", "[\\f]", "[\\b]", "[\\a]", "[\\0]", "[\\e]"})
+    );
+}
 
 TEST_CASE("erase_unordered()") {
     std::vector vec{1, 2, 3, 4, 5};
@@ -93,7 +134,51 @@ TEST_CASE("join(): transform view of const objects") {
     CHECK(utils::join(vec | vws::transform(&S::value), ", ") == "a, b, c");
 }
 
-TEST_CASE("ReplaceAll") {
+TEST_CASE("quoted()") {
+    using Vec = std::vector<std::string_view>;
+
+    CHECK_THAT(utils::quoted(Vec{"a", "b", "c"}), RangeEquals(Vec{"a", "b", "c"}));
+    CHECK_THAT(utils::quoted(Vec{"a", "b", "c"}, true), RangeEquals(Vec{"\"a\"", "\"b\"", "\"c\""}));
+
+    CHECK_THAT(
+        utils::quoted(Vec{"a b c", "a b", "", " a b c", "a b c ", " ab", "ab "}),
+        RangeEquals(Vec{"\"a b c\"", "\"a b\"", "", "\" a b c\"", "\"a b c \"", "\" ab\"", "\"ab \""})
+    );
+
+    CHECK_THAT(
+        utils::quoted(Vec{"a b c", "a b", "", " a b c", "a b c ", " ab", "ab "}, true),
+        RangeEquals(Vec{"\"a b c\"", "\"a b\"", "\"\"", "\" a b c\"", "\"a b c \"", "\" ab\"", "\"ab \""})
+    );
+}
+
+TEST_CASE("quote_escaped()") {
+    using Vec = std::vector<std::string_view>;
+
+    CHECK_THAT(utils::quote_escaped(Vec{"a", "b", "c"}), RangeEquals(Vec{"a", "b", "c"}));
+    CHECK_THAT(utils::quote_escaped(Vec{"a", "b", "c"}, true), RangeEquals(Vec{"\"a\"", "\"b\"", "\"c\""}));
+
+    CHECK_THAT(
+        utils::quote_escaped(Vec{"a b c", "a b", "", " a b c", "a b c ", " ab", "ab "}),
+        RangeEquals(Vec{"\"a b c\"", "\"a b\"", "", "\" a b c\"", "\"a b c \"", "\" ab\"", "\"ab \""})
+    );
+
+    CHECK_THAT(
+        utils::quote_escaped(Vec{"a b c", "a b", "", " a b c", "a b c ", " ab", "ab "}, true),
+        RangeEquals(Vec{"\"a b c\"", "\"a b\"", "\"\"", "\" a b c\"", "\"a b c \"", "\" ab\"", "\"ab \""})
+    );
+
+    CHECK_THAT(
+        utils::quote_escaped(Vec{"\"", "\r\n", " \r", "\n ", "\\", "\\\\", "\r", " \r"}),
+        RangeEquals(Vec{"\\\"", "\\r\\n", "\" \\r\"", "\"\\n \"", "\\\\", "\\\\\\\\", "\\r", "\" \\r\""})
+    );
+
+    CHECK_THAT(
+        utils::quote_escaped(Vec{"\"", "\r\n", " \r", "\n ", "\\", "\\\\", "\r", " \r"}, true),
+        RangeEquals(Vec{"\"\\\"\"", "\"\\r\\n\"", "\" \\r\"", "\"\\n \"", "\"\\\\\"", "\"\\\\\\\\\"", "\"\\r\"", "\" \\r\""})
+    );
+}
+
+TEST_CASE("ReplaceAll()") {
     std::string foo = "barbarbarbar";
 
     utils::ReplaceAll(foo, "x", "foo");

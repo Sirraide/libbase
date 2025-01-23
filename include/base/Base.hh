@@ -8,6 +8,7 @@
 #include <base/Numeric.hh>
 #include <base/Result.hh>
 #include <base/Stream.hh>
+#include <base/StringUtils.hh>
 #include <base/Types.hh>
 #include <base/Utils.hh>
 #include <chrono>
