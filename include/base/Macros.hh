@@ -27,8 +27,12 @@ private:
 
 #ifndef NDEBUG
 #    define LIBBASE_DEBUG(...) __VA_ARGS__
+#    define LIBBASE_RELEASE(...)
+#    define LIBBASE_IF_DEBUG(debug, release) debug
 #else
 #    define LIBBASE_DEBUG(...)
+#    define LIBBASE_RELEASE(...) __VA_ARGS__
+#    define LIBBASE_IF_DEBUG(debug, release) release
 #endif
 
 #define LIBBASE_LPAREN_ (
