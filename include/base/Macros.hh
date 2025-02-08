@@ -17,6 +17,12 @@
     cls(cls&&) = delete;                 \
     cls& operator=(cls&&) = delete
 
+#define LIBBASE_NO_COPY(cls)             \
+public:                                  \
+    cls(const cls&) = delete;            \
+    cls& operator=(const cls&) = delete; \
+private:
+
 #define LIBBASE_MOVE_ONLY(cls)           \
 public:                                  \
     cls(cls&&) = default;                \
