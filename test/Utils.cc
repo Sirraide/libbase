@@ -145,6 +145,12 @@ TEST_CASE("join(): quote_escaped() range") {
     CHECK(utils::join(utils::quote_escaped(vec), "|") == "a|\"b c\"|\" d\"");
 }
 
+TEST_CASE("join_as()") {
+    struct Q { int f; Q(int f): f{f} {} };
+    std::vector<Q> qs { 1, 2, 3, 4, 5, };
+    CHECK(utils::join_as(qs, [](Q q) { return q.f; }) == "1, 2, 3, 4, 5");
+}
+
 TEST_CASE("quoted()") {
     using Vec = std::vector<std::string_view>;
 
