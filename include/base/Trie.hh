@@ -1,6 +1,8 @@
 #ifndef LIBBASE_TRIE_HH
 #define LIBBASE_TRIE_HH
 
+#ifdef __cpp_lib_generator
+
 #include <base/Assert.hh>
 #include <base/Macros.hh>
 #include <queue>
@@ -250,5 +252,7 @@ private:
 
     auto root() -> Node& { return nodes[0]; }
 };
+
+#endif // __cpp_lib_generator
 
 #endif // LIBBASE_TRIE_HH
