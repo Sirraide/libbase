@@ -70,7 +70,7 @@ auto File::Open(PathRef path, OpenMode mode) noexcept -> Result<File> {
     mode_str += 'b';
 
     // Dew it.
-    auto ptr = std::fopen(path.c_str(), mode_str.c_str());
+    auto ptr = std::fopen(path.string().c_str(), mode_str.c_str());
     if (not ptr) return Error("Could not open file: {}", std::strerror(errno));
     File f;
     f.handle.reset(ptr);

@@ -1,6 +1,8 @@
 #include "TestCommon.hh"
 #include <base/Trie.hh>
 
+#ifdef __cpp_lib_generator
+
 using namespace base;
 
 Trie<std::string> t{{"foo", "bar"}};
@@ -63,3 +65,5 @@ TEST_CASE("Trie: Implementation supports any container") {
     std::vector<std::string> expected = { "c", "a", "d", "f" };
     CHECK(trie.replace(input) == expected);
 }
+
+#endif // __cpp_lib_generator

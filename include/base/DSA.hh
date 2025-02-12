@@ -5,7 +5,6 @@
 #include <base/Utils.hh>
 #include <deque>
 #include <functional>
-#include <generator>
 #include <map>
 #include <queue>
 #include <unordered_map>
@@ -13,6 +12,10 @@
 #include <utility>
 #include <variant>
 #include <vector>
+
+#ifdef __cpp_lib_generator
+#    include <generator>
+#endif
 
 /// ====================================================================
 ///  API
@@ -124,12 +127,14 @@ public:
         return v;
     }
 
+#ifdef __cpp_lib_generator
     /// Streaming iterator that pops elements off the queue; it
     /// is safe to enqueue new elements while iterating.
     [[nodiscard]] auto stream() -> std::generator<ValueType> {
         while (not Base::empty())
             co_yield dequeue();
     }
+#endif
 };
 
 template <typename ValueTy, template <typename> class AllocTemplate>

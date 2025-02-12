@@ -2,13 +2,15 @@
 #define LIBBASE_TRIE_HH
 
 #include <base/Assert.hh>
+#include <base/DSA.hh>
 #include <base/Macros.hh>
+#include <base/Types.hh>
 #include <queue>
 #include <ranges>
 #include <unordered_map>
 #include <vector>
-#include <base/DSA.hh>
-#include <base/Types.hh>
+
+#ifdef __cpp_lib_generator
 
 namespace base {
 template <typename Range>
@@ -250,5 +252,7 @@ private:
 
     auto root() -> Node& { return nodes[0]; }
 };
+
+#endif // __cpp_lib_generator
 
 #endif // LIBBASE_TRIE_HH
