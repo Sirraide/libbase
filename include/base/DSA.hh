@@ -5,9 +5,6 @@
 #include <base/Utils.hh>
 #include <deque>
 #include <functional>
-#ifdef __cpp_lib_generator
-#include <generator>
-#endif
 #include <map>
 #include <queue>
 #include <unordered_map>
@@ -15,6 +12,10 @@
 #include <utility>
 #include <variant>
 #include <vector>
+
+#ifdef __cpp_lib_generator
+#    include <generator>
+#endif
 
 /// ====================================================================
 ///  API
