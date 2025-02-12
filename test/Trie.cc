@@ -1,5 +1,4 @@
 #include "TestCommon.hh"
-
 #include <base/Trie.hh>
 
 #ifdef __cpp_lib_generator
@@ -40,7 +39,7 @@ TEST_CASE("Trie: Recursion") {
 }
 
 TEST_CASE("Trie: Examples listed in comments") {
-    Trie<std::string> a{
+    Trie<std::string> a {
         {"fo", "X"},
         {"foo", "Y"},
     };
@@ -48,7 +47,7 @@ TEST_CASE("Trie: Examples listed in comments") {
     CHECK(a.replace("foo") == "Y");
     CHECK(a.replace("fo") == "X");
 
-    Trie<std::string> b{
+    Trie<std::string> b {
         {"tree", "X"},
         {"reenact", "Y"},
     };
@@ -62,8 +61,8 @@ TEST_CASE("Trie: Implementation supports any container") {
     trie.add({"d", "e"}, {"f"});
     trie.update();
 
-    std::vector<std::string> input = {"a", "b", "a", "d", "d", "e"};
-    std::vector<std::string> expected = {"c", "a", "d", "f"};
+    std::vector<std::string> input = { "a", "b", "a", "d", "d", "e"};
+    std::vector<std::string> expected = { "c", "a", "d", "f" };
     CHECK(trie.replace(input) == expected);
 }
 
