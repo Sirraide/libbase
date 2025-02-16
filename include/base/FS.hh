@@ -82,14 +82,14 @@ struct base::fs::InputView : std::span<const std::byte> {
     using std::span<const std::byte>::operator=;
 
     // Allow construction from string view.
-    InputView(std::string_view sv)
+    InputView(std::string_view sv) noexcept
         : std::span<const std::byte>(
               reinterpret_cast<const std::byte*>(sv.data()),
               sv.size()
           ) {}
 
     // Allow construction from char buffer.
-    InputView(const CharBuffer auto& buf)
+    InputView(const CharBuffer auto& buf) noexcept
         : std::span<const std::byte>(
               reinterpret_cast<const std::byte*>(buf.data()),
               buf.size()
@@ -97,7 +97,7 @@ struct base::fs::InputView : std::span<const std::byte> {
 
     // Allow wrapping a compile-time constant char array.
     template <usz N>
-    InputView(const char (&arr)[N])
+    InputView(const char (&arr)[N]) noexcept
         : std::span<const std::byte>(
               reinterpret_cast<const std::byte*>(arr),
               arr[N - 1] == '\0' ? N - 1 : N
@@ -109,14 +109,14 @@ struct base::fs::OutputView : std::span<std::byte> {
     using std::span<std::byte>::operator=;
 
     // Allow construction from char range.
-    OutputView(std::span<char> buf)
+    OutputView(std::span<char> buf) noexcept
         : std::span<std::byte>(
               reinterpret_cast<std::byte*>(buf.data()),
               buf.size()
           ) {}
 
     // Allow construction from char buffer.
-    OutputView(CharBuffer auto& buf)
+    OutputView(CharBuffer auto& buf) noexcept
         : std::span<std::byte>(
               reinterpret_cast<std::byte*>(buf.data()),
               buf.size()
@@ -129,7 +129,6 @@ struct base::fs::OutputView : std::span<std::byte> {
 /// only be used for actual files, not for (named) pipes, sockets,
 /// etc.
 class base::fs::File {
-private:
     OpenMode open_mode;
     std::unique_ptr<FILE, decltype(&std::fclose)> handle{nullptr, std::fclose};
     Path abs_path; // Hack so we can truncate the file.

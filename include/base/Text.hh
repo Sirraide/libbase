@@ -55,46 +55,46 @@ struct c32 {
     char32_t value;
 
     constexpr c32() = default;
-    constexpr c32(char32_t value) : value(value) {}
-    explicit constexpr c32(std::integral auto value) : value(char32_t(value)) {}
+    constexpr c32(char32_t value) noexcept : value(value) {}
+    explicit constexpr c32(std::integral auto value) noexcept : value(char32_t(value)) {}
 
     /// Get the category of a character.
-    [[nodiscard]] auto category() const -> CharCategory;
+    [[nodiscard]] auto category() const noexcept -> CharCategory;
 
     /// Get the name of a character.
-    [[nodiscard]] auto name() const -> Result<std::string>;
+    [[nodiscard]] auto name() const noexcept -> Result<std::string>;
 
     /// Swap case.
-    [[nodiscard]] auto swap_case() const -> c32;
+    [[nodiscard]] auto swap_case() const noexcept -> c32;
 
     /// Convert to lower case.
-    [[nodiscard]] auto to_lower() const -> c32;
+    [[nodiscard]] auto to_lower() const noexcept -> c32;
 
     /// Convert to upper case.
-    [[nodiscard]] auto to_upper() const -> c32;
+    [[nodiscard]] auto to_upper() const noexcept -> c32;
 
     /// Get the width of this character.
     ///
     /// This is either 1 or 2. This property is only well-defined for
     /// characters that have a fixed width.
-    [[nodiscard]] auto width() const -> unsigned;
+    [[nodiscard]] auto width() const noexcept -> unsigned;
 
-    constexpr c32& operator++() {
+    constexpr c32& operator++() noexcept {
         ++value;
         return *this;
     }
 
-    constexpr c32 operator++(int) {
+    constexpr c32 operator++(int) noexcept {
         auto tmp = *this;
         ++value;
         return tmp;
     }
 
     /// Convert to a char32_t.
-    operator char32_t() const { return value; }
+    operator char32_t() const noexcept { return value; }
 
     /// Get the largest valid codepoint.
-    [[nodiscard]] static constexpr auto max() -> c32 { return 0x10'FFFF; }
+    [[nodiscard]] static constexpr auto max() noexcept -> c32 { return 0x10'FFFF; }
 };
 
 /// Find all characters whose name contains one of the given strings.
@@ -114,20 +114,20 @@ struct c32 {
 /// if you pass in a signed char whose value is > 127.
 ///
 /// We also provide a few more functions than cctype for convenience.
-[[nodiscard]] constexpr bool IsDigit(char c) { return c >= '0' and c <= '9'; }
-[[nodiscard]] constexpr bool IsLower(char c) { return c >= 'a' and c <= 'z'; }
-[[nodiscard]] constexpr bool IsUpper(char c) { return c >= 'A' and c <= 'Z'; }
-[[nodiscard]] constexpr bool IsAlpha(char c) { return IsLower(c) or IsUpper(c); }
-[[nodiscard]] constexpr bool IsAlnum(char c) { return IsAlpha(c) or IsDigit(c); }
-[[nodiscard]] constexpr bool IsSpace(char c) { return c == ' ' or c == '\t' or c == '\n' or c == '\r' or c == '\v' or c == '\f'; }
-[[nodiscard]] constexpr bool IsPunct(char c) { return (c >= '!' and c <= '/') or (c >= ':' and c <= '@') or (c >= '[' and c <= '`') or (c >= '{' and c <= '~'); }
-[[nodiscard]] constexpr bool IsGraph(char c) { return IsAlnum(c) or IsPunct(c); }
-[[nodiscard]] constexpr bool IsPrint(char c) { return IsGraph(c) or c == ' '; }
-[[nodiscard]] constexpr bool IsCntrl(char c) { return u8(c) < ' ' or c == 0x7F; }
-[[nodiscard]] constexpr bool IsBlank(char c) { return c == ' ' or c == '\t'; }
-[[nodiscard]] constexpr bool IsXDigit(char c) { return IsDigit(c) or (c >= 'a' and c <= 'f') or (c >= 'A' and c <= 'F'); }
-[[nodiscard]] constexpr bool IsBinary(char c) { return c == '0' or c == '1'; }
-[[nodiscard]] constexpr bool IsOctal(char c) { return c >= '0' and c <= '7'; }
+[[nodiscard]] constexpr bool IsDigit(char c) noexcept { return c >= '0' and c <= '9'; }
+[[nodiscard]] constexpr bool IsLower(char c) noexcept { return c >= 'a' and c <= 'z'; }
+[[nodiscard]] constexpr bool IsUpper(char c) noexcept { return c >= 'A' and c <= 'Z'; }
+[[nodiscard]] constexpr bool IsAlpha(char c) noexcept { return IsLower(c) or IsUpper(c); }
+[[nodiscard]] constexpr bool IsAlnum(char c) noexcept { return IsAlpha(c) or IsDigit(c); }
+[[nodiscard]] constexpr bool IsSpace(char c) noexcept { return c == ' ' or c == '\t' or c == '\n' or c == '\r' or c == '\v' or c == '\f'; }
+[[nodiscard]] constexpr bool IsPunct(char c) noexcept { return (c >= '!' and c <= '/') or (c >= ':' and c <= '@') or (c >= '[' and c <= '`') or (c >= '{' and c <= '~'); }
+[[nodiscard]] constexpr bool IsGraph(char c) noexcept { return IsAlnum(c) or IsPunct(c); }
+[[nodiscard]] constexpr bool IsPrint(char c) noexcept { return IsGraph(c) or c == ' '; }
+[[nodiscard]] constexpr bool IsCntrl(char c) noexcept { return u8(c) < ' ' or c == 0x7F; }
+[[nodiscard]] constexpr bool IsBlank(char c) noexcept { return c == ' ' or c == '\t'; }
+[[nodiscard]] constexpr bool IsXDigit(char c) noexcept { return IsDigit(c) or (c >= 'a' and c <= 'f') or (c >= 'A' and c <= 'F'); }
+[[nodiscard]] constexpr bool IsBinary(char c) noexcept { return c == '0' or c == '1'; }
+[[nodiscard]] constexpr bool IsOctal(char c) noexcept { return c >= '0' and c <= '7'; }
 
 /// Convert a string to a normalised form.
 [[nodiscard]] auto Normalise(std::string_view str, NormalisationForm form) -> Result<std::string>;

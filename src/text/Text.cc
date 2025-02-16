@@ -36,7 +36,7 @@ template <>
 /// ====================================================================
 ///  C32
 /// ====================================================================
-auto c32::category() const -> CharCategory {
+auto c32::category() const noexcept -> CharCategory {
     // This conversion is actually a no-op. The values chosen
     // by us are the same ones that ICU uses, and I don’t think
     // they’re going to change.
@@ -74,7 +74,7 @@ auto c32::category() const -> CharCategory {
     }
 }
 
-auto c32::name() const -> Result<std::string> {
+auto c32::name() const noexcept -> Result<std::string> {
     UErrorCode ec{U_ZERO_ERROR};
     std::array<char, 1'024> char_name{};
 
@@ -101,22 +101,22 @@ auto c32::name() const -> Result<std::string> {
     return std::string{char_name.data(), usz(len)};
 }
 
-auto c32::swap_case() const -> c32 {
+auto c32::swap_case() const noexcept -> c32 {
     auto cat = category();
     if (cat == CharCategory::UppercaseLetter) return to_lower();
     if (cat == CharCategory::LowercaseLetter) return to_upper();
     return *this;
 }
 
-auto c32::to_lower() const -> c32 {
+auto c32::to_lower() const noexcept -> c32 {
     return char32_t(u_tolower(UChar32(value)));
 }
 
-auto c32::to_upper() const -> c32 {
+auto c32::to_upper() const noexcept -> c32 {
     return char32_t(u_toupper(UChar32(value)));
 }
 
-auto c32::width() const -> unsigned {
+auto c32::width() const noexcept -> unsigned {
     auto val = u_getIntPropertyValue(UChar32(value), UCHAR_EAST_ASIAN_WIDTH);
     switch (UEastAsianWidth(val)) {
         default:

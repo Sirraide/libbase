@@ -23,12 +23,12 @@ public:                                  \
     cls& operator=(const cls&) = delete; \
 private:
 
-#define LIBBASE_MOVE_ONLY(cls)           \
-public:                                  \
-    cls(cls&&) = default;                \
-    cls& operator=(cls&&) = default;     \
-    cls(const cls&) = delete;            \
-    cls& operator=(const cls&) = delete; \
+#define LIBBASE_MOVE_ONLY(cls)                \
+public:                                       \
+    cls(cls&&) noexcept = default;            \
+    cls& operator=(cls&&) noexcept = default; \
+    cls(const cls&) = delete;                 \
+    cls& operator=(const cls&) = delete;      \
 private:
 
 #ifndef NDEBUG
