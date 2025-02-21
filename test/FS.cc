@@ -7,7 +7,8 @@
 using namespace base;
 using namespace base::fs;
 
-auto TPath = std::filesystem::temp_directory_path() / "file-that-does-not-exist";
+#define TRelFileName "file-that-does-not-exist"
+auto TPath = std::filesystem::temp_directory_path() / TRelFileName;
 auto TDirPath = std::filesystem::temp_directory_path() / "dir-that-does-not-exist";
 
 auto ThisFile() -> std::string_view {
@@ -109,6 +110,22 @@ TEST_CASE("File::Write should create parent dirs") {
     File::Delete(TDirPath, true).value();
     File::Write(path, "foobarbaz\n"sv).value();
     CHECK(File::ReadToContainer(path).value() == "foobarbaz\n");
+}
+
+TEST_CASE("File::Write can handle relative paths with no parent") {
+    // Move to the temp directory.
+    auto dir = CurrentDirectory();
+    REQUIRE(ChangeDirectory(TDirPath).has_value());
+
+    // Create a file using a relative path.
+    (void) File::Delete(TRelFileName, false); // May fail if the file doesn’t exist.
+    File::Write(TRelFileName, "foobarfoobar\n"sv).value();
+
+    // Check that the file was created.
+    CHECK(File::ReadToContainer(TRelFileName).value() == "foobarfoobar\n");
+
+    // Move back to the original directory.
+    CHECK(ChangeDirectory(dir).has_value());
 }
 
 TEST_CASE("File::mode") {
