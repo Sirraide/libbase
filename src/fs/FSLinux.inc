@@ -15,7 +15,7 @@ auto File::Read(PathRef path) noexcept -> Result<FileContents> {
     // Open the file.
     int fd = open(path.c_str(), O_RDONLY | O_CLOEXEC);
     if (fd == -1) return Err("open");
-    defer { close(fd); };
+    LIBBASE_DEFER { close(fd); };
 
     // Stat it to get its contents.
     struct stat64 st{};

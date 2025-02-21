@@ -130,8 +130,12 @@ private:
 })
 // clang-format on
 
-#define defer   ::base::detail::DeferImpl _ = [&]
+#define LIBBASE_DEFER   ::base::detail::DeferImpl _ = [&]
 #define tempset auto _ = ::base::detail::Tempset{}->*
+
+#ifndef LIBBASE_NO_DEFER
+#    define defer LIBBASE_DEFER
+#endif
 
 namespace base::detail {
 template <typename Callable>
