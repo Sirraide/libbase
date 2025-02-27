@@ -203,7 +203,7 @@ if (LIBBASE_ENABLE_PCRE2)
 
     FetchContent_MakeAvailable(pcre2)
     target_link_libraries(libbase PRIVATE pcre2-8 pcre2-16 pcre2-32)
-    target_compile_definitions(libbase PRIVATE LIBBASE_ENABLE_PCRE2)
+    target_compile_definitions(libbase PUBLIC LIBBASE_ENABLE_PCRE2)
 endif ()
 
 ## ============================================================================
@@ -233,10 +233,6 @@ if (DEFINED BUILD_TESTS)
         "LIBBASE_TESTING_BINARY_DIR=\"${CMAKE_CURRENT_BINARY_DIR}\""
         "LIBBASE_IS_BUILDING_TESTS"
     )
-
-    if (LIBBASE_ENABLE_PCRE2)
-        target_compile_definitions(tests PRIVATE LIBBASE_ENABLE_PCRE2)
-    endif()
 
     catch_discover_tests(tests)
 endif()

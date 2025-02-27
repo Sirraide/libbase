@@ -883,6 +883,15 @@ public:
         return _m_take_until_cond<false>(std::move(c));
     }
 
+#if LIBBASE_ENABLE_PCRE2
+    /// Overload of take_until() that uses a regex.
+    [[nodiscard]] auto
+    take_until(basic_regex<CharType>& regex) noexcept -> text_type {
+        auto match = find(regex);
+        return _m_advance(match ? match->start : size());
+    }
+#endif
+
     /// \see take_until(char_type)
     ///
     /// There currently is no _any overload for this since with those you typically
@@ -956,6 +965,15 @@ public:
     take_until_or_empty(UnaryPredicate c) noexcept(noexcept(c(char_type{}))) -> text_type {
         return _m_take_until_cond<true>(std::move(c));
     }
+
+#if LIBBASE_ENABLE_PCRE2
+    /// Overload of take_until_or_empty() that uses a regex.
+    [[nodiscard]] auto
+    take_until_or_empty(basic_regex<CharType>& regex) noexcept -> text_type {
+        auto match = find(regex);
+        return match ? _m_advance(match->start) : text_type{};
+    }
+#endif
 
     /// \see take_until(char_type)
     [[nodiscard]] constexpr auto

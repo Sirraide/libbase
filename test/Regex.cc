@@ -88,4 +88,41 @@ TEST_CASE("stream::find()") {
     CHECK(stream("").find("a+b+") == std::nullopt);
 }
 
+TEST_CASE("stream::take_until()") {
+    auto r = regex::create("a+b+").value();
+
+    CHECK(stream("ab").take_until(r) == "");
+    CHECK(stream("aaab").take_until(r) == "");
+    CHECK(stream("qqqaaabbb").take_until(r) == "qqq");
+    CHECK(stream("qqqaaabbbqqabq").take_until(r) == "qqq");
+    CHECK(stream("qqqqqabqaaabbb").take_until(r) == "qqqqq");
+    CHECK(stream("qabqqaaabbbqqabq").take_until(r) == "q");
+    CHECK(stream("ba").take_until(r) == "ba");
+    CHECK(stream("foo").take_until(r) == "foo");
+    CHECK(stream("").take_until(r) == "");
+
+    stream s{"qabqqaaabbbqqabq"};
+    CHECK(s.take_until(r) == "q");
+    CHECK(s == "abqqaaabbbqqabq");
+    s.drop(2);
+    CHECK(s.take_until(r) == "qq");
+    CHECK(s == "aaabbbqqabq");
+    s.drop(6);
+    CHECK(s.take_until(r) == "qq");
+    CHECK(s == "abq");
+    s.drop(2);
+    CHECK(s.take_until(r) == "q");
+    CHECK(s.empty());
+
+    CHECK(stream("ab").take_until_or_empty(r) == "");
+    CHECK(stream("aaab").take_until_or_empty(r) == "");
+    CHECK(stream("qqqaaabbb").take_until_or_empty(r) == "qqq");
+    CHECK(stream("qqqaaabbbqqabq").take_until_or_empty(r) == "qqq");
+    CHECK(stream("qqqqqabqaaabbb").take_until_or_empty(r) == "qqqqq");
+    CHECK(stream("qabqqaaabbbqqabq").take_until_or_empty(r) == "q");
+    CHECK(stream("ba").take_until_or_empty(r) == "");
+    CHECK(stream("foo").take_until_or_empty(r) == "");
+    CHECK(stream("").take_until_or_empty(r) == "");
+}
+
 #endif
