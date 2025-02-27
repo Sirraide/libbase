@@ -44,11 +44,6 @@ private:
 #define LIBBASE_LPAREN_ (
 #define LIBBASE_RPAREN_ )
 
-#define LIBBASE_DEFINE_FLAG_ENUM(e)                                           \
-    constexpr auto operator|(e a, e b) noexcept -> e { return e(+a | +b); }   \
-    constexpr auto operator|=(e& a, e b) noexcept -> e& { return a = a | b; } \
-    constexpr bool operator&(e a, e b) noexcept { return (+a & +b) != 0; }
-
 #define LIBBASE_DECLARE_HIDDEN_IMPL(cls, ...) \
 private:                                      \
     struct Impl;                              \
@@ -103,7 +98,7 @@ private:
 /// we can write
 ///
 ///     Bar res = Try(foo());
-///     Bar res = Try(foo(), std::format("Failed to do X: {}", $));
+///     Bar res = TryMapErr(foo(), std::format("Failed to do X: {}", $));
 ///
 /// to invoke `foo` and propagate the error up the call stack, if there
 /// is one; this way, we don’t have to actually write any verbose error
@@ -112,7 +107,14 @@ private:
 /// (Yes, I know this macro is an abomination, but this is what happens
 /// if you don’t have access to this as a language feature...)
 // clang-format off
-#define Try(x, ...) ({                                                       \
+#define Try(...) ({                                                          \
+    auto _res = (__VA_ARGS__);                                               \
+    if (not _res) return std::unexpected(std::move(_res.error()));           \
+    using NonRef = std::remove_reference_t<decltype(_res._unsafe_unwrap())>; \
+    static_cast<std::add_rvalue_reference_t<NonRef>>(_res._unsafe_unwrap()); \
+})
+
+#define TryMapErr(x, ...) ({                                                 \
     auto _res = x;                                                           \
     if (not _res) {                                                          \
         return std::unexpected(                                              \

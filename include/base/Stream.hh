@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <base/Assert.hh>
 #include <base/Macros.hh>
+#include <base/Regex.hh>
 #include <base/Utils.hh>
 #include <cstddef>
 #include <format>
@@ -494,6 +495,29 @@ public:
         return true;
     }
 
+#ifdef LIBBASE_ENABLE_PCRE2
+    /// Find the first occurrence of a regular expression in the stream.
+    [[nodiscard]] auto
+    find(basic_regex<CharType>& regex) const noexcept -> std::optional<regex_match> {
+        return regex.find(text());
+    }
+
+    /// Find the first occurrence of a regular expression in the stream.
+    ///
+    /// Prefer the overload that takes a \c basic_regex object as this
+    /// will recompile the regular expression every time it is called.
+    ///
+    /// If the regular expression fails to compile, this returns \c std::nullopt.
+    [[nodiscard]] auto find(
+        text_type regex_string,
+        regex_flags flags = regex_flags::jit
+    ) const -> std::optional<regex_match> {
+        auto r = basic_regex<CharType>::create(regex_string, flags);
+        if (not r) return std::nullopt;
+        return r.value().find(text());
+    }
+#endif
+
     ///@{
     /// Delete all occurrences of consecutive characters, replacing them
     /// with another string.
@@ -543,6 +567,28 @@ public:
     [[nodiscard]] constexpr auto lines() const noexcept {
         return split(_s_default_line_separator());
     }
+
+#ifdef LIBBASE_ENABLE_PCRE2
+    /// Check if this stream matches a regular expression.
+    [[nodiscard]] bool matches(basic_regex<CharType>& regex) const noexcept {
+        return regex.match(text());
+    }
+
+    /// Check if this stream matches a regular expression.
+    ///
+    /// Prefer the overload that takes a \c basic_regex object as this
+    /// will recompile the regular expression every time it is called.
+    ///
+    /// If the regular expression fails to compile, this returns \c false.
+    [[nodiscard]] bool matches(
+        text_type regex_string,
+        regex_flags flags = regex_flags::jit
+    ) const {
+        auto r = basic_regex<CharType>::create(regex_string, flags);
+        if (not r) return false;
+        return r.value().match(text());
+    }
+#endif
 
     /// Remove all instances of a character from the stream.
     template <typename Buffer = string_type>

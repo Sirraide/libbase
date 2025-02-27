@@ -7,6 +7,11 @@
 #include <utility>
 #include <bit>
 
+#define LIBBASE_DEFINE_FLAG_ENUM(e)                                           \
+    constexpr auto operator|(e a, e b) noexcept -> e { return e(+a | +b); }   \
+    constexpr auto operator|=(e& a, e b) noexcept -> e& { return a = a | b; } \
+    constexpr bool operator&(e a, e b) noexcept { return (+a & +b) != 0; }
+
 namespace base {
 /// Convert a value of enumeration type to its underlying type.
 template <typename Ty>

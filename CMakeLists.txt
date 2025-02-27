@@ -187,6 +187,25 @@ target_link_libraries(libbase
     ICU::data
 )
 
+
+option(LIBBASE_ENABLE_PCRE2 "Enable PCRE2 support" ON)
+if (LIBBASE_ENABLE_PCRE2)
+    set(PCRE2_BUILD_PCRE2GREP OFF)
+    set(PCRE2_BUILD_TESTS OFF)
+    set(PCRE2_BUILD_PCRE2_8 ON)
+    set(PCRE2_BUILD_PCRE2_16 ON)
+    set(PCRE2_BUILD_PCRE2_32 ON)
+    FetchContent_Declare(
+        pcre2
+        GIT_REPOSITORY https://github.com/PCRE2Project/pcre2.git
+        GIT_TAG        pcre2-10.45
+    )
+
+    FetchContent_MakeAvailable(pcre2)
+    target_link_libraries(libbase PRIVATE pcre2-8 pcre2-16 pcre2-32)
+    target_compile_definitions(libbase PRIVATE LIBBASE_ENABLE_PCRE2)
+endif ()
+
 ## ============================================================================
 ##  Testing
 ## ============================================================================
@@ -214,5 +233,10 @@ if (DEFINED BUILD_TESTS)
         "LIBBASE_TESTING_BINARY_DIR=\"${CMAKE_CURRENT_BINARY_DIR}\""
         "LIBBASE_IS_BUILDING_TESTS"
     )
+
+    if (LIBBASE_ENABLE_PCRE2)
+        target_compile_definitions(tests PRIVATE LIBBASE_ENABLE_PCRE2)
+    endif()
+
     catch_discover_tests(tests)
 endif()

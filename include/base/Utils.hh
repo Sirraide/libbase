@@ -17,6 +17,10 @@ namespace base::utils {
 template <typename T, typename... Us>
 concept is = (std::is_same_v<std::remove_cvref_t<T>, std::remove_cvref_t<Us>> or ...);
 
+/// Check if one or more types are exactly the same.
+template <typename T, typename... Us>
+concept is_same = (std::is_same_v<T, Us> or ...);
+
 /// Check if a type is convertible to any of a set of types.
 template <typename T, typename... Us>
 concept convertible_to_any = (std::convertible_to<T, Us> or ...);
