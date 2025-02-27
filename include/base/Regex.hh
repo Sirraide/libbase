@@ -23,7 +23,8 @@ struct regex_match {
     usz start;
     usz end;
 
-    constexpr auto operator<=>(const regex_match &) const = default;
+    [[nodiscard]] constexpr usz size() const noexcept { return end - start; }
+    [[nodiscard]] constexpr auto operator<=>(const regex_match &) const = default;
 };
 
 /// A compiled regular expression.
