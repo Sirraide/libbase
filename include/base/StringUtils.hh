@@ -27,12 +27,10 @@ requires std::is_invocable_v<Proj, rgs::range_value_t<Range>>
 std::string join(
     Range&& range,
     std::string_view sep = ", ",
-    std::format_string<decltype(
-        std::invoke(
-            std::declval<Proj>(),
-            std::declval<const rgs::range_value_t<Range>&>()
-        )
-    )> fmt = "{}",
+    std::format_string<decltype(std::invoke(
+        std::declval<Proj>(),
+        std::declval<const rgs::range_value_t<Range>&>()
+    ))> fmt = "{}",
     Proj proj = {}
 ) {
     std::string result;

@@ -79,6 +79,28 @@ using namespace base;
             if (not Match##width(code, match_data, text)) return std::nullopt;                                                            \
             auto v = pcre2_get_ovector_pointer_##width(static_cast<pcre2_match_data_##width*>(match_data));                               \
             return regex_match{usz(v[0]), usz(v[1])};                                                                                     \
+        }                                                                                                                                 \
+        auto GetCaptureByIndex##width(void* match_data, usz idx)->std::optional<regex_match> {                                            \
+            auto data = static_cast<pcre2_match_data_##width*>(match_data);                                                               \
+            auto ov = pcre2_get_ovector_pointer_##width(data);                                                                            \
+            auto n = pcre2_get_ovector_count_##width(data);                                                                               \
+            if (idx >= n) return std::nullopt;                                                                                            \
+            auto start = ov[2 * idx];                                                                                                     \
+            auto end = ov[2 * idx + 1];                                                                                                   \
+            return regex_match{usz(start), usz(end)};                                                                                     \
+        }                                                                                                                                 \
+                                                                                                                                          \
+        auto GetCaptureByName##width(void* code, void* match_data, utils::basic_zstring<char_type> name)->std::optional<regex_match> {    \
+            auto data = static_cast<pcre2_match_data_##width*>(match_data);                                                               \
+            auto ov = pcre2_get_ovector_pointer_##width(data);                                                                            \
+            auto num = pcre2_substring_number_from_name_##width(                                                                          \
+                static_cast<pcre2_code_##width*>(code),                                                                                   \
+                reinterpret_cast<PCRE2_SPTR##width>(name.data())                                                                          \
+            );                                                                                                                            \
+            if (num < 0) return std::nullopt;                                                                                             \
+            auto start = ov[2 * num];                                                                                                     \
+            auto end = ov[2 * num + 1];                                                                                                   \
+            return regex_match{usz(start), usz(end)};                                                                                     \
         }
 
 namespace {
@@ -86,36 +108,45 @@ IMPL(char, 8);
 IMPL(char32_t, 32);
 }
 
+#    define DISPATCH(func, ...)                                                                \
+        [&] {                                                                                  \
+            if constexpr (utils::is<char_type, char>) return ::func##8(__VA_ARGS__);           \
+            else if constexpr (utils::is<char_type, char32_t>) return ::func##32(__VA_ARGS__); \
+            else static_assert(false, "Unsupported character type");                           \
+        }()
+
 template <typename CharType>
 basic_regex<CharType>::basic_regex(text_type pattern, regex_flags flags)
     : basic_regex(create(pattern, flags).value()) {}
 
 template <typename CharType>
 auto basic_regex<CharType>::create(text_type pattern, regex_flags flags) -> Result<basic_regex> {
-    if constexpr (utils::is<char_type, char>) return basic_regex{Try(Create8(pattern, flags))};
-    else if constexpr (utils::is<char_type, char32_t>) return basic_regex{Try(Create32(pattern, flags))};
-    else static_assert(false, "Unsupported character type");
+    return basic_regex(Try(DISPATCH(Create, pattern, flags)));
 }
 
 template <typename CharType>
 basic_regex<CharType>::~basic_regex() noexcept {
-    if constexpr (utils::is<char_type, char>) Delete8(code, match_data);
-    else if constexpr (utils::is<char_type, char32_t>) Delete32(code, match_data);
-    else static_assert(false, "Unsupported character type");
+    DISPATCH(Delete, code, match_data);
 }
 
 template <typename CharType>
 auto basic_regex<CharType>::match(text_type text) noexcept -> bool {
-    if constexpr (utils::is<char_type, char>) return ::Match8(code, match_data, text);
-    else if constexpr (utils::is<char_type, char32_t>) return ::Match32(code, match_data, text);
-    else static_assert(false, "Unsupported character type");
+    return DISPATCH(Match, code, match_data, text);
 }
 
 template <typename CharType>
 auto basic_regex<CharType>::find(text_type text) noexcept -> std::optional<regex_match> {
-    if constexpr (utils::is<char_type, char>) return ::Find8(code, match_data, text);
-    else if constexpr (utils::is<char_type, char32_t>) return ::Find32(code, match_data, text);
-    else static_assert(false, "Unsupported character type");
+    return DISPATCH(Find, code, match_data, text);
+}
+
+template <typename CharType>
+auto basic_regex<CharType>::operator[](std::size_t capture_index) -> std::optional<regex_match> {
+    return DISPATCH(GetCaptureByIndex, match_data, capture_index);
+}
+
+template <typename CharType>
+auto basic_regex<CharType>::operator[](utils::basic_zstring<CharType> capture_name) -> std::optional<regex_match> {
+    return DISPATCH(GetCaptureByName, code, match_data, capture_name);
 }
 
 namespace base {

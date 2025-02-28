@@ -135,6 +135,66 @@ template <typename Variant, typename Visitor>
 constexpr decltype(auto) Visit(Visitor&& visitor, Variant&& variant) {
     return std::visit(std::forward<Variant>(variant), std::forward<Visitor>(visitor));
 }
+
+
+/// Non-owning zero-terminated string.
+///
+/// This is meant to be used in function parameters only to avoid allocations if
+/// possible while simultaneously ensuring that the string data is null-terminated.
+///
+/// Do NOT store a copy of this anywhere, ever.
+template <typename CharType>
+class basic_zstring {
+    using char_type = CharType;
+    using text_type = std::basic_string_view<char_type>;
+    using string_type = std::basic_string<char_type>;
+
+    std::variant<text_type, string_type> value;
+
+public:
+    /// Create an empty string.
+    basic_zstring() : value{text_type{}} {}
+
+    /// Create a zstring from a string literal.
+    template <usz n>
+    basic_zstring(const char_type (&data)[n]) : value{text_type{data, n - 1}} {}
+
+    /// Create a zstring from a std::string.
+    basic_zstring(const std::string& str) : value{text_type{str}} {}
+
+    /// Create a zstring from a std::string_view.
+    basic_zstring(std::string_view str) : value{string_type{str}} {}
+
+    /// Create a zstring from a pointer and size.
+    basic_zstring(const char_type* data, usz size) : value{text_type{data, size}} {}
+
+    /// Get the data pointer.
+    [[nodiscard]] auto data() const -> const char_type* { return str().data(); }
+
+    /// Get the size of the string.
+    [[nodiscard]] auto size() const -> usz { return str().size(); }
+
+    /// Get the string.
+    [[nodiscard]] auto str() const -> text_type {
+        return Visit(value, Overloaded{
+            [](text_type t) { return t; },
+            [](const string_type& t) { return text_type{t}; },
+        });
+    }
+};
+
+using zstring = basic_zstring<char>;
+using u8zstring = basic_zstring<char8_t>;
+using u16zstring = basic_zstring<char16_t>;
+using u32zstring = basic_zstring<char32_t>;
 } // namespace base::utils
+
+template <typename CharType>
+struct std::formatter<base::utils::basic_zstring<CharType>> : std::formatter<std::basic_string_view<CharType>> {
+    template <typename FormatContext>
+    auto format(base::utils::basic_zstring<CharType> str, FormatContext& ctx) const {
+        return std::formatter<std::basic_string_view<CharType>>::format(str.str(), ctx);
+    }
+};
 
 #endif // LIBBASE_UTILS_HH

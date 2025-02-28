@@ -20,11 +20,23 @@ enum struct regex_flags : u64 {
 LIBBASE_DEFINE_FLAG_ENUM(regex_flags);
 
 struct regex_match {
-    usz start;
-    usz end;
+    usz start{};
+    usz end{};
+
+    /// Extract the matched data from the input buffer.
+    ///
+    /// The buffer passed to this MUST be the EXACT SAME that was passed
+    /// to 'regex::find()' or 'regex::match()', otherwise, the behaviour
+    /// is undefined.
+    template <typename CharType>
+    [[nodiscard]] constexpr auto extract(
+        std::basic_string_view<CharType> buffer
+    ) -> std::basic_string_view<CharType> {
+        return buffer.substr(start, size());
+    }
 
     [[nodiscard]] constexpr usz size() const noexcept { return end - start; }
-    [[nodiscard]] constexpr auto operator<=>(const regex_match &) const = default;
+    [[nodiscard]] constexpr auto operator<=>(const regex_match&) const = default;
 };
 
 /// A compiled regular expression.
@@ -91,6 +103,22 @@ public:
 
     /// Check whether the input matches this regex.
     [[nodiscard]] bool match(text_type text) noexcept;
+
+    /// Access a capture by index.
+    ///
+    /// Note that, as usual, index 0 is the entire match.
+    ///
+    /// This may fail if the index is out of bounds. The return value is
+    /// unspecified if 'match()' or 'find()' have never been called on this
+    /// expression.
+    [[nodiscard]] auto operator[](std::size_t capture_index) -> std::optional<regex_match>;
+
+    /// Access a capture by name.
+    ///
+    /// This may fail if there is no capture with the specified name. The return
+    /// value is unspecified if 'match()' or 'find()' have never been called on
+    /// this expression.
+    [[nodiscard]] auto operator[](utils::basic_zstring<CharType> capture_name) -> std::optional<regex_match>;
 };
 
 extern template class basic_regex<char>;

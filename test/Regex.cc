@@ -2,20 +2,27 @@
 
 #ifdef LIBBASE_ENABLE_PCRE2
 
-#include <base/Regex.hh>
+#    include <base/Regex.hh>
 
 using namespace base;
 
+template <>
+struct Catch::StringMaker<regex_match> {
+    static std::string convert(regex_match m) {
+        return std::format("({}, {})", m.start, m.end);
+    }
+};
+
 TEST_CASE("Error on invalid regex") {
-    CHECK_THROWS_WITH(regex::create("+").value(), ContainsSubstring("quantifier does not follow a repeatable item"));
+    CHECK(regex::create("+").error().contains("quantifier does not follow a repeatable item"));
     CHECK_THROWS_WITH(regex{"+"}, ContainsSubstring("quantifier does not follow a repeatable item"));
-    CHECK_THROWS_WITH(regex::create("[a-").value(), ContainsSubstring("missing terminating ] for character class"));
+    CHECK(regex::create("[a-").error().contains("missing terminating ] for character class"));
     CHECK_THROWS_WITH(regex{"[a-"}, ContainsSubstring("missing terminating ] for character class"));
 }
 
 TEST_CASE("Basic regex matching works") {
-    auto r = regex::create("a+b+").value();
-    auto r32 = u32regex::create(U"a+b+").value();
+    regex r = "a+b+"sv;
+    u32regex r32 = U"a+b+"sv;
 
     CHECK(r.match("ab"));
     CHECK(r.match("aaab"));
@@ -35,8 +42,8 @@ TEST_CASE("Basic regex matching works") {
 }
 
 TEST_CASE("regex::find()") {
-    auto r = regex::create("a+b+").value();
-    auto r32 = u32regex::create(U"a+b+").value();
+    regex r = "a+b+"sv;
+    u32regex r32 = U"a+b+"sv;
 
     CHECK(r.find("ab") == regex_match(0, 2));
     CHECK(r.find("aaab") == regex_match(0, 4));
@@ -55,8 +62,59 @@ TEST_CASE("regex::find()") {
     CHECK(r32.find(U"") == std::nullopt);
 }
 
+TEST_CASE("Access captures by index") {
+    static constexpr std::string_view input = "aaabbcc";
+    static constexpr std::u32string_view input32 = U"aaabbcc";
+    regex r = "a(a+(b+))(c+)"sv;
+    u32regex r32 = U"a(a+(b+))(c+)"sv;
+
+    REQUIRE(r.match(input));
+    CHECK(r[0].value() == regex_match(0, 7));
+    CHECK(r[1].value() == regex_match(1, 5));
+    CHECK(r[2].value() == regex_match(3, 5));
+    CHECK(r[3].value() == regex_match(5, 7));
+    CHECK(r[4] == std::nullopt);
+
+    REQUIRE(r32.match(input32));
+    CHECK(r32[0].value() == regex_match(0, 7));
+    CHECK(r32[1].value() == regex_match(1, 5));
+    CHECK(r32[2].value() == regex_match(3, 5));
+    CHECK(r32[3].value() == regex_match(5, 7));
+    CHECK(r32[4] == std::nullopt);
+}
+
+TEST_CASE("Access captures by name") {
+    regex r = "a(?<one>a+(?<two>b+))(?<three>c+)"sv;
+    u32regex r32 = U"a(?<one>a+(?<two>b+))(?<three>c+)"sv;
+
+    REQUIRE(r.match("aaabbcc"));
+    CHECK(r["one"].value() == regex_match(1, 5));
+    CHECK(r["two"].value() == regex_match(3, 5));
+    CHECK(r["three"].value() == regex_match(5, 7));
+    CHECK(r[""] == std::nullopt);
+    CHECK(r["does not exist"] == std::nullopt);
+
+    REQUIRE(r32.match(U"aaabbcc"));
+    CHECK(r32[U"one"].value() == regex_match(1, 5));
+    CHECK(r32[U"two"].value() == regex_match(3, 5));
+    CHECK(r32[U"three"].value() == regex_match(5, 7));
+    CHECK(r32[U""] == std::nullopt);
+    CHECK(r32[U"does not exist"] == std::nullopt);
+}
+
+TEST_CASE("regex_match::extract") {
+    static constexpr std::string_view input = "xxaabbyy";
+    regex r = "a+(b+)"sv;
+
+    REQUIRE(r.match(input));
+    CHECK(r[0]->extract(input).data() == input.substr(2, 4).data());
+    CHECK(r[0]->extract(input).size() == input.substr(2, 4).size());
+    CHECK(r[1]->extract(input).data() == input.substr(4, 2).data());
+    CHECK(r[1]->extract(input).size() == input.substr(4, 2).size());
+}
+
 TEST_CASE("stream::matches()") {
-    auto r = regex::create("a+b+").value();
+    regex r = "a+b+"sv;
 
     CHECK(stream("ab").matches(r));
     CHECK(stream("aaab").matches(r));
@@ -76,7 +134,7 @@ TEST_CASE("stream::matches()") {
 }
 
 TEST_CASE("stream::find()") {
-    auto r = regex::create("a+b+").value();
+    regex r = "a+b+"sv;
 
     CHECK(stream("ab").find(r) == regex_match(0, 2));
     CHECK(stream("aaab").find(r) == regex_match(0, 4));
@@ -96,7 +154,7 @@ TEST_CASE("stream::find()") {
 }
 
 TEST_CASE("stream::take_until()") {
-    auto r = regex::create("a+b+").value();
+    regex r = "a+b+"sv;
 
     CHECK(stream("ab").take_until(r) == "");
     CHECK(stream("aaab").take_until(r) == "");
