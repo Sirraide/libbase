@@ -6,6 +6,13 @@
 
 using namespace base;
 
+TEST_CASE("Error on invalid regex") {
+    CHECK_THROWS_WITH(regex::create("+").value(), ContainsSubstring("quantifier does not follow a repeatable item"));
+    CHECK_THROWS_WITH(regex{"+"}, ContainsSubstring("quantifier does not follow a repeatable item"));
+    CHECK_THROWS_WITH(regex::create("[a-").value(), ContainsSubstring("missing terminating ] for character class"));
+    CHECK_THROWS_WITH(regex{"[a-"}, ContainsSubstring("missing terminating ] for character class"));
+}
+
 TEST_CASE("Basic regex matching works") {
     auto r = regex::create("a+b+").value();
     auto r32 = u32regex::create(U"a+b+").value();

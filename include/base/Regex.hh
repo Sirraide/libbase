@@ -53,23 +53,35 @@ private:
 public:
     /// Create a new regex from a pattern.
     ///
-    /// This may fail if the regex doesn’t parse.
-    [[nodiscard]] static auto create(
+    /// \throw std::runtime_error if the pattern could not be compiled.
+    /// \see create() for a non-throwing factory function.
+    basic_regex(
         text_type pattern,
         regex_flags flags = regex_flags::jit | regex_flags::dotall
-    ) -> Result<basic_regex>;
+    );
 
+    /// Move constructor.
     basic_regex(basic_regex&& other) noexcept
         : code(std::exchange(other.code, nullptr)),
           match_data(std::exchange(other.match_data, nullptr)) {}
 
+    /// Move assignment operator.
     auto operator=(basic_regex&& other) noexcept -> basic_regex& {
         std::swap(code, other.code);
         std::swap(match_data, other.match_data);
         return *this;
     }
 
+    /// Destructor.
     ~basic_regex() noexcept;
+
+    /// Create a new regex from a pattern.
+    ///
+    /// This may fail if the regex doesn’t parse.
+    [[nodiscard]] static auto create(
+        text_type pattern,
+        regex_flags flags = regex_flags::jit | regex_flags::dotall
+    ) -> Result<basic_regex>;
 
     /// Find the first match in a string.
     ///

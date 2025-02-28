@@ -42,7 +42,7 @@ using namespace base;
                 if (sz == PCRE2_ERROR_BADDATA) return Error("Regex error: PCRE error code is invalid");                                   \
                 if (sz == PCRE2_ERROR_NOMEMORY) return Error("Regex error: PCRE error buffer is too small to accommodate error message"); \
                 buffer.resize(usz(sz));                                                                                                   \
-                return Error("Regex error: {}", buffer);                                                                                  \
+                return Error("Regex error: in expression '{}': {}", pattern, buffer);                                                     \
             }                                                                                                                             \
                                                                                                                                           \
             /* JIT-compile it if possible. */                                                                                             \
@@ -85,6 +85,10 @@ namespace {
 IMPL(char, 8);
 IMPL(char32_t, 32);
 }
+
+template <typename CharType>
+basic_regex<CharType>::basic_regex(text_type pattern, regex_flags flags)
+    : basic_regex(create(pattern, flags).value()) {}
 
 template <typename CharType>
 auto basic_regex<CharType>::create(text_type pattern, regex_flags flags) -> Result<basic_regex> {

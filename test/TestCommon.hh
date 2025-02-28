@@ -5,6 +5,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <base/Base.hh>
 
+using Catch::Matchers::ContainsSubstring;
+
 // Like string view, but escape chars are printed escaped.
 struct RawString {
     std::string str;

@@ -2,7 +2,6 @@
 #include <base/Colours.hh>
 
 using namespace base::text;
-using Catch::Matchers::ContainsSubstring;
 
 auto Render(std::string_view in) -> RawString {
     return {RenderColours(true, in)};
