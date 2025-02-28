@@ -160,10 +160,10 @@ public:
     basic_zstring(const char_type (&data)[n]) : value{text_type{data, n - 1}} {}
 
     /// Create a zstring from a std::string.
-    basic_zstring(const std::string& str) : value{text_type{str}} {}
+    basic_zstring(const string_type& str) : value{text_type{str}} {}
 
     /// Create a zstring from a std::string_view.
-    basic_zstring(std::string_view str) : value{string_type{str}} {}
+    basic_zstring(text_type str) : value{string_type{str}} {}
 
     /// Create a zstring from a pointer and size.
     basic_zstring(const char_type* data, usz size) : value{text_type{data, size}} {}

@@ -212,6 +212,17 @@ TEST_CASE("ReplaceAll()") {
     CHECK(foo == "[foo][foo][foo][foo][foo][foo][foo][foo]");
 }
 
+TEST_CASE("basic_zstring construction") {
+    CHECK(utils::zstring{"foo"}.str() == "foo");
+    CHECK(utils::zstring{"foo"s}.str() == "foo");
+    CHECK(utils::zstring{"foo"sv}.str() == "foo");
+    CHECK(utils::zstring{"foo", 3}.str() == "foo");
+    CHECK(utils::u32zstring{U"foo"}.str() == U"foo");
+    CHECK(utils::u32zstring{U"foo"s}.str() == U"foo");
+    CHECK(utils::u32zstring{U"foo"sv}.str() == U"foo");
+    CHECK(utils::u32zstring{U"foo", 3}.str() == U"foo");
+}
+
 #if LIBBASE_PROPERTIES
 struct S {
     std::string _foo, _bar;
