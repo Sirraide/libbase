@@ -3,8 +3,9 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <type_traits>
 #include <ranges>
+#include <source_location>
+#include <type_traits>
 
 namespace base {
 namespace rgs = std::ranges;
@@ -26,6 +27,15 @@ using iptr = std::intptr_t;
 
 using f32 = float;
 using f64 = double;
+
+namespace utils {
+/// Used instead of 'Assert()' in some places so we can catch the
+/// exception in unit tests.
+[[noreturn]] void ThrowOrAbort(
+    const std::string& message,
+    std::source_location loc = std::source_location::current()
+);
 }
+} // namespace base
 
 #endif // LIBBASE_TYPES_HH

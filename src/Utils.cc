@@ -30,6 +30,21 @@ auto base::utils::Escape(std::string_view str, bool escape_double_quotes) -> std
     return s;
 }
 
+auto base::utils::HumanReadable(u64 value) -> std::string {
+    if (value < u64(1) << 10) return std::format("{}", value);
+    if (value < u64(1) << 20) return std::format("{}K", value / (u64(1) << 10));
+    if (value < u64(1) << 30) return std::format("{}M", value / (u64(1) << 20));
+    if (value < u64(1) << 40) return std::format("{}G", value / (u64(1) << 30));
+    if (value < u64(1) << 50) return std::format("{}T", value / (u64(1) << 40));
+    if (value < u64(1) << 60) return std::format("{}P", value / (u64(1) << 50));
+    return std::format("{}E", value / (u64(1) << 60));
+}
+
+auto base::utils::HumanReadable(i64 value) -> std::string {
+    if (value < 0) return "-" + HumanReadable(static_cast<u64>(-value));
+    return HumanReadable(static_cast<u64>(value));
+}
+
 void base::utils::ReplaceAll(
     std::string& str,
     std::string_view from,

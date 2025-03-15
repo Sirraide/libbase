@@ -50,6 +50,10 @@ bool Empty(Range&& range) {
     }
 }
 
+/// Format a value as a human-readable number.
+auto HumanReadable(u64 value) -> std::string;
+auto HumanReadable(i64 value) -> std::string;
+
 template <typename... Types>
 struct Overloaded : Types... {
     using Types::operator()...;
@@ -122,13 +126,6 @@ void splice(Container& container, Iterator begin_remove, Iterator end_remove, In
     // Finally, copy the new elements into the range.
     rgs::copy(std::forward<Input>(input_range), begin_remove);
 }
-
-/// Used instead of 'Assert()' in some places so we can catch the
-/// exception in unit tests.
-[[noreturn]] void ThrowOrAbort(
-    const std::string& message,
-    std::source_location loc = std::source_location::current()
-);
 
 /// std::visit, but with a better order of arguments.
 template <typename Variant, typename Visitor>
