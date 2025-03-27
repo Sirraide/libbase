@@ -5,6 +5,7 @@
 
 ## Build files.
 /out/
+/cmake-build-*
 
 ## Valgrind.
 callgrind.out.*

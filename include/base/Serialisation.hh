@@ -151,7 +151,7 @@ public:
     template <typename T>
     requires requires (Reader& r, T& t) { r >> t; }
     auto read() -> T {
-        T t;
+        T t{};
         *this >> t;
         return t;
     }
