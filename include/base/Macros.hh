@@ -1,8 +1,6 @@
 #ifndef LIBBASE_MACROS_HH
 #define LIBBASE_MACROS_HH
 
-#include <expected>
-#include <type_traits>
 #include <utility>
 
 #define LIBBASE_STR_(X) #X

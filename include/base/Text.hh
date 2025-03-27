@@ -58,6 +58,7 @@ struct c32 {
     constexpr c32(char32_t value) noexcept : value(value) {}
     explicit constexpr c32(std::integral auto value) noexcept : value(char32_t(value)) {}
 
+#ifdef LIBBASE_ENABLE_UNICODE_SUPPORT
     /// Get the category of a character.
     [[nodiscard]] auto category() const noexcept -> CharCategory;
 
@@ -78,6 +79,7 @@ struct c32 {
     /// This is either 1 or 2. This property is only well-defined for
     /// characters that have a fixed width.
     [[nodiscard]] auto width() const noexcept -> unsigned;
+#endif
 
     constexpr c32& operator++() noexcept {
         ++value;
@@ -97,6 +99,7 @@ struct c32 {
     [[nodiscard]] static constexpr auto max() noexcept -> c32 { return 0x10'FFFF; }
 };
 
+#ifdef LIBBASE_ENABLE_UNICODE_SUPPORT
 /// Find all characters whose name contains one of the given strings.
 ///
 /// If the query is empty, the result is unspecified.
@@ -105,8 +108,9 @@ struct c32 {
     c32 from = u' ',
     c32 to = c32::max()
 ) -> std::vector<c32>;
+#endif
 
-/// <cctype> functions.
+/// Better <cctype> functions.
 ///
 /// We provide separate definition of these for several reasons. Unlike the C
 /// standard library equivalents, these are constexpr, can be inlined by the
@@ -129,6 +133,7 @@ struct c32 {
 [[nodiscard]] constexpr bool IsBinary(char c) noexcept { return c == '0' or c == '1'; }
 [[nodiscard]] constexpr bool IsOctal(char c) noexcept { return c >= '0' and c <= '7'; }
 
+#ifdef LIBBASE_ENABLE_UNICODE_SUPPORT
 /// Convert a string to a normalised form.
 [[nodiscard]] auto Normalise(std::string_view str, NormalisationForm form) -> Result<std::string>;
 [[nodiscard]] auto Normalise(std::u32string_view str, NormalisationForm form) -> Result<std::u32string>;
@@ -147,6 +152,7 @@ struct c32 {
 /// Convert UTF-32 to UTF-8.
 [[nodiscard]] auto ToUTF8(std::u32string_view str) -> std::string;
 [[nodiscard]] auto ToUTF8(c32 str) -> std::string;
+#endif
 } // namespace base::text
 
 namespace base {
@@ -169,6 +175,7 @@ struct std::formatter<char32_t> : formatter<base::u32> {
     }
 };
 
+#ifdef LIBBASE_ENABLE_UNICODE_SUPPORT
 template <>
 struct std::formatter<std::u32string_view> : formatter<std::string_view> {
     template <typename FormatContext>
@@ -187,5 +194,6 @@ struct std::formatter<std::u32string> : formatter<std::u32string_view> {
         return formatter<std::u32string_view>::format(s, ctx);
     }
 };
+#endif
 
 #endif // LIBBASE_TEXT_HH

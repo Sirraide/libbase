@@ -151,44 +151,55 @@ if (DEFINED LIBBASE_CXXFLAGS)
 endif()
 
 ## ============================================================================
+##  Options
+## ============================================================================
+option(LIBBASE_LITE "Enable lite mode" OFF)
+option(LIBBASE_ENABLE_PCRE2 "Enable PCRE2 support" ON)
+option(LIBBASE_USE_LIBASSERT "Use libassert" ON)
+option(LIBBASE_ENABLE_UNICODE_SUPPORT "Enable Unicode support" ON)
+
+if (LIBBASE_LITE)
+    set(LIBBASE_ENABLE_PCRE2 OFF)
+    set(LIBBASE_USE_LIBASSERT OFF)
+    set(LIBBASE_ENABLE_UNICODE_SUPPORT OFF)
+endif()
+
+## ============================================================================
 ##  Dependencies
 ## ============================================================================
 include(FetchContent)
 
-set(ICU_FIND_COMPONENTS uc i18n data)
-include(FindICU)
-if (NOT ICU_FOUND)
-    message(FATAL_ERROR "ICU not found. Required components are: uc, i18n, data.")
-endif ()
+## Add ICU for utf 8<->32 conversion and other unicode-related features.
+if (LIBBASE_ENABLE_UNICODE_SUPPORT)
+    set(ICU_FIND_COMPONENTS uc i18n data)
+    include(FindICU)
+    if (NOT ICU_FOUND)
+        message(FATAL_ERROR "ICU not found. Required components are: uc, i18n, data.")
+    endif ()
 
-add_definitions(-DLIBASSERT_STATIC_DEFINE)
-FetchContent_Declare(
-    libassert
-    GIT_REPOSITORY https://github.com/jeremy-rifkin/libassert.git
-    GIT_TAG        v2.1.0
-)
+    target_compile_definitions(libbase PUBLIC LIBBASE_ENABLE_UNICODE_SUPPORT)
+    target_link_libraries(libbase PRIVATE
+        ICU::i18n
+        ICU::uc
+        ICU::data
+    )
+endif()
 
-FetchContent_Declare(
-    clopts
-    GIT_REPOSITORY https://github.com/Sirraide/clopts.git
-    GIT_TAG        master
-    SOURCE_DIR     "${CMAKE_CURRENT_BINARY_DIR}/clopts"
-)
+## Add libassert for better assertions and stack traces.
+if (LIBBASE_USE_LIBASSERT)
+    add_definitions(-DLIBASSERT_STATIC_DEFINE)
+    FetchContent_Declare(
+        libassert
+        GIT_REPOSITORY https://github.com/jeremy-rifkin/libassert.git
+        GIT_TAG        v2.1.0
+    )
+    FetchContent_MakeAvailable(libassert)
 
-FetchContent_MakeAvailable(libassert clopts)
-target_include_directories(libbase PUBLIC "${clopts_SOURCE_DIR}/include")
-target_link_libraries(libbase
-    PUBLIC
-    libassert::assert
+    target_compile_definitions(libbase PUBLIC LIBBASE_USE_LIBASSERT)
+    target_link_libraries(libbase PUBLIC libassert::assert)
+endif()
 
-    PRIVATE
-    ICU::i18n
-    ICU::uc
-    ICU::data
-)
-
-
-option(LIBBASE_ENABLE_PCRE2 "Enable PCRE2 support" ON)
+## Add a proper regex engine.
 if (LIBBASE_ENABLE_PCRE2)
     set(PCRE2_BUILD_PCRE2GREP OFF)
     set(PCRE2_BUILD_TESTS OFF)
@@ -200,11 +211,22 @@ if (LIBBASE_ENABLE_PCRE2)
         GIT_REPOSITORY https://github.com/PCRE2Project/pcre2.git
         GIT_TAG        pcre2-10.45
     )
-
     FetchContent_MakeAvailable(pcre2)
-    target_link_libraries(libbase PRIVATE pcre2-8 pcre2-16 pcre2-32)
+
     target_compile_definitions(libbase PUBLIC LIBBASE_ENABLE_PCRE2)
+    target_link_libraries(libbase PRIVATE pcre2-8 pcre2-16 pcre2-32)
 endif ()
+
+## Add the command-line options library in any case.
+FetchContent_Declare(
+    clopts
+    GIT_REPOSITORY https://github.com/Sirraide/clopts.git
+    GIT_TAG        master
+    SOURCE_DIR     "${CMAKE_CURRENT_BINARY_DIR}/clopts"
+)
+
+FetchContent_MakeAvailable(clopts)
+target_include_directories(libbase PUBLIC "${clopts_SOURCE_DIR}/include")
 
 ## ============================================================================
 ##  Testing

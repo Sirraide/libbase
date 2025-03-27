@@ -1,7 +1,5 @@
-#include "TestCommon.hh"
-
 #ifdef LIBBASE_ENABLE_PCRE2
-
+#    include "TestCommon.hh"
 #    include <base/Regex.hh>
 
 using namespace base;

@@ -883,7 +883,7 @@ public:
         return _m_take_until_cond<false>(std::move(c));
     }
 
-#if LIBBASE_ENABLE_PCRE2
+#ifdef LIBBASE_ENABLE_PCRE2
     /// Overload of take_until() that uses a regex.
     [[nodiscard]] auto
     take_until(basic_regex<CharType>& regex) noexcept -> text_type {
@@ -966,7 +966,7 @@ public:
         return _m_take_until_cond<true>(std::move(c));
     }
 
-#if LIBBASE_ENABLE_PCRE2
+#ifdef LIBBASE_ENABLE_PCRE2
     /// Overload of take_until_or_empty() that uses a regex.
     [[nodiscard]] auto
     take_until_or_empty(basic_regex<CharType>& regex) noexcept -> text_type {

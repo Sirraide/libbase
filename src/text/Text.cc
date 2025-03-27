@@ -1,9 +1,10 @@
-#include <base/Base.hh>
-#include <base/Text.hh>
-#include <unicode/translit.h>
-#include <unicode/uchar.h>
-#include <unicode/unistr.h>
-#include <functional>
+#ifdef LIBBASE_ENABLE_UNICODE_SUPPORT
+#    include <base/Base.hh>
+#    include <base/Text.hh>
+#    include <functional>
+#    include <unicode/translit.h>
+#    include <unicode/uchar.h>
+#    include <unicode/unistr.h>
 
 using namespace base;
 using namespace base::text;
@@ -279,3 +280,4 @@ auto text::ToUTF8(std::u32string_view str) -> std::string {
 auto text::ToUTF8(c32 c) -> std::string {
     return ExportUTF<char>(UStr(std::u32string_view{&c.value, 1}));
 }
+#endif

@@ -6,6 +6,7 @@
 #include <deque>
 #include <functional>
 #include <map>
+#include <memory>
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
