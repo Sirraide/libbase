@@ -18,7 +18,7 @@ struct std::formatter<std::vector<Inner>> : std::formatter<Inner> {
 /// In keeping with the design principles of this class, users must explicitly
 /// choose whether to print this as bits or bytes.
 ///
-/// Use 'b' for bits, 'B' for bytes.
+/// Use 'i' for bits, 'y' for bytes.
 template <>
 struct std::formatter<base::Size> {
     bool bits = false;
@@ -28,13 +28,13 @@ struct std::formatter<base::Size> {
     constexpr auto parse(ParseContext& ctx) {
         auto it = ctx.begin();
         if (it == ctx.end() or *it == '}')
-            base::utils::ThrowOrAbort("'b' or 'B' is required when formatting a Size");
+            base::utils::ThrowOrAbort("'i' or 'y' is required when formatting a Size");
 
-        if (*it == 'b' or *it == 'B') {
-            bits = *it == 'b';
+        if (*it == 'i' or *it == 'y') {
+            bits = *it == 'i';
             ++it;
         } else {
-            base::utils::ThrowOrAbort("'b' or 'B' must be the first format specifier");
+            base::utils::ThrowOrAbort("'i' or 'y' must be the first format specifier");
         }
 
         if (it != ctx.end() and *it == 'h') {
