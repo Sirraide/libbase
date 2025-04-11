@@ -46,8 +46,8 @@ struct Context {
         // If the previous style is equal to the current one, do nothing; since
         // we already combine a style with its parent style when we parse them,
         // this takes care of eliminating nested styles that don’t change anything,
-        // e.g. '%b1(%1(abc)y)' is parsed as '%b1(%b1(abc)y)' and output as though
-        // it were '%b1(abcy)'
+        // e.g. '%b1(%1(abc%)y%)' is parsed as '%b1(%b1(abc%)y%)' and output as though
+        // it were '%b1(abcy%)'
         if (prev == s) return;
 
         // Otherwise, reset if the new style doesn’t subsume the previous one.
@@ -125,35 +125,32 @@ struct Context {
     void Render() {
         for (;;) {
             // Append everything we have so far.
-            out += s.take_until_any("\033\002%)");
+            out += s.take_until('%');
 
             // Stop if we don’t have any formatting codes anymore.
             if (s.empty()) break;
 
+            // Drop the per cent sign.
+            s.drop();
+            if (s.empty()) utils::ThrowOrAbort("Missing formatting character after '%'");
+
             // Handle special chars.
-            switch (s.take()[0]) {
-                default: Unreachable();
-
-                // The escape character, quite fittingly, escapes anything that
-                // follows, but ignore it at the end of the string.
-                case '\033':
-                    out += s.take(1);
-                    break;
-
-                // Start of text marks literal text that is not to be interpreted
-                // as formatting.
-                case '\002': {
-                    out += s.take_until('\003');
-                    if (s.consume('\003')) break;
-                    utils::ThrowOrAbort(std::format("Unterminated literal text in '{}'", fmt));
-                } break;
+            switch (s.front().value()) {
+                // Literal per cent sign.
+                case '%': {
+                    s.drop();
+                    out += '%';
+                    continue;
+                }
 
                 // Closing parenthesis. Pop the last style.
                 case ')': {
-                    // The bottommost style is empty; never pop it. This ')' ought
-                    // to have been escaped, but we allow it anyway.
+                    s.drop();
+
+                    // The bottommost style is empty; never pop it. Treat
+                    // this as a literal '%)'.
                     if (styles.size() == 1) {
-                        out += ')';
+                        out += "%)";
                         break;
                     }
 
@@ -167,7 +164,7 @@ struct Context {
                     // two adjacent formatting codes at the start.
                     auto curr = styles.back();
                     do styles.pop_back();
-                    while (styles.size() > 1 and s.consume(')'));
+                    while (styles.size() > 1 and s.consume("%)"));
                     if (use_colours) ApplyStyle(curr, styles.back());
                 } break;
 
@@ -176,12 +173,15 @@ struct Context {
                 // is going to write those, they can still result from string
                 // concatenation; e.g. compress '\033[1m\033[31m' into
                 // '\033[1;31m'.
-                case '%': {
+                default:
                     auto curr = styles.back();
-                    do styles.push_back(ParseFormat(styles.back()));
-                    while (s.consume('%'));
+                    for (;;) {
+                        styles.push_back(ParseFormat(styles.back()));
+                        if (s.starts_with('%') and not s.starts_with("%)") and not s.starts_with("%%")) s.drop();
+                        else break;
+                    }
                     if (use_colours) ApplyStyle(curr, styles.back());
-                } break;
+                    break;
             }
         }
 
