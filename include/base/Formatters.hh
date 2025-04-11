@@ -56,4 +56,12 @@ struct std::formatter<base::Size> {
     }
 };
 
+template <>
+struct std::formatter<base::Align> : std::formatter<base::u64> {
+    template <typename FormatContext>
+    auto format(base::Align a, FormatContext& ctx) const {
+        return std::formatter<base::u64>::format(a.value().bytes(), ctx);
+    }
+};
+
 #endif // LIBBASE_FORMATTERS_HH

@@ -67,3 +67,11 @@ TEST_CASE("Formatter for Size") {
     CHECK_THROWS(std::vformat("{:qi}", std::make_format_args(s)));
     CHECK_THROWS(std::vformat("{:qy}", std::make_format_args(s)));
 }
+
+TEST_CASE("Formatter for Align") {
+    CHECK(std::format("{}", Align(1)) == "1");
+    CHECK(std::format("{}", Align(2)) == "2");
+    CHECK(std::format("{}", Align(4)) == "4");
+    CHECK(std::format("{}", Align(8)) == "8");
+    CHECK(std::format("{}", Align(1024)) == "1024");
+}
