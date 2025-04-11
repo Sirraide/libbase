@@ -31,6 +31,9 @@ TEST_CASE("Escape()") {
             CHECK(utils::Escape(std::string_view{&c, 1}, true) == std::format("\\x{:02x}", c));
         }
     }
+
+    CHECK(utils::Escape("%1(xyz%)") == "%1(xyz%)");
+    CHECK(utils::Escape("%1(xyz%)", false, true) == "%%1(xyz%%)");
 }
 
 TEST_CASE("escaped()") {

@@ -5,8 +5,12 @@
 #include <base/Stream.hh>
 
 namespace base::utils {
-/// Escape non-printable characters in a string.
-auto Escape(std::string_view str, bool escape_double_quotes = false) -> std::string;
+/// Escape non-printable and formatting characters in a string.
+auto Escape(
+    std::string_view str,
+    bool escape_double_quotes = false,
+    bool escape_per_cent_signs = false
+) -> std::string;
 
 /// Escape elements in a range that need escaping.
 template <typename Range>

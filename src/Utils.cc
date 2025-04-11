@@ -4,7 +4,11 @@
 #include <stdexcept>
 #include <base/StringUtils.hh>
 
-auto base::utils::Escape(std::string_view str, bool escape_double_quotes) -> std::string {
+auto base::utils::Escape(
+    std::string_view str,
+    bool escape_double_quotes,
+    bool escape_per_cent_signs
+) -> std::string {
     std::string s;
     for (auto c : str) {
         switch (c) {
@@ -21,7 +25,11 @@ auto base::utils::Escape(std::string_view str, bool escape_double_quotes) -> std
             case '"':
                 if (escape_double_quotes) s += "\\\"";
                 else s += c;
-            break;
+                break;
+            case '%':
+                if (escape_per_cent_signs) s += "%%";
+                else s += c;
+                break;
             default:
                 if (text::IsPrint(c)) s += c;
                 else s += std::format("\\x{:02x}", static_cast<u8>(c));
