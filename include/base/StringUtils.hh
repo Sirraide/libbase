@@ -20,6 +20,9 @@ auto escaped(Range&& r, bool escape_double_quotes) {
     });
 }
 
+/// Indent a string.
+auto Indent(std::string_view str, u32 width) -> std::string;
+
 /// Join a range of strings.
 ///
 /// \param range The range whose elements should be joined.

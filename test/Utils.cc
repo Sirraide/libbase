@@ -82,6 +82,34 @@ TEST_CASE("erase_unordered()") {
     REQUIRE(deq.empty());
 }
 
+TEST_CASE("Indent()") {
+    CHECK(utils::Indent(
+        "a\n"
+        "b\n"
+        "c\n",
+        4
+    ) ==
+        "    a\n"
+        "    b\n"
+        "    c\n"
+    );
+
+    CHECK(utils::Indent(
+        "a\n"
+        "b\n"
+        "c",
+        4
+    ) ==
+        "    a\n"
+        "    b\n"
+        "    c"
+    );
+
+    CHECK(utils::Indent("", 3) == "");
+    CHECK(utils::Indent("\n", 3) == "\n");
+    CHECK(utils::Indent("\n\n\n", 3) == "\n\n\n");
+}
+
 TEST_CASE("join()") {
     std::vector vec{"a"s, "b"s, "c"s};
     std::deque deq{"a"sv, "b"sv, "c"sv};

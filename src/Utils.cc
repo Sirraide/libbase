@@ -53,6 +53,20 @@ auto base::utils::HumanReadable(i64 value) -> std::string {
     return HumanReadable(static_cast<u64>(value));
 }
 
+auto base::utils::Indent(std::string_view str, u32 width) -> std::string {
+    std::string out;
+    std::string id(width, ' ');
+    bool first = true;
+    for (auto l : stream(str).lines()) {
+        if (not first) out += "\n";
+        else first = false;
+        if (l.empty()) continue;
+        out += id;
+        out += l.text();
+    }
+    return out;
+}
+
 void base::utils::ReplaceAll(
     std::string& str,
     std::string_view from,
