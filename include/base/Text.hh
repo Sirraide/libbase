@@ -149,11 +149,12 @@ struct c32 {
 /// Convert UTF-16/32 to UTF-8.
 [[nodiscard]] auto ToUTF8(std::u16string_view str) -> std::string;
 [[nodiscard]] auto ToUTF8(std::u32string_view str) -> std::string;
-[[nodiscard]] auto ToUTF8(c32 str) -> std::string;
+[[nodiscard]] auto ToUTF8(c32 c) -> std::string;
 
 /// Convert UTF-8/32 to UTF-16.
 [[nodiscard]] auto ToUTF16(std::string_view str) -> std::u16string;
 [[nodiscard]] auto ToUTF16(std::u32string_view str) -> std::u16string;
+[[nodiscard]] auto ToUTF16(c32 c) -> std::u16string;
 
 /// Convert UTF-8/16 to UTF-32.
 [[nodiscard]] auto ToUTF32(std::string_view str) -> std::u32string;

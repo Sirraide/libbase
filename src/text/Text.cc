@@ -284,6 +284,7 @@ auto text::ToUTF8(c32 c) -> std::string { return ExportUTF<char>(UStr(std::u32st
 
 auto text::ToUTF16(std::string_view str) -> std::u16string { return ExportUTF<char16_t>(UStr(str)); }
 auto text::ToUTF16(std::u32string_view str) -> std::u16string { return ExportUTF<char16_t>(UStr(str)); }
+auto text::ToUTF16(c32 c) -> std::u16string { return ExportUTF<char16_t>(UStr(std::u32string_view{&c.value, 1})); }
 
 auto text::ToUTF32(std::string_view str) -> std::u32string { return ExportUTF<char32_t>(UStr(str)); }
 auto text::ToUTF32(std::u16string_view str) -> std::u32string { return ExportUTF<char32_t>(UStr(str)); }

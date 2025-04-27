@@ -196,6 +196,7 @@ TEST_CASE("8<->16<->32 Conversion") {
 
     char32_t c = U'🌈';
     CHECK(ToUTF8(c) == "🌈"sv);
+    CHECK(ToUTF16(c) == u"🌈"sv);
 }
 #endif
 
