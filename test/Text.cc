@@ -175,15 +175,26 @@ TEST_CASE("ToUpper") {
     CHECK(ToUpper(U"adððtþewééȝ") == U"ADÐÐTÞEWÉÉȜ"sv);
 }
 
-TEST_CASE("8<->32 Conversion") {
+TEST_CASE("8<->16<->32 Conversion") {
     std::string_view s1 = "áéẹḍțöźȕ";
-    std::u32string_view s2 = U"áéẹḍțöźȕ";
-    char32_t c = U'🌈';
+    std::u16string_view s2 = u"áéẹḍțöźȕ";
+    std::u32string_view s3 = U"áéẹḍțöźȕ";
 
     CHECK(ToUTF8(s2) == s1);
-    CHECK(ToUTF32(s1) == s2);
+    CHECK(ToUTF8(s3) == s1);
+    CHECK(ToUTF16(s1) == s2);
+    CHECK(ToUTF16(s3) == s2);
+    CHECK(ToUTF32(s1) == s3);
+    CHECK(ToUTF32(s2) == s3);
+
+    CHECK(ToUTF8(ToUTF16(s1)) == s1);
     CHECK(ToUTF8(ToUTF32(s1)) == s1);
-    CHECK(ToUTF32(ToUTF8(s2)) == s2);
+    CHECK(ToUTF16(ToUTF8(s2)) == s2);
+    CHECK(ToUTF16(ToUTF32(s2)) == s2);
+    CHECK(ToUTF32(ToUTF8(s3)) == s3);
+    CHECK(ToUTF32(ToUTF16(s3)) == s3);
+
+    char32_t c = U'🌈';
     CHECK(ToUTF8(c) == "🌈"sv);
 }
 #endif

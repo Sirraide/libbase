@@ -146,12 +146,18 @@ struct c32 {
 [[nodiscard]] auto ToUpper(std::string_view str) -> std::string;
 [[nodiscard]] auto ToUpper(std::u32string_view str) -> std::u32string;
 
-/// Convert UTF-8 to UTF-32.
-[[nodiscard]] auto ToUTF32(std::string_view str) -> std::u32string;
-
-/// Convert UTF-32 to UTF-8.
+/// Convert UTF-16/32 to UTF-8.
+[[nodiscard]] auto ToUTF8(std::u16string_view str) -> std::string;
 [[nodiscard]] auto ToUTF8(std::u32string_view str) -> std::string;
 [[nodiscard]] auto ToUTF8(c32 str) -> std::string;
+
+/// Convert UTF-8/32 to UTF-16.
+[[nodiscard]] auto ToUTF16(std::string_view str) -> std::u16string;
+[[nodiscard]] auto ToUTF16(std::u32string_view str) -> std::u16string;
+
+/// Convert UTF-8/16 to UTF-32.
+[[nodiscard]] auto ToUTF32(std::string_view str) -> std::u32string;
+[[nodiscard]] auto ToUTF32(std::u16string_view str) -> std::u32string;
 #endif
 } // namespace base::text
 
@@ -192,6 +198,25 @@ struct std::formatter<std::u32string> : formatter<std::u32string_view> {
     template <typename FormatContext>
     auto format(std::u32string_view s, FormatContext& ctx) const {
         return formatter<std::u32string_view>::format(s, ctx);
+    }
+};
+
+template <>
+struct std::formatter<std::u16string_view> : formatter<std::string_view> {
+    template <typename FormatContext>
+    auto format(std::u16string_view s, FormatContext& ctx) const {
+        return formatter<std::string_view>::format(
+            base::text::ToUTF8(s),
+            ctx
+        );
+    }
+};
+
+template <>
+struct std::formatter<std::u16string> : formatter<std::u16string_view> {
+    template <typename FormatContext>
+    auto format(std::u16string_view s, FormatContext& ctx) const {
+        return formatter<std::u16string_view>::format(s, ctx);
     }
 };
 #endif

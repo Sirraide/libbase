@@ -23,6 +23,11 @@ template <>
 }
 
 template <>
+[[nodiscard]] auto ExportUTF<char16_t>(const icu::UnicodeString& ustr) -> std::u16string {
+    return std::u16string(std::u16string_view(ustr));
+}
+
+template <>
 [[nodiscard]] auto ExportUTF<char32_t>(const icu::UnicodeString& ustr) -> std::u32string {
     auto Convert = [&](char32_t* out, usz n) noexcept -> usz {
         UErrorCode ec{U_ZERO_ERROR}; // Ignored.
@@ -206,6 +211,10 @@ namespace {
     return icu::UnicodeString::fromUTF8(icu::StringPiece(str));
 }
 
+[[nodiscard]] auto UStr(std::u16string_view str) -> icu::UnicodeString {
+    return icu::UnicodeString(str);
+}
+
 [[nodiscard]] auto UStr(std::u32string_view str) -> icu::UnicodeString {
     return icu::UnicodeString::fromUTF32(reinterpret_cast<const UChar32*>(str.data()), i32(str.size()));
 }
@@ -267,17 +276,16 @@ auto text::ToUpper(std::u32string_view str) -> std::u32string {
 }
 
 /// ====================================================================
-///  8<->32 Conversion
+///  Conversion
 /// ====================================================================
-auto text::ToUTF32(std::string_view str) -> std::u32string {
-    return ExportUTF<char32_t>(UStr(str));
-}
+auto text::ToUTF8(std::u16string_view str) -> std::string { return ExportUTF<char>(UStr(str)); }
+auto text::ToUTF8(std::u32string_view str) -> std::string { return ExportUTF<char>(UStr(str)); }
+auto text::ToUTF8(c32 c) -> std::string { return ExportUTF<char>(UStr(std::u32string_view{&c.value, 1})); }
 
-auto text::ToUTF8(std::u32string_view str) -> std::string {
-    return ExportUTF<char>(UStr(str));
-}
+auto text::ToUTF16(std::string_view str) -> std::u16string { return ExportUTF<char16_t>(UStr(str)); }
+auto text::ToUTF16(std::u32string_view str) -> std::u16string { return ExportUTF<char16_t>(UStr(str)); }
 
-auto text::ToUTF8(c32 c) -> std::string {
-    return ExportUTF<char>(UStr(std::u32string_view{&c.value, 1}));
-}
+auto text::ToUTF32(std::string_view str) -> std::u32string { return ExportUTF<char32_t>(UStr(str)); }
+auto text::ToUTF32(std::u16string_view str) -> std::u32string { return ExportUTF<char32_t>(UStr(str)); }
+
 #endif
