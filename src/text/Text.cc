@@ -24,7 +24,7 @@ template <>
 
 template <>
 [[nodiscard]] auto ExportUTF<char16_t>(const icu::UnicodeString& ustr) -> std::u16string {
-    return std::u16string(std::u16string_view(ustr));
+    return std::u16string(ustr.getBuffer(), usz(ustr.length()));
 }
 
 template <>
@@ -212,7 +212,7 @@ namespace {
 }
 
 [[nodiscard]] auto UStr(std::u16string_view str) -> icu::UnicodeString {
-    return icu::UnicodeString(str);
+    return icu::UnicodeString(str.data(), i32(str.size()));
 }
 
 [[nodiscard]] auto UStr(std::u32string_view str) -> icu::UnicodeString {
