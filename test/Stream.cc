@@ -52,12 +52,14 @@ TEST_CASE("stream::char_ptr()") {
     CHECK(u32stream{su32}.char_ptr() == reinterpret_cast<const char*>(su32.data()));
 }
 
+#ifdef __cpp_lib_ranges_chunk
 TEST_CASE("stream::chunks()") {
     std::string s = "hello world";
     CHECK_THAT(stream{s}.chunks(3), RangeEquals(std::vector{"hel"sv, "lo "sv, "wor"sv, "ld"sv}));
     CHECK_THAT(stream{s}.chunks(5), RangeEquals(std::vector{"hello"sv, " worl"sv, "d"sv}));
     CHECK_THAT(stream{s}.chunks(6), RangeEquals(std::vector{"hello "sv, "world"sv}));
 }
+#endif
 
 TEST_CASE("stream::contains()") {
     std::string s = "hello world";

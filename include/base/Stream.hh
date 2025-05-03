@@ -92,11 +92,13 @@ public:
         else return reinterpret_cast<const char*>(_m_text.data());
     }
 
+#ifdef __cpp_lib_ranges_chunk
     /// Iterate over the text in chunks.
     [[nodiscard]] constexpr auto
     chunks(size_type size) const noexcept {
-        return _m_text | std::views::chunk(size) | std::views::transform([](auto r) { return basic_stream(text_type(r)); });
+        return _m_text | vws::chunk(size) | vws::transform([](auto r) { return basic_stream(text_type(r)); });
     }
+#endif
 
     /// Skip a character.
     ///
@@ -675,7 +677,7 @@ public:
     /// Split the stream into parts.
     [[nodiscard]] constexpr auto
     split(text_type delimiter) const noexcept {
-        return _m_text | std::views::split(delimiter) | std::views::transform([](auto r) { return basic_stream(text_type(r)); });
+        return _m_text | vws::split(delimiter) | vws::transform([](auto r) { return basic_stream(text_type(r)); });
     }
 
     ///@{
