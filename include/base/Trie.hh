@@ -63,7 +63,7 @@ public:
         auto current = Root;
 
         // Insert the pattern into the trie.
-        for (auto [i, el] : pattern | vws::enumerate) {
+        for (auto [i, el] : utils::enumerate(pattern)) {
             if (auto child = nodes[current].children.get(el)) current = *child;
             else current = nodes[current].children[el] = allocate();
             nodes[current].depth = usz(i + 1);

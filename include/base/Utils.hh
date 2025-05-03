@@ -62,6 +62,15 @@ struct Overloaded : Types... {
 template <typename... Types>
 Overloaded(Types...) -> Overloaded<Types...>;
 
+/// Libc++ supports zip but not enumerate, so use this instead.
+auto enumerate(auto&& range) {
+#ifdef __cpp_lib_ranges_enumerate
+    return vws::enumerate(std::forward<decltype(range)>(range));
+#else
+    return vws::zip(vws::iota(0z), std::forward<decltype(range)>(range));
+#endif
+}
+
 /// Erase an element from a container without maintaining order.
 template <typename Container, typename Iterator>
 void erase_unordered(Container& container, Iterator it) {
