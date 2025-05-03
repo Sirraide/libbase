@@ -177,7 +177,12 @@ if (LIBBASE_ENABLE_UNICODE_SUPPORT)
         message(FATAL_ERROR "ICU not found. Required components are: uc, i18n, data.")
     endif ()
 
+    message(STATUS "ICU_INCLUDE_DIRS: ${ICU_INCLUDE_DIRS}")
+    message(STATUS "ICU_LIBRARIES: ${ICU_LIBRARIES}")
+    message(STATUS "ICU_VERSION: ${ICU_VERSION}")
+
     target_compile_definitions(libbase PUBLIC LIBBASE_ENABLE_UNICODE_SUPPORT)
+    target_include_directories(libbase PRIVATE ${ICU_INCLUDE_DIRS})
     target_link_libraries(libbase PRIVATE
         ICU::i18n
         ICU::uc
