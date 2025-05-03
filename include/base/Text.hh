@@ -1,6 +1,7 @@
 #ifndef LIBBASE_TEXT_HH
 #define LIBBASE_TEXT_HH
 
+#include <base/Macros.hh>
 #include <base/Result.hh>
 #include <base/Types.hh>
 #include <concepts>
