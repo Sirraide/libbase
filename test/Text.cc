@@ -199,12 +199,12 @@ TEST_CASE("8<->16<->32 Conversion") {
     CHECK(ToUTF16(c) == u"🌈"sv);
 }
 
-/*TEST_CASE("Transliterator") {
-    auto t = Transliterator::Create("[:Punctuation:] Remove; NFC; Lower();").value();
+TEST_CASE("Transliterator") {
+    auto t = Transliterator::Create("NFC; [:Punctuation:] Remove; Lower;").value();
     CHECK(t(".,.:AERÁ") == "aerá");
     CHECK(t(u".,.:AERÁ") == u"aerá");
     CHECK(t(U".,.:AERÁ") == U"aerá");
-}*/
+}
 #endif
 
 TEST_CASE("CCType functions") {
