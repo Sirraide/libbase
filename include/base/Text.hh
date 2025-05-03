@@ -108,6 +108,12 @@ class Transliterator {
 
 public:
     /// Create a new transliterator.
+    ///
+    /// \throw std::runtime_error on error.
+    /// \see Create() for a non-throwing factory function.
+    explicit Transliterator(std::string_view rules) { *this = std::move(Create(rules).value()); }
+
+    /// Create a new transliterator.
     [[nodiscard]] static auto Create(std::string_view rules) -> Result<Transliterator>;
 
     /// Delete the transliterator.

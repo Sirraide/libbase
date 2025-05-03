@@ -200,7 +200,7 @@ TEST_CASE("8<->16<->32 Conversion") {
 }
 
 TEST_CASE("Transliterator") {
-    auto t = Transliterator::Create("NFC; [:Punctuation:] Remove; Lower;").value();
+    Transliterator t("NFC; [:Punctuation:] Remove; Lower;");
     CHECK(t(".,.:AERÁ") == "aerá");
     CHECK(t(u".,.:AERÁ") == u"aerá");
     CHECK(t(U".,.:AERÁ") == U"aerá");
