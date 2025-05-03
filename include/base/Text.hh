@@ -100,6 +100,42 @@ struct c32 {
 };
 
 #ifdef LIBBASE_ENABLE_UNICODE_SUPPORT
+/// A unicode transliterator that performs certain replacement operations.
+class Transliterator {
+    LIBBASE_NO_COPY(Transliterator);
+    void* impl{};
+    explicit Transliterator(void* impl) noexcept : impl(impl) {}
+
+public:
+    /// Create a new transliterator.
+    [[nodiscard]] static auto Create(std::string_view rules) -> Result<Transliterator>;
+
+    /// Delete the transliterator.
+    ~Transliterator() { destroy(); }
+
+    /// Move constructor.
+    Transliterator(Transliterator&& other) noexcept : impl(std::exchange(other.impl, nullptr)) {}
+
+    /// Move assignment operator.
+    Transliterator& operator=(Transliterator&& other) noexcept {
+        if (this != &other) {
+            destroy();
+            impl = std::exchange(other.impl, nullptr);
+        }
+
+        return *this;
+    }
+
+    /// Transliterate a string.
+    [[nodiscard]] auto operator()(std::string_view str) const -> std::string;
+    [[nodiscard]] auto operator()(std::u16string_view str) const -> std::u16string;
+    [[nodiscard]] auto operator()(std::u32string_view str) const -> std::u32string;
+
+private:
+    auto icu_ptr() const;
+    void destroy();
+};
+
 /// Find all characters whose name contains one of the given strings.
 ///
 /// If the query is empty, the result is unspecified.
@@ -135,8 +171,8 @@ struct c32 {
 
 #ifdef LIBBASE_ENABLE_UNICODE_SUPPORT
 /// Convert a string to a normalised form.
-[[nodiscard]] auto Normalise(std::string_view str, NormalisationForm form) -> Result<std::string>;
-[[nodiscard]] auto Normalise(std::u32string_view str, NormalisationForm form) -> Result<std::u32string>;
+[[nodiscard]] auto Normalise(std::string_view str, NormalisationForm form) -> std::string;
+[[nodiscard]] auto Normalise(std::u32string_view str, NormalisationForm form) -> std::u32string;
 
 /// Convert a string to lowercase.
 [[nodiscard]] auto ToLower(std::string_view str) -> std::string;

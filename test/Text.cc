@@ -198,6 +198,13 @@ TEST_CASE("8<->16<->32 Conversion") {
     CHECK(ToUTF8(c) == "🌈"sv);
     CHECK(ToUTF16(c) == u"🌈"sv);
 }
+
+/*TEST_CASE("Transliterator") {
+    auto t = Transliterator::Create("[:Punctuation:] Remove; NFC; Lower();").value();
+    CHECK(t(".,.:AERÁ") == "aerá");
+    CHECK(t(u".,.:AERÁ") == u"aerá");
+    CHECK(t(U".,.:AERÁ") == U"aerá");
+}*/
 #endif
 
 TEST_CASE("CCType functions") {

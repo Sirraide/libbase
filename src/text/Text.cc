@@ -12,6 +12,7 @@ using namespace base::text;
 /// ====================================================================
 ///  General Helpers
 /// ====================================================================
+namespace {
 template <typename CharTy>
 [[nodiscard]] auto ExportUTF(const icu::UnicodeString& ustr) -> std::basic_string<CharTy>;
 
@@ -39,6 +40,18 @@ template <>
     return res;
 }
 
+[[nodiscard]] auto UStr(std::string_view str) -> icu::UnicodeString {
+    return icu::UnicodeString::fromUTF8(icu::StringPiece(str));
+}
+
+[[nodiscard]] auto UStr(std::u16string_view str) -> icu::UnicodeString {
+    return icu::UnicodeString(str.data(), i32(str.size()));
+}
+
+[[nodiscard]] auto UStr(std::u32string_view str) -> icu::UnicodeString {
+    return icu::UnicodeString::fromUTF32(reinterpret_cast<const UChar32*>(str.data()), i32(str.size()));
+}
+} // namespace
 /// ====================================================================
 ///  C32
 /// ====================================================================
@@ -168,15 +181,62 @@ auto text::FindCharsByName(
 }
 
 /// ====================================================================
-///  Normalisation
+///  Transliteration and Normalisation
 /// ====================================================================
 namespace {
-[[nodiscard]] auto GetTransliterator(
-    const char* spec
-) -> Result<icu::Transliterator*> {
+[[nodiscard]] auto GetTransliterator(NormalisationForm nf) -> Transliterator& {
+    // Cache transliterators so we can call Normalise() repeatedly w/o
+    // creating a new one every time.
+    thread_local std::unordered_map<NormalisationForm, Transliterator> cache;
+    auto it = cache.find(nf);
+    if (it != cache.end()) return it->second;
+
+    // This transliterator doesn’t exist yet (for this thread); create a new one.
+    auto form = [&] -> std::string_view {
+        switch (nf) {
+            case NormalisationForm::NFC: return "NFC";
+            case NormalisationForm::NFD: return "NFD";
+            case NormalisationForm::NFKC: return "NFKC";
+            case NormalisationForm::NFKD: return "NFKD";
+            default: return "Any-Normalization";
+        }
+    }();
+
+    // If we fail to create a transliterator for any of the normalisation forms,
+    // then something is seriously wrong with our ICU installation.
+    auto t = Transliterator::Create(form);
+    Assert(t.has_value(), "Failed to create transliterator for normalisation form {}", form);
+
+    // And cache it.
+    cache.emplace(nf, std::move(t.value()));
+    return cache.at(nf);
+}
+
+template <typename CharTy>
+[[nodiscard]] auto NormaliseImpl(
+    std::basic_string_view<CharTy> str,
+    NormalisationForm form
+) -> std::basic_string<CharTy> {
+    if (form == NormalisationForm::None) return std::basic_string<CharTy>{str};
+    Transliterator& trans = GetTransliterator(form);
+    return trans(str);
+}
+
+template <typename Char>
+auto Transliterate(
+    icu::Transliterator* trans,
+    std::basic_string_view<Char> str
+) -> std::basic_string<Char> {
+    auto u = ::UStr(str);
+    trans->transliterate(u);
+    return ::ExportUTF<Char>(u);
+}
+} // namespace
+
+auto Transliterator::Create(std::string_view rules) -> Result<Transliterator> {
     UErrorCode ec{U_ZERO_ERROR};
     auto trans = icu::Transliterator::createInstance(
-        spec,
+        UStr(rules),
         UTRANS_FORWARD,
         ec
     );
@@ -190,53 +250,29 @@ namespace {
         u_errorName(ec)
     );
 
-    return trans;
+    return Transliterator(trans);
 }
 
-[[nodiscard]] auto GetTransliterator(
-    NormalisationForm nf
-) -> Result<icu::Transliterator*> {
-    return GetTransliterator([&] {
-        switch (nf) {
-            case NormalisationForm::NFC: return "NFC";
-            case NormalisationForm::NFD: return "NFD";
-            case NormalisationForm::NFKC: return "NFKC";
-            case NormalisationForm::NFKD: return "NFKD";
-            default: return "Any-Normalization";
-        }
-    }());
+auto Transliterator::icu_ptr() const { return static_cast<icu::Transliterator*>(impl); }
+void Transliterator::destroy() { delete icu_ptr(); }
+
+auto Transliterator::operator()(std::string_view str) const -> std::string {
+    return Transliterate(icu_ptr(), str);
 }
 
-[[nodiscard]] auto UStr(std::string_view str) -> icu::UnicodeString {
-    return icu::UnicodeString::fromUTF8(icu::StringPiece(str));
+auto Transliterator::operator()(std::u16string_view str) const -> std::u16string {
+    return Transliterate(icu_ptr(), str);
 }
 
-[[nodiscard]] auto UStr(std::u16string_view str) -> icu::UnicodeString {
-    return icu::UnicodeString(str.data(), i32(str.size()));
+auto Transliterator::operator()(std::u32string_view str) const -> std::u32string {
+    return Transliterate(icu_ptr(), str);
 }
 
-[[nodiscard]] auto UStr(std::u32string_view str) -> icu::UnicodeString {
-    return icu::UnicodeString::fromUTF32(reinterpret_cast<const UChar32*>(str.data()), i32(str.size()));
-}
-
-template <typename CharTy>
-[[nodiscard]] auto NormaliseImpl(
-    std::basic_string_view<CharTy> str,
-    NormalisationForm form
-) -> Result<std::basic_string<CharTy>> {
-    if (form == NormalisationForm::None) return std::basic_string<CharTy>{str};
-    auto trans = Try(GetTransliterator(form));
-    auto ustr = UStr(str);
-    trans->transliterate(ustr);
-    return ExportUTF<CharTy>(ustr);
-}
-} // namespace
-
-auto text::Normalise(std::string_view str, NormalisationForm form) -> Result<std::string> {
+auto text::Normalise(std::string_view str, NormalisationForm form) -> std::string {
     return NormaliseImpl(str, form);
 }
 
-auto text::Normalise(std::u32string_view str, NormalisationForm form) -> Result<std::u32string> {
+auto text::Normalise(std::u32string_view str, NormalisationForm form) -> std::u32string {
     return NormaliseImpl(str, form);
 }
 
@@ -246,16 +282,16 @@ auto text::Normalise(std::u32string_view str, NormalisationForm form) -> Result<
 namespace {
 template <typename CharTy>
 [[nodiscard]] auto ToLowerImpl(std::basic_string_view<CharTy> str) -> std::basic_string<CharTy> {
-    auto ustr = UStr(str);
+    auto ustr = ::UStr(str);
     ustr.toLower();
-    return ExportUTF<CharTy>(ustr);
+    return ::ExportUTF<CharTy>(ustr);
 }
 
 template <typename CharTy>
 [[nodiscard]] auto ToUpperImpl(std::basic_string_view<CharTy> str) -> std::basic_string<CharTy> {
-    auto ustr = UStr(str);
+    auto ustr = ::UStr(str);
     ustr.toUpper();
-    return ExportUTF<CharTy>(ustr);
+    return ::ExportUTF<CharTy>(ustr);
 }
 } // namespace
 
