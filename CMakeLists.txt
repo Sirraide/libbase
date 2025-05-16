@@ -251,6 +251,7 @@ if (DEFINED BUILD_TESTS)
     file(GLOB_RECURSE test_sources test/*.cc)
     add_executable(tests ${test_sources})
     target_link_libraries(tests PRIVATE libbase Catch2::Catch2WithMain)
+    target_compile_options(tests PRIVATE -fno-access-control)
 
     if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         target_compile_options(tests PRIVATE -fms-extensions -fdeclspec)
