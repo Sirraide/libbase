@@ -95,6 +95,31 @@ public:
         _m_sz = static_cast<SizeType>(1);
     }
 
+    /// Construct a vector from a range of elements.
+    template <std::input_iterator InputIt, typename Sentinel>
+    explicit FixedVector(InputIt it, Sentinel end) {
+        if constexpr (
+            std::sized_sentinel_for<Sentinel, InputIt> and
+            std::forward_iterator<InputIt>
+        ) {
+            auto sz = rgs::distance(it, end);
+            _m_check_size(usz(sz));
+            std::uninitialized_copy(it, end, begin());
+            _m_sz = static_cast<SizeType>(sz);
+        } else {
+            auto i = begin();
+            while (it != end) {
+                _m_check_size();
+                // Use placement-new instead of std::construct_at to avoid a move
+                // if the iterator returns an object by value.
+                ::new (static_cast<void*>(i)) value_type(*it);
+                ++i;
+                ++it;
+                ++_m_sz;
+            }
+        }
+    }
+
     /// Destroy the vector.
     ~FixedVector() noexcept(std::is_nothrow_destructible_v<value_type>) {
         std::destroy(begin(), end());

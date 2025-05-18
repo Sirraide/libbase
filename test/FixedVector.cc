@@ -131,6 +131,16 @@ struct S {
     bool operator==(const S& s) const = default;
 };
 
+struct InputIterator {
+    using difference_type = ptrdiff_t;
+    using value_type = S;
+    mutable int i = 0;
+    S operator*() const { return S(++i); }
+    InputIterator& operator++() { return *this; }
+    void operator++(int) {}
+    bool operator!=(std::default_sentinel_t) const { return i != 5; }
+};
+
 template <>
 struct Catch::StringMaker<S> {
     static std::string convert(const S& s) {
@@ -262,6 +272,28 @@ TEST_CASE("Copy/move ass: mismatched length") {
         CHECK(v1.empty());
         CHECK(v2 == FixedVector<S, 10>{1, 2, 3, 4});
     }
+}
+
+TEST_CASE("Construction from range") {
+    ctor_log.clear();
+    InputIterator it;
+
+    // Construction from an input iterator.
+    FixedVector<S, 10> v{it, std::default_sentinel};
+    CHECK_LOG(CTOR CTOR CTOR CTOR CTOR);
+
+    // Construction from a random-access iterator.
+    FixedVector<S, 10> v2{v.begin(), v.end()};
+    CHECK_LOG(COPY COPY COPY COPY COPY);
+}
+
+TEST_CASE("Destructor") {
+    {
+        FixedVector<S, 10> v{1, 2, 3, 4, 5};
+        ctor_log.clear();
+    }
+
+    CHECK_LOG(DTOR DTOR DTOR DTOR DTOR);
 }
 
 TEST_CASE("clear() deletes elements") {
