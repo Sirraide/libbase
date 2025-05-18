@@ -121,6 +121,7 @@ public:
     }
 
     /// Destroy the vector.
+    ~FixedVector() requires std::is_trivially_destructible_v<value_type> = default;
     ~FixedVector() noexcept(std::is_nothrow_destructible_v<value_type>) {
         std::destroy(begin(), end());
     }

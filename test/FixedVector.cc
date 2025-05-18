@@ -7,6 +7,9 @@ namespace base {
 template class FixedVector<int, 10>;
 }
 
+static_assert(std::is_trivially_destructible_v<FixedVector<int, 10>>);
+static_assert(not std::is_trivially_destructible_v<FixedVector<std::string, 10>>);
+
 TEST_CASE("FixedVector: Basic construction") {
     FixedVector<int, 10> v1;
     FixedVector v2{v1};
