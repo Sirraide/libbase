@@ -912,6 +912,25 @@ public:
     }
 
     /// \see take_until(char_type)
+    ///
+    /// As \c take_until, but also includes the delimiter.
+    [[nodiscard]] constexpr auto
+    take_until_and_take(char_type c)
+    noexcept -> text_type {
+        auto res = take_until(c);
+        if (consume(c)) res = {res.data(), res.size() + 1};
+        return res;
+    }
+
+    [[nodiscard]] constexpr auto
+    take_until_and_take(text_type str)
+    noexcept -> text_type {
+        auto res = take_until(str);
+        if (consume(str)) res = {res.data(), res.size() + str.size()};
+        return res;
+    }
+
+    /// \see take_until(char_type)
     [[nodiscard]] constexpr auto
     take_until_any(text_type chars) noexcept -> text_type {
         return _m_advance(std::min(_m_text.find_first_of(chars), size()));

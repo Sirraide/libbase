@@ -467,6 +467,32 @@ TEST_CASE("stream::take_until(_any)(_and_drop)") {
         CHECK(s1.take_until_and_drop(std::string{"l"}) == "he"sv);
         CHECK(s1 == "lo world");
     }
+
+    SECTION("and_take") {
+        stream s1{s};
+        CHECK(s1.take_until_and_take("wo") == "hello wo"sv);
+        CHECK(s1 == "rld");
+
+        s1 = s;
+        CHECK(s1.take_until_and_take("") == ""sv);
+        CHECK(s1 == "hello world");
+
+        s1 = s;
+        CHECK(s1.take_until_and_take('o') == "hello"sv);
+        CHECK(s1 == " world");
+
+        s1 = s;
+        CHECK(s1.take_until_and_take('x') == "hello world"sv);
+        CHECK(s1 == "");
+
+        s1 = s;
+        CHECK(s1.take_until_and_take('h') == "h"sv);
+        CHECK(s1 == "ello world");
+
+        s1 = s;
+        CHECK(s1.take_until_and_take(std::string{"l"}) == "hel"sv);
+        CHECK(s1 == "lo world");
+    }
 }
 
 TEST_CASE("stream::take_until_or_empty") {
