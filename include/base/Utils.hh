@@ -155,11 +155,25 @@ class basic_zstring {
     using text_type = std::basic_string_view<char_type>;
     using string_type = std::basic_string<char_type>;
 
-    std::variant<text_type, string_type> value;
+    text_type value;
 
 public:
     /// Create an empty string.
-    basic_zstring() : value{text_type{}} {}
+    basic_zstring() {
+        if constexpr (std::is_same_v<char_type, char>) {
+            value = "";
+        } else if constexpr (std::is_same_v<char_type, char8_t>) {
+            value = u8"";
+        } else if constexpr (std::is_same_v<char_type, char16_t>) {
+            value = u"";
+        } else if constexpr (std::is_same_v<char_type, char32_t>) {
+            value = U"";
+        } else if constexpr (std::is_same_v<char_type, wchar_t>) {
+            value = L"";
+        } else {
+            static_assert(false, "Unsupported character type");
+        }
+    }
 
     /// Create a zstring from a string literal.
     template <usz n>
@@ -168,13 +182,11 @@ public:
     /// Create a zstring from a std::string.
     basic_zstring(const string_type& str) : value{text_type{str}} {}
 
-    /// Create a zstring from a std::string_view.
-    basic_zstring(text_type str) : value{string_type{str}} {}
-
     /// Create a zstring from a pointer and size.
     basic_zstring(const char_type* data, usz size) : value{text_type{data, size}} {}
 
     /// Get the data pointer.
+    [[nodiscard]] auto c_str() const -> const char_type* { return data(); }
     [[nodiscard]] auto data() const -> const char_type* { return str().data(); }
 
     /// Get the size of the string.
@@ -182,10 +194,7 @@ public:
 
     /// Get the string.
     [[nodiscard]] auto str() const -> text_type {
-        return Visit(value, Overloaded{
-            [](text_type t) { return t; },
-            [](const string_type& t) { return text_type{t}; },
-        });
+        return value;
     }
 };
 

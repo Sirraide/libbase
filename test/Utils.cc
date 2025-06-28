@@ -246,12 +246,12 @@ TEST_CASE("ReplaceAll()") {
 TEST_CASE("basic_zstring construction") {
     CHECK(utils::zstring{"foo"}.str() == "foo");
     CHECK(utils::zstring{"foo"s}.str() == "foo");
-    CHECK(utils::zstring{"foo"sv}.str() == "foo");
     CHECK(utils::zstring{"foo", 3}.str() == "foo");
+    CHECK(std::strlen(utils::zstring().c_str()) == 0);
     CHECK(utils::u32zstring{U"foo"}.str() == U"foo");
     CHECK(utils::u32zstring{U"foo"s}.str() == U"foo");
-    CHECK(utils::u32zstring{U"foo"sv}.str() == U"foo");
     CHECK(utils::u32zstring{U"foo", 3}.str() == U"foo");
+    CHECK(*utils::u32zstring().c_str() == 0);
 }
 
 #if LIBBASE_PROPERTIES
