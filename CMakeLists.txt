@@ -192,6 +192,7 @@ endif()
 
 ## Add libassert for better assertions and stack traces.
 if (LIBBASE_USE_LIBASSERT)
+    set(LIBASSERT_USE_ENCHANTUM ON)
     add_definitions(-DLIBASSERT_STATIC_DEFINE)
     FetchContent_Declare(
         libassert
