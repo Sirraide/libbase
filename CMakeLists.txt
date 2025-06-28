@@ -196,7 +196,7 @@ if (LIBBASE_USE_LIBASSERT)
     FetchContent_Declare(
         libassert
         GIT_REPOSITORY https://github.com/jeremy-rifkin/libassert.git
-        GIT_TAG        v2.1.0
+        GIT_TAG        v2.2.0
     )
     FetchContent_MakeAvailable(libassert)
 

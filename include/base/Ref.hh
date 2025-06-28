@@ -24,8 +24,8 @@ protected:
 
     /// Destructor.
 #ifndef NDEBUG
-    ~RefBase() LIBBASE_NOEXCEPT_UNLESS_TESTING {
-        Assert(
+    ~RefBase() noexcept {
+        DebugAssert(
             ref_count.load(std::memory_order_acquire) == 0,
             "Destructor called with non-zero refcount?"
         );
