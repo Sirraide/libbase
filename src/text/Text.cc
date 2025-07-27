@@ -244,7 +244,6 @@ auto Transliterator::Create(std::string_view rules) -> Result<Transliterator> {
     // If an NFC/NFD transliterator is not available, then that is a pretty
     // serious problem with the ICU installation; that likely means there is
     // nothing else we can do here, so just give up.
-
     if (U_FAILURE(ec)) return Error(
         "Failed to create transliterator: {}\n",
         u_errorName(ec)
