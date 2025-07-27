@@ -67,6 +67,7 @@ auto GetFilesInDirectory(PathRef dir, bool recursive) -> Result<std::vector<Path
 ///
 /// \tparam recursive Iterate over subdirectories as well.
 /// \param dir The directory whose to iterate.
+/// \return A Result<T>, where T is an iterable range of std::filesystem::directory_entry.
 /// \see GetFilesInDirectory() if you want a vector of paths.
 template <bool recursive>
 auto IterateFilesInDirectory(PathRef dir) {
