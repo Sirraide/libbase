@@ -237,7 +237,7 @@ target_include_directories(libbase PUBLIC "${clopts_SOURCE_DIR}/include")
 ## ============================================================================
 ##  Testing
 ## ============================================================================
-if (DEFINED BUILD_TESTS)
+if (LIBBASE_BUILD_TESTS)
     FetchContent_Declare(
       Catch2
       GIT_REPOSITORY https://github.com/catchorg/Catch2.git
@@ -260,6 +260,7 @@ if (DEFINED BUILD_TESTS)
 
     target_compile_definitions(tests PRIVATE
         "LIBBASE_TESTING_BINARY_DIR=\"${CMAKE_CURRENT_BINARY_DIR}\""
+        "LIBBASE_TEST_DIR=\"${PROJECT_SOURCE_DIR}/test\""
         "LIBBASE_IS_BUILDING_TESTS"
     )
 

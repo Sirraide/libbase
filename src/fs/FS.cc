@@ -36,6 +36,16 @@ auto fs::CurrentDirectory() -> Path {
     return std_fs::current_path(ec);
 }
 
+auto fs::GetFilesInDirectory(PathRef dir, bool recursive) -> Result<std::vector<Path>> {
+    std::vector<Path> res;
+    if (recursive) {
+        for (auto path : Try(IterateFilesInDirectory<true>(dir))) res.push_back(Path(path));
+    } else {
+        for (auto path : Try(IterateFilesInDirectory<false>(dir))) res.push_back(Path(path));
+    }
+    return res;
+}
+
 auto File::Delete(PathRef path, bool recursive) -> Result<bool> {
     std::error_code ec;
     if (recursive) {

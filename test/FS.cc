@@ -46,6 +46,41 @@ TEST_CASE("ExecutablePath") {
 #endif
 }
 
+TEST_CASE("GetFilesInDirectory") {
+    SECTION("recursive") {
+        auto fs1 = GetFilesInDirectory(LIBBASE_TEST_DIR "/inputs", true).value();
+        rgs::sort(fs1);
+        CHECK(fs1 == std::vector<Path>{
+            LIBBASE_TEST_DIR "/inputs/a/c/d/e/file-in-e.txt",
+            LIBBASE_TEST_DIR "/inputs/a/c/f/file-in-f.txt",
+            LIBBASE_TEST_DIR "/inputs/b/g/file-in-g.txt",
+        });
+
+        auto fs2 = GetFilesInDirectory(LIBBASE_TEST_DIR "/inputs/a", true).value();
+        rgs::sort(fs2);
+        CHECK(fs2 == std::vector<Path>{
+            LIBBASE_TEST_DIR "/inputs/a/c/d/e/file-in-e.txt",
+            LIBBASE_TEST_DIR "/inputs/a/c/f/file-in-f.txt",
+        });
+    }
+
+    SECTION("non-recursive") {
+        CHECK(GetFilesInDirectory(LIBBASE_TEST_DIR "/inputs/a", false).value().empty());
+        CHECK(GetFilesInDirectory(LIBBASE_TEST_DIR "/inputs/a/c", false).value().empty());
+        CHECK(GetFilesInDirectory(LIBBASE_TEST_DIR "/inputs/a/c/d", false).value().empty());
+        CHECK(
+            GetFilesInDirectory(LIBBASE_TEST_DIR "/inputs/a/c/d/e", false).value()
+            ==
+            std::vector<Path>{LIBBASE_TEST_DIR "/inputs/a/c/d/e/file-in-e.txt"}
+        );
+    }
+
+    SECTION("non-existent") {
+        CHECK_THROWS(GetFilesInDirectory(LIBBASE_TEST_DIR "/does-not-exist", false).value());
+        CHECK_THROWS(GetFilesInDirectory(LIBBASE_TEST_DIR "/does-not-exist", true).value());
+    }
+}
+
 TEST_CASE("File::Delete, File::Exists") {
     CHECK(File::Exists(__FILE__));
     File::Open(TPath, OpenMode::ReadWrite).value();

@@ -14,6 +14,7 @@
 #include <vector>
 
 namespace base::fs {
+namespace stdfs = std::filesystem;
 class File;
 class FileContents;
 }
@@ -31,8 +32,8 @@ struct OutputView;
 enum struct OpenMode : u8;
 
 using InputVector = std::span<const InputView>;
-using Path = std::filesystem::path;
-using PathRef = const std::filesystem::path&;
+using Path = stdfs::path;
+using PathRef = const stdfs::path&;
 
 template <typename Ty>
 concept CharBuffer = requires (Ty t, usz sz) {
@@ -51,6 +52,33 @@ auto CurrentDirectory() -> Path;
 ///
 /// This can fail on platforms where this isn’t supported.
 auto ExecutablePath() -> Result<Path>;
+
+/// Get a vector containing all files in a directory.
+///
+/// This is basically just a wrapper around IterateFilesInDirectory().
+///
+/// \see IterateFilesInDirectory()
+auto GetFilesInDirectory(PathRef dir, bool recursive) -> Result<std::vector<Path>>;
+
+/// Iterate over all files in a directory.
+///
+/// This follows symlinks and ignores anything that is not
+/// a regular file. The iteration order is unspecified.
+///
+/// \tparam recursive Iterate over subdirectories as well.
+/// \param dir The directory whose to iterate.
+/// \see GetFilesInDirectory() if you want a vector of paths.
+template <bool recursive>
+auto IterateFilesInDirectory(PathRef dir) {
+    auto filter = +[](const stdfs::directory_entry& e) { return e.is_regular_file(); };
+    using It = std::conditional_t<recursive, stdfs::recursive_directory_iterator, stdfs::directory_iterator>;
+    using Res = Result<rgs::filter_view<It, decltype(filter)>>;
+
+    std::error_code ec;
+    It it{dir, ec};
+    if (not ec) return Res{vws::filter(std::move(it), filter)};
+    return Res{Error("Could not iterate directory '{}': {}", dir.string(), ec.message())};
+}
 } // namespace base::fs
 
 namespace base {
