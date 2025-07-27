@@ -73,7 +73,10 @@ auto quote_escaped(Range&& r, bool quote_always = false) {
 }
 
 /// Replace all occurrences of `from` with `to` in `str`.
-void ReplaceAll(std::string& str, std::string_view from, std::string_view to);
+[[deprecated("Use `stream(str).replace(from, to)` instead")]]
+inline void ReplaceAll(std::string& str, std::string_view from, std::string_view to) {
+    str = stream(str).replace(from, to);
+}
 } // namespace base::utils
 
 #endif //LIBBASE_STRING_UTILS_HH

@@ -226,6 +226,8 @@ TEST_CASE("quote_escaped()") {
     );
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated"
 TEST_CASE("ReplaceAll()") {
     std::string foo = "barbarbarbar";
 
@@ -242,6 +244,7 @@ TEST_CASE("ReplaceAll()") {
     utils::ReplaceAll(foo, "foo", "[foo]");
     CHECK(foo == "[foo][foo][foo][foo][foo][foo][foo][foo]");
 }
+#pragma clang diagnostic pop
 
 TEST_CASE("basic_zstring construction") {
     CHECK(utils::zstring{"foo"}.str() == "foo");
