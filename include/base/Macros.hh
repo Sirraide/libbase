@@ -96,14 +96,11 @@ private:
 /// we can write
 ///
 ///     Bar res = Try(foo());
-///     Bar res = TryMapErr(foo(), std::format("Failed to do X: {}", $));
 ///
 /// to invoke `foo` and propagate the error up the call stack, if there
 /// is one; this way, we don’t have to actually write any verbose error
 /// handling code.
 ///
-/// (Yes, I know this macro is an abomination, but this is what happens
-/// if you don’t have access to this as a language feature...)
 // clang-format off
 #define Try(...) ({                                                          \
     auto _res = (__VA_ARGS__);                                               \
@@ -112,19 +109,33 @@ private:
     static_cast<std::add_rvalue_reference_t<NonRef>>(_res._unsafe_unwrap()); \
 })
 
+/// As Try(), but modifies the error message.
+///
+/// The argument to the macro, must be an expression that evaluates to
+/// a string that will be propagated up the call stack as the error;
+/// the original error is in scope as `$`.
+///
+/// Example usage: Given
+///
+///     auto foo() -> Result<Bar> { ... }
+///
+/// we can write
+///
+///     Bar res = TryMapErr(foo(), std::format("Failed to do X: {}", $));
+///
+/// this has the same effect as 'Try()', except that the error message is
+/// modified in case of an error.
+///
+/// (Yes, I know this macro is an abomination, but this is what happens
+/// if you don’t have access to this as a language feature...)
 #define TryMapErr(x, ...) ({                                                 \
     auto _res = x;                                                           \
-    if (not _res) {                                                          \
-        return std::unexpected(                                              \
-            __VA_OPT__(                                                      \
-                [&]([[maybe_unused]] std::string $) {                        \
-                    return __VA_ARGS__;                                      \
-                }                                                            \
-            ) __VA_OPT__(LIBBASE_LPAREN_)                                    \
-                std::move(_res.error())                                      \
-            __VA_OPT__(LIBBASE_RPAREN_)                                      \
-        );                                                                   \
-    }                                                                        \
+    if (not _res) return std::unexpected(                                    \
+        [&]([[maybe_unused]] std::string $) -> std::string {                 \
+            return __VA_ARGS__;                                              \
+        }(std::move(_res.error()))                                           \
+    );                                                                       \
+                                                                             \
     using NonRef = std::remove_reference_t<decltype(_res._unsafe_unwrap())>; \
     static_cast<std::add_rvalue_reference_t<NonRef>>(_res._unsafe_unwrap()); \
 })

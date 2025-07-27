@@ -254,6 +254,37 @@ TEST_CASE("basic_zstring construction") {
     CHECK(*utils::u32zstring().c_str() == 0);
 }
 
+TEST_CASE("Try") {
+    static const auto IncrementEven = [](int n) -> Result<int> {
+        if (n & 1) return Error("not even!");
+        return n + 1;
+    };
+
+    static const auto DoubleErr = [](int n) -> Result<int> {
+        auto val = Try(IncrementEven(n));
+        return val * 2;
+    };
+
+    static const auto DoubleMapErr = [](int n) -> Result<int> {
+        auto val = TryMapErr(IncrementEven(n), std::format("value {} is {}", n, $));
+        return val * 2;
+    };
+
+    CHECK(DoubleErr(0).value() == 2);
+    CHECK(DoubleErr(2).value() == 6);
+    CHECK(DoubleErr(100).value() == 202);
+    CHECK(DoubleMapErr(0).value() == 2);
+    CHECK(DoubleMapErr(2).value() == 6);
+    CHECK(DoubleMapErr(100).value() == 202);
+
+    CHECK(DoubleErr(1).error() == "not even!");
+    CHECK(DoubleErr(3).error() == "not even!");
+    CHECK(DoubleErr(101).error() == "not even!");
+    CHECK(DoubleMapErr(1).error() == "value 1 is not even!");
+    CHECK(DoubleMapErr(3).error() == "value 3 is not even!");
+    CHECK(DoubleMapErr(101).error() == "value 101 is not even!");
+}
+
 #if LIBBASE_PROPERTIES
 struct S {
     std::string _foo, _bar;
