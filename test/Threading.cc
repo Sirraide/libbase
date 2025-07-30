@@ -77,3 +77,50 @@ TEST_CASE("Notifiable") {
     CHECK(last == 9999);
     CHECK(n.val.empty());
 }
+
+TEST_CASE("ThreadSafeQueue") {
+    ThreadSafeQueue<int> q;
+    int acc{};
+
+    {
+        std::jthread t2{[&] {
+            for (auto v : q.stream()) {
+                acc += v;
+                if (v == 9999) break;
+            }
+        }};
+
+        std::jthread t1{[&] {
+            for (int i = 0; i < 10'000; i++)
+                q.enqueue(i);
+        }};
+    }
+
+    CHECK(acc == 49'995'000);
+    CHECK(q.val.empty());
+}
+
+TEST_CASE("ThreadSafeQueue: Force-close") {
+    ThreadSafeQueue<int> q;
+    std::atomic<int> acc{};
+
+    {
+        std::jthread t2{[&] {
+            for (auto v : q.stream()) acc += v;
+        }};
+
+        std::jthread t1{[&] {
+            for (int i = 0; i < 10'000; i++) q.enqueue(i);
+
+            // Wait until t2 has processed a few elements.
+            do std::this_thread::sleep_for(50ms);
+            while (acc.load() < 4950);
+            q.close();
+        }};
+    }
+
+    // Process the rest.
+    for (auto v : q.val.stream()) acc += v;
+    CHECK(acc == 49'995'000);
+    CHECK(q.val.empty());
+}

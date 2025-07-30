@@ -56,11 +56,11 @@ namespace base::detail {
 //  API
 // ====================================================================
 #ifdef LIBBASE_IS_BUILDING_TESTS
-#    define Assert(cond, ...)                                                   \
-        do {                                                                    \
-            if (not(cond)) {                                                    \
-                throw std::runtime_error(__VA_OPT__(std::format(__VA_ARGS__))); \
-            }                                                                   \
+#    define Assert(cond, ...)                                          \
+        do {                                                           \
+            if (not(cond)) {                                           \
+                throw std::runtime_error(std::format("" __VA_ARGS__)); \
+            }                                                          \
         } while (false)
 #    define LIBBASE_NOEXCEPT_UNLESS_TESTING
 #else
