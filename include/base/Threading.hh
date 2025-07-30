@@ -90,6 +90,7 @@ public:
 /// Thread-safe object that comes with a condition variable.
 template <typename T>
 class Notifiable : protected ThreadSafe<T> {
+protected:
     ConditionVariable cond_var;
 
 public:
