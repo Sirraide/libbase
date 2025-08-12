@@ -60,6 +60,15 @@ TEST_CASE("Align::To") {
     CHECK(Align::To(513, 512) == 1024);
 }
 
+TEST_CASE("Align::align") {
+    CHECK(Align{1}.align(reinterpret_cast<void*>(41)) == reinterpret_cast<void*>(41));
+    CHECK(Align{2}.align(reinterpret_cast<void*>(41)) == reinterpret_cast<void*>(42));
+    CHECK(Align{4}.align(reinterpret_cast<void*>(41)) == reinterpret_cast<void*>(44));
+    CHECK(Align{8}.align(reinterpret_cast<void*>(41)) == reinterpret_cast<void*>(48));
+    CHECK(Align{256}.align(reinterpret_cast<void*>(41)) == reinterpret_cast<void*>(256));
+    CHECK(Align{256}.align(reinterpret_cast<void*>(257)) == reinterpret_cast<void*>(512));
+}
+
 TEST_CASE("Align::value") {
     CHECK(Align{1}.value().bytes() == 1);
     CHECK(Align{2}.value().bytes() == 2);

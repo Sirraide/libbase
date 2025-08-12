@@ -30,6 +30,9 @@ public:
         if (value < 0) [[unlikely]] utils::ThrowOrAbort("Alignment must be positive");
     }
 
+    /// Align a pointer to this alignment.
+    [[nodiscard]] auto align(utils::is_same<void, char, std::byte> auto* ptr);
+
     /// Get the alignment of a type.
     template <typename Ty>
     [[nodiscard]] static consteval auto Of() -> Align {
@@ -149,6 +152,12 @@ private:
         return os << sz.bits();
     }
 };
+
+auto Align::align(utils::is_same<void, char, std::byte> auto* ptr) {
+    auto s = Size::Bytes(reinterpret_cast<uptr>(ptr));
+    s = s.align(*this);
+    return reinterpret_cast<std::remove_cvref_t<decltype(ptr)>>(s.bytes());
+}
 
 constexpr auto Align::value() const -> Size {
     return Size::Bytes(u64(1) << u64(log_value));
