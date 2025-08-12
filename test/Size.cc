@@ -188,3 +188,51 @@ TEST_CASE("Size x scalar") {
     CHECK(2 * Size::Bytes(3) == Size::Bytes(6));
     CHECK(2 * Size::Bytes(4) == Size::Bytes(8));
 }
+
+TEST_CASE("Pointer x Size") {
+    auto p1 = reinterpret_cast<const std::byte*>(41);
+    auto p2 = reinterpret_cast<void*>(47);
+    auto p3 = reinterpret_cast<const volatile unsigned char*>(102);
+
+    CHECK(p1 + Size::Bytes(0) == p1);
+    CHECK(p2 + Size::Bytes(0) == p2);
+    CHECK(p3 + Size::Bytes(0) == p3);
+
+    CHECK(p1 - Size::Bytes(0) == p1);
+    CHECK(p2 - Size::Bytes(0) == p2);
+    CHECK(p3 - Size::Bytes(0) == p3);
+
+    CHECK(p1 + Size::Bytes(1) == p1 + 1);
+    CHECK(p2 + Size::Bytes(1) == static_cast<char*>(p2) + 1);
+    CHECK(p3 + Size::Bytes(1) == p3 + 1);
+
+    CHECK(p1 - Size::Bytes(1) == p1 - 1);
+    CHECK(p2 - Size::Bytes(1) == static_cast<char*>(p2) - 1);
+    CHECK(p3 - Size::Bytes(1) == p3 - 1);
+
+    CHECK(p1 + Size::Bytes(37) == p1 + 37);
+    CHECK(p2 + Size::Bytes(37) == static_cast<char*>(p2) + 37);
+    CHECK(p3 + Size::Bytes(37) == p3 + 37);
+
+    CHECK(p1 - Size::Bytes(37) == p1 - 37);
+    CHECK(p2 - Size::Bytes(37) == static_cast<char*>(p2) - 37);
+    CHECK(p3 - Size::Bytes(37) == p3 - 37);
+
+    CHECK(p1 + Size::Bits(5) == p1 + 1);
+    CHECK(p2 + Size::Bits(5) == static_cast<char*>(p2) + 1);
+    CHECK(p3 + Size::Bits(5) == p3 + 1);
+
+    CHECK(p1 - Size::Bits(5) == p1 - 1);
+    CHECK(p2 - Size::Bits(5) == static_cast<char*>(p2) - 1);
+    CHECK(p3 - Size::Bits(5) == p3 - 1);
+
+    auto p1_copy = p1;
+    auto p2_copy = p2;
+    auto p3_copy = p3;
+    p1 += Size::Bytes(37);
+    p2 += Size::Bits(11);
+    p3 -= Size::Bytes(65);
+    CHECK(p1 == p1_copy + 37);
+    CHECK(p2 == static_cast<char*>(p2_copy) + 2);
+    CHECK(p3 == p3_copy - 65);
+}

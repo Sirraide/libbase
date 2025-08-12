@@ -11,6 +11,19 @@ static_assert(CHAR_BIT == 8, "Platforms where CHAR_BIT != 8 are not supported!")
 
 class Size;
 
+/// A byte-sized pointer.
+template <typename T>
+concept BytePointer = // clang-format off
+    std::is_pointer_v<T> and
+    utils::is_same<std::remove_cv_t<std::remove_pointer_t<T>>,
+        void,
+        char,
+        signed char,
+        unsigned char,
+        std::byte
+    >;
+// clang-format on
+
 /// Used to represent the alignment of a type in bytes.
 class Align {
     u8 log_value;
@@ -31,7 +44,8 @@ public:
     }
 
     /// Align a pointer to this alignment.
-    [[nodiscard]] auto align(utils::is_same<void, char, std::byte> auto* ptr);
+    template <BytePointer Pointer>
+    [[nodiscard]] auto align(Pointer ptr) -> Pointer;
 
     /// Get the alignment of a type.
     template <typename Ty>
@@ -141,6 +155,26 @@ private:
     [[nodiscard]] friend constexpr auto operator/(Size lhs, Size rhs) -> u64 { return lhs.raw / rhs.raw; }
     [[nodiscard]] friend constexpr Size operator+(Size lhs, Size rhs) { return Size{lhs.raw + rhs.raw}; }
 
+    template <BytePointer Pointer>
+	[[nodiscard]] friend auto operator+(Pointer ptr, Size sz) -> Pointer {
+        return reinterpret_cast<Pointer>(reinterpret_cast<uptr>(ptr) + sz.bytes());
+    }
+
+    template <BytePointer Pointer>
+    friend auto operator+=(Pointer& ptr, Size sz) -> Pointer& {
+        return ptr = ptr + sz;
+    }
+
+    template <BytePointer Pointer>
+    [[nodiscard]] friend auto operator-(Pointer ptr, Size sz) -> Pointer {
+        return reinterpret_cast<Pointer>(reinterpret_cast<uptr>(ptr) - sz.bytes());
+    }
+
+    template <BytePointer Pointer>
+    friend auto operator-=(Pointer& ptr, Size sz) -> Pointer& {
+        return ptr = ptr - sz;
+    }
+
     /// This needs to check for underflow.
     [[nodiscard]] friend constexpr Size operator-(Size lhs, Size rhs) {
         if (lhs.raw < rhs.raw) [[unlikely]] utils::ThrowOrAbort("Size underflow");
@@ -153,10 +187,11 @@ private:
     }
 };
 
-auto Align::align(utils::is_same<void, char, std::byte> auto* ptr) {
+template <BytePointer Pointer>
+auto Align::align(Pointer ptr) -> Pointer {
     auto s = Size::Bytes(reinterpret_cast<uptr>(ptr));
     s = s.align(*this);
-    return reinterpret_cast<std::remove_cvref_t<decltype(ptr)>>(s.bytes());
+    return reinterpret_cast<Pointer>(s.bytes());
 }
 
 constexpr auto Align::value() const -> Size {
