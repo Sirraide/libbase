@@ -77,29 +77,24 @@ public:
 
     /// Get the value or throw the error.
     template <typename Self>
-    decltype(auto) value(this Self&& self) {
+    decltype(auto) value(
+        this Self&& self
+    ) requires (
+        not std::is_void_v<T> and
+        not std::is_reference_v<T>
+    ) {
         if (self.has_value()) return std::forward<Self>(self).Base::value();
         utils::ThrowOrAbort(std::forward<Self>(self).error());
     }
 
-    /// DO NOT USE. This is used to implement Try().
-    auto _unsafe_unwrap() noexcept(std::is_nothrow_move_constructible_v<T>)
-        -> std::add_rvalue_reference_t<T>
-    requires (not std::is_void_v<T> and not std::is_reference_v<T>)
-    {
-        return std::move(this->value());
+    auto value() -> detail::ReferenceWrapper<std::remove_reference_t<T>> requires std::is_reference_v<T> {
+        if (this->has_value()) return this->Base::value();
+        utils::ThrowOrAbort(this->error());
     }
 
-    auto _unsafe_unwrap() noexcept
-        -> detail::ReferenceWrapper<std::remove_reference_t<T>>
-    requires std::is_reference_v<T>
-    {
-        return this->value();
+    void value() requires std::is_void_v<T> {
+        if (not this->has_value()) utils::ThrowOrAbort(this->error());
     }
-
-    void _unsafe_unwrap() noexcept
-    requires std::is_void_v<T>
-    {}
 };
 
 /// Create an error message.

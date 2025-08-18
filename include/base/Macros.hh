@@ -102,11 +102,11 @@ private:
 /// handling code.
 ///
 // clang-format off
-#define Try(...) ({                                                          \
-    auto _res = (__VA_ARGS__);                                               \
-    if (not _res) return std::unexpected(std::move(_res.error()));           \
-    using NonRef = std::remove_reference_t<decltype(_res._unsafe_unwrap())>; \
-    static_cast<std::add_rvalue_reference_t<NonRef>>(_res._unsafe_unwrap()); \
+#define Try(...) ({                                                            \
+    auto _res = (__VA_ARGS__);                                                 \
+    if (not _res) return std::unexpected(std::move(_res.error()));             \
+    using NonRef = std::remove_reference_t<decltype(std::move(_res).value())>; \
+    static_cast<std::add_rvalue_reference_t<NonRef>>(std::move(_res).value()); \
 })
 
 /// As Try(), but modifies the error message.
@@ -128,16 +128,16 @@ private:
 ///
 /// (Yes, I know this macro is an abomination, but this is what happens
 /// if you don’t have access to this as a language feature...)
-#define TryMapErr(x, ...) ({                                                 \
-    auto _res = x;                                                           \
-    if (not _res) return std::unexpected(                                    \
-        [&]([[maybe_unused]] std::string $) -> std::string {                 \
-            return __VA_ARGS__;                                              \
-        }(std::move(_res.error()))                                           \
-    );                                                                       \
-                                                                             \
-    using NonRef = std::remove_reference_t<decltype(_res._unsafe_unwrap())>; \
-    static_cast<std::add_rvalue_reference_t<NonRef>>(_res._unsafe_unwrap()); \
+#define TryMapErr(x, ...) ({                                                   \
+    auto _res = x;                                                             \
+    if (not _res) return std::unexpected(                                      \
+        [&]([[maybe_unused]] std::string $) -> std::string {                   \
+            return __VA_ARGS__;                                                \
+        }(std::move(_res.error()))                                             \
+    );                                                                         \
+                                                                               \
+    using NonRef = std::remove_reference_t<decltype(std::move(_res).value())>; \
+    static_cast<std::add_rvalue_reference_t<NonRef>>(std::move(_res).value()); \
 })
 // clang-format on
 
