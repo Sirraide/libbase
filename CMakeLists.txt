@@ -157,11 +157,16 @@ option(LIBBASE_LITE "Enable lite mode" OFF)
 option(LIBBASE_ENABLE_PCRE2 "Enable PCRE2 support" ON)
 option(LIBBASE_USE_LIBASSERT "Use libassert" ON)
 option(LIBBASE_ENABLE_UNICODE_SUPPORT "Enable Unicode support" ON)
+option(LIBBASE_LLVM_BINDINGS "Enable LLVM bindings" OFF)
 
 if (LIBBASE_LITE)
     set(LIBBASE_ENABLE_PCRE2 OFF)
     set(LIBBASE_USE_LIBASSERT OFF)
     set(LIBBASE_ENABLE_UNICODE_SUPPORT OFF)
+endif()
+
+if (LIBBASE_LLVM_BINDINGS)
+    target_compile_definitions(libbase PUBLIC -DLIBBASE_ENABLE_LLVM_BINDINGS=1)
 endif()
 
 ## ============================================================================

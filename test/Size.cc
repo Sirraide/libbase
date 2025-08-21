@@ -9,6 +9,8 @@ static_assert(Size::BitsPerByte == CHAR_BIT);
 TEST_CASE("Align::Align") {
     CHECK(Align() == Align(1));
     CHECK(Align().log_repr() == 0);
+    CHECK(Align(Size::Bits(8)) == Align(1));
+    CHECK(Align(Size::Bits(64)) == Align(8));
 
     // Valid values.
     for (u64 i = 0; i < 64; ++i) {
@@ -147,6 +149,18 @@ TEST_CASE("Align::as_bytes") {
     CHECK(Size::Bits(8).as_bytes().bytes() == 1);
     CHECK(Size::Bits(9).as_bytes().bits() == 16);
     CHECK(Size::Bits(9).as_bytes().bytes() == 2);
+}
+
+TEST_CASE("Size::is_power_of_2()") {
+    CHECK(not Size::Bits(0).is_power_of_2());
+    CHECK(Size::Bits(1).is_power_of_2());
+    CHECK(Size::Bits(2).is_power_of_2());
+    CHECK(not Size::Bits(3).is_power_of_2());
+    CHECK(not Size::Bits(7).is_power_of_2());
+    CHECK(Size::Bits(8).is_power_of_2());
+    CHECK(not Size::Bits(63).is_power_of_2());
+    CHECK(Size::Bits(64).is_power_of_2());
+    CHECK(not Size::Bits(65).is_power_of_2());
 }
 
 TEST_CASE("Size x Size") {

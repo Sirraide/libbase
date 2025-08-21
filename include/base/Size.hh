@@ -6,6 +6,11 @@
 #include <climits>
 #include <ostream>
 
+#if defined(LIBBASE_ENABLE_LLVM_BINDINGS) and __has_include(<llvm/Support/Alignment.h>)
+#   define LIBBASE_ENABLE_LLVM_BINDINGS_ALIGN
+#   include <llvm/Support/Alignment.h>
+#endif
+
 namespace base {
 static_assert(CHAR_BIT == 8, "Platforms where CHAR_BIT != 8 are not supported!");
 
@@ -43,6 +48,9 @@ public:
         if (value < 0) [[unlikely]] utils::ThrowOrAbort("Alignment must be positive");
     }
 
+    /// Creates an alignment from a size.
+    [[nodiscard]] constexpr explicit Align(Size sz);
+
     /// Align a pointer to this alignment.
     template <BytePointer Pointer>
     [[nodiscard]] auto align(Pointer ptr) -> Pointer;
@@ -70,6 +78,10 @@ public:
 
     /// Compare alignments.
     [[nodiscard]] constexpr auto operator<=>(const Align& rhs) const = default;
+
+#ifdef LIBBASE_ENABLE_LLVM_BINDINGS_ALIGN
+    [[nodiscard]] constexpr /* implicit */ operator llvm::Align() const;
+#endif
 };
 
 /// Used to represent the size of a type.
@@ -136,6 +148,11 @@ public:
         return Align::To(raw, BitsPerByte) / BitsPerByte;
     }
 
+    /// Check if the bitwidth of this size is a power of 2.
+    [[nodiscard]] constexpr bool is_power_of_2() const {
+        return std::has_single_bit(raw);
+    }
+
     /// Compare two sizes.
     [[nodiscard]] constexpr auto operator<=>(const Size& lhs) const = default;
 
@@ -187,6 +204,8 @@ private:
     }
 };
 
+constexpr Align::Align(Size sz) : Align(sz.bytes()) {}
+
 template <BytePointer Pointer>
 auto Align::align(Pointer ptr) -> Pointer {
     auto s = Size::Bytes(reinterpret_cast<uptr>(ptr));
@@ -197,6 +216,12 @@ auto Align::align(Pointer ptr) -> Pointer {
 constexpr auto Align::value() const -> Size {
     return Size::Bytes(u64(1) << u64(log_value));
 }
+
+#ifdef LIBBASE_ENABLE_LLVM_BINDINGS_ALIGN
+constexpr Align::operator llvm::Align() const {
+    return llvm::Align(value().bytes());
 }
+#endif
+} // namespace base
 
 #endif //LIBBASE_SIZE_HH
