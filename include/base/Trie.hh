@@ -147,7 +147,7 @@ public:
             // If we get here, we fail.
             //
             // Note that 'current' is the node corresponding to the *previous*
-            // character, i.e. the character at index 'i - 1'.
+            // character, i.e. the character at 'it - 1'.
             const auto current_depth = nodes[current].depth;
 
             // We have a match.
