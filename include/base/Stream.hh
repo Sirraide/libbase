@@ -486,6 +486,25 @@ public:
         return not _m_text.empty() and basic_stream{suffix}.contains(_m_text.back());
     }
 
+    /// Escape a set of characters.
+    ///
+    /// \param chars The characters to escape in the string.
+    /// \param escape The string to use for escaping (default: "\")
+    [[nodiscard]] constexpr auto
+    escape(
+        text_type chars,
+        text_type escape = LIBBASE_STREAM_STRING_LITERAL("\\")
+    ) const -> string_type {
+        string_type escaped;
+        basic_stream s{*this};
+        for (;;) {
+            escaped += s.take_until_any(chars);
+            if (s.empty()) return escaped;
+            escaped += escape;
+            escaped += s.take();
+        }
+    }
+
     /// Extract a series of characters from a stream.
     template <std::same_as<CharType>... Chars>
     [[nodiscard]] constexpr auto

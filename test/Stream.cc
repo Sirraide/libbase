@@ -251,6 +251,44 @@ TEST_CASE("stream::ends_with_any()") {
     CHECK_FALSE(stream{s}.ends_with_any("lx"));
 }
 
+TEST_CASE("stream::escape()") {
+    CHECK(stream("abcd").escape("b") == "a\\bcd");
+    CHECK(stream("a\\bcd").escape("b\\") == "a\\\\\\bcd");
+    CHECK(stream("abcd").escape("") == "abcd");
+    CHECK(stream("axbxcxd").escape("x") == "a\\xb\\xc\\xd");
+    CHECK(stream("").escape("x") == "");
+    CHECK(stream("").escape("xafeae3") == "");
+    CHECK(stream("a").escape("aaa") == "\\a");
+    CHECK(stream(" a ").escape("a") == " \\a ");
+    CHECK(stream("\\a").escape("a") == "\\\\a");
+
+    CHECK(stream("abcd").escape("a", "q") == "qabcd");
+    CHECK(stream("abcd").escape("abcd", "q") == "qaqbqcqd");
+    CHECK(stream("abcd").escape("abcd", "qx") == "qxaqxbqxcqxd");
+    CHECK(stream("abcd").escape("abcd", "") == "abcd"); // A bit dumb but valid.
+    CHECK(stream("").escape("", "") == "");
+
+    CHECK(u32stream(U"abcd").escape(U"b") == U"a\\bcd");
+    CHECK(u32stream(U"a\\bcd").escape(U"b\\") == U"a\\\\\\bcd");
+    CHECK(u32stream(U"abcd").escape(U"") == U"abcd");
+    CHECK(u32stream(U"axbxcxd").escape(U"x") == U"a\\xb\\xc\\xd");
+    CHECK(u32stream(U"").escape(U"x") == U"");
+    CHECK(u32stream(U"").escape(U"xafeae3") == U"");
+    CHECK(u32stream(U"a").escape(U"aaa") == U"\\a");
+    CHECK(u32stream(U" a ").escape(U"a") == U" \\a ");
+    CHECK(u32stream(U"\\a").escape(U"a") == U"\\\\a");
+
+    CHECK(u32stream(U"abcd").escape(U"a", U"q") == U"qabcd");
+    CHECK(u32stream(U"abcd").escape(U"abcd", U"q") == U"qaqbqcqd");
+    CHECK(u32stream(U"abcd").escape(U"abcd", U"qx") == U"qxaqxbqxcqxd");
+    CHECK(u32stream(U"abcd").escape(U"abcd", U"") == U"abcd");
+    CHECK(u32stream(U"").escape(U"", U"") == U"");
+
+    CHECK(u32stream(U"þƿɐɗɐɠɫʁɦɠɫʁɦ").escape(U"ɫ") == U"þƿɐɗɐɠ\\ɫʁɦɠ\\ɫʁɦ");
+    CHECK(u32stream(U"þƿɐɗɐɠɫʁɦɠɫʁɦ").escape(U"ɫɐ") == U"þƿ\\ɐɗ\\ɐɠ\\ɫʁɦɠ\\ɫʁɦ");
+    CHECK(u32stream(U"þƿɐɗɐɠɫʁɦɠɫʁɦ").escape(U"ɫɐ", U"ʉ") == U"þƿʉɐɗʉɐɠʉɫʁɦɠʉɫʁɦ");
+}
+
 TEST_CASE("stream::extract()") {
     char c1{}, c2{}, c3{}, c4{};
     std::string s1 = "";
