@@ -98,7 +98,8 @@ public:
     auto replace(text_type input) -> string_type {
         if (dirty) update();
         const auto sz = usz(input.size());
-        const auto data = input.data();
+        const auto end = input.end();
+        auto it = input.begin();
         auto current = Root;
         string_type out;
         usz match_node = Root;
@@ -121,7 +122,6 @@ public:
         // match we’ve found so far at any given starting point, and
         // only append when we fail; this ensures that there is no
         // longer match at that position.
-        usz i = 0;
         for (;;) {
             // Record whether this is a valid match.
             //
@@ -135,11 +135,11 @@ public:
             //
             // It’s possible for us to be at the end of the string here since we
             // may end up having to backtrack even after reaching the end.
-            if (i < sz) {
-                const auto c = input[i];
+            if (it != end) {
+                const auto c = *it;
                 if (auto child = nodes[current].children.get(c)) {
                     current = *child;
-                    i++;
+                    ++it;
                     continue;
                 }
             }
@@ -163,7 +163,7 @@ public:
                 // backtrack to right after it so we can match the "tba" as well;
                 // for this to work, backtracking is necessary, and we can’t use
                 // failure links or anything like that for this...
-                i = i - current_depth + nodes[match_node].depth;
+                it = it - current_depth + nodes[match_node].depth;
                 current = match_node = Root;
                 continue;
             }
@@ -178,18 +178,14 @@ public:
                 // there will never be any backtracking from the root, this is also
                 // where we detect if we’re done.
                 if (prev == Root) {
-                    if (i == sz) return out;
-                    out += input[i];
-                    i++;
+                    if (it == end) return out;
+                    out += *it++;
                     continue;
                 }
 
                 // Otherwise, the current character needs to be re-examined, but do
                 // append everything before it since it won’t be useful anymore.
-                out.append(
-                    data + isz(i - current_depth),
-                    data + isz(i)
-                );
+                out.append(it - current_depth, it);
                 continue;
             }
 
@@ -198,10 +194,7 @@ public:
             // That is, if we’re failing to a node with depth 'N', after buffering
             // up M characters, we need to append 'M - N' characters, starting at
             // the index where we last began traversing the trie.
-            out.append(
-                data + isz(i - current_depth),
-                data + isz(i - nodes[fail].depth)
-            );
+            out.append(it - current_depth, it - nodes[fail].depth);
         }
     }
 
