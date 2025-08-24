@@ -152,9 +152,7 @@ public:
             // We have a match.
             if (match_node != Root) {
                 // Append the replacement text.
-                auto& rep = nodes[match_node].replacement.value();
-                // TODO: Call append() instead.
-                out.insert(out.end(), rep.begin(), rep.end());
+                out += nodes[match_node].replacement.value();
 
                 // Backtrack to to the end of the current match.
                 //
@@ -187,8 +185,7 @@ public:
 
                 // Otherwise, the current character needs to be re-examined, but do
                 // append everything before it since it won’t be useful anymore.
-                out.insert(
-                    out.end(),
+                out.append(
                     input.begin() + isz(i - current_depth),
                     input.begin() + isz(i)
                 );
@@ -200,8 +197,7 @@ public:
             // That is, if we’re failing to a node with depth 'N', after buffering
             // up M characters, we need to append 'M - N' characters, starting at
             // the index where we last began traversing the trie.
-            out.insert(
-                out.end(),
+            out.append(
                 input.begin() + isz(i - current_depth),
                 input.begin() + isz(i - nodes[fail].depth)
             );
