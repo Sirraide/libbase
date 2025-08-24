@@ -100,7 +100,6 @@ public:
         const auto sz = usz(input.size());
         auto current = Root;
         string_type out;
-        usz match_start = 0;
         usz match_node = Root;
         out.reserve(sz); // Conservative estimate.
 
@@ -121,91 +120,92 @@ public:
         // match we’ve found so far at any given starting point, and
         // only append when we fail; this ensures that there is no
         // longer match at that position.
-        for (usz i = 0; i < sz;) {
-            const auto& c = input[i];
-
+        usz i = 0;
+        for (;;) {
             // Record whether this is a valid match.
+            //
+            // We need to check this here instead of after we advance below to
+            // make sure we recompute this property when we fail and reexamine
+            // the current character.
             if (nodes[current].replacement.has_value())
                 match_node = current;
 
             // Go to the child node if there is one.
-            if (auto child = nodes[current].children.get(c)) {
-                current = *child;
-                i++;
-                continue;
+            //
+            // It’s possible for us to be at the end of the string here since we
+            // may end up having to backtrack even after reaching the end.
+            if (i < sz) {
+                const auto c = input[i];
+                if (auto child = nodes[current].children.get(c)) {
+                    current = *child;
+                    i++;
+                    continue;
+                }
             }
 
-            // If we get here, we fail. This means we need to do several
-            // things. First, append the replacement text.
+            // If we get here, we fail.
+            //
+            // Note that 'current' is the node corresponding to the *previous*
+            // character, i.e. the character at index 'i - 1'.
+            auto current_depth = nodes[current].depth;
+
+            // We have a match.
             if (match_node != Root) {
+                // Append the replacement text.
                 auto& rep = nodes[match_node].replacement.value();
+                // TODO: Call append() instead.
                 out.insert(out.end(), rep.begin(), rep.end());
 
-                // Move past everything we just replaced and start matching
-                // anew. We can’t use the fail link here as Aho-Corasick
-                // normally would because those are only valid if we allow
-                // overlapping matches, which we don’t if we perform a
-                // replacement.
-                i = match_start += nodes[match_node].depth;
+                // Backtrack to to the end of the current match.
+                //
+                // This is necessary to handle tries where an entry can contain
+                // multiple non-overlapping submatches, e.g. ["football", "foo",
+                // "tba"]. If the input is "footbalq", we need to emit "foo" and
+                // backtrack to right after it so we can match the "tba" as well;
+                // for this to work, backtracking is necessary, and we can’t use
+                // failure links or anything like that for this..
+                i = i - current_depth + nodes[match_node].depth;
                 current = match_node = Root;
                 continue;
             }
 
-            // We fail; follow the failure link.
-            auto consumed = nodes[match_node].depth;
-            auto prev = current;
-            current = nodes[current].fail;
+            // We don’t have a match; follow the failure link.
+            const auto prev = current;
+            const auto fail = current = nodes[current].fail;
 
-            // If we fail to the root, append everything that was matched
-            // so far, since it won’t be useful anymore, but keep the current
-            // character—unless we fail from root to root, in which case
-            // discard it.
-            if (current == Root) {
-                i += prev == Root;
+            // We fail to the root.
+            if (fail == Root) {
+                // If we were already at the root, skip the current character; since
+                // there will never be any backtracking from the root, this is also
+                // where we detect if we’re done.
+                if (prev == Root) {
+                    if (i == sz) return out;
+                    out += input[i];
+                    i++;
+                    continue;
+                }
+
+                // Otherwise, the current character needs to be re-examined, but do
+                // append everything before it since it won’t be useful anymore.
                 out.insert(
                     out.end(),
-                    input.begin() + isz(match_start + consumed),
+                    input.begin() + isz(i - current_depth),
                     input.begin() + isz(i)
                 );
-                match_start = i;
                 continue;
             }
 
-            // Even if we don’t fail to the root, not all the text that
-            // still remains unmatched needs to be preserved: if we fail
-            // to a node with depth N, only preserve the last N characters
-            // of the text matched so far (however, since that includes the
-            // current character, we actually need to subtract 1 from the
-            // depth), and append everything before that to the output since
-            // it can’t match anymore.
-            match_start += consumed;
-            auto rest = i - match_start;
-            auto to_append = rest - (nodes[current].depth - 1);
+            // Append any text that cannot match anymore.
+            //
+            // That is, if we’re failing to a node with depth 'N', after buffering
+            // up M characters, we need to append 'M - N' characters, starting at
+            // the index where we last began traversing the trie.
             out.insert(
                 out.end(),
-                input.begin() + isz(match_start),
-                input.begin() + isz(match_start + to_append)
+                input.begin() + isz(i - current_depth),
+                input.begin() + isz(i - nodes[fail].depth)
             );
-
-            // Finally, skip past matching the rest.
-            match_start += to_append;
         }
-
-        // Check if the last node actually had a match.
-        if (nodes[current].replacement.has_value())
-            match_node = current;
-
-        // We may reach the end of the string while something is still
-        // matched, so append any remaining match.
-        if (match_node != Root) {
-            auto& rep = nodes[match_node].replacement.value();
-            out.insert(out.end(), rep.begin(), rep.end());
-            match_start += nodes[match_node].depth;
-        }
-
-        // As well as any trailing text.
-        out.insert(out.end(), input.begin() + isz(match_start), input.end());
-        return out;
     }
 
 private:
@@ -221,7 +221,7 @@ private:
 
     /// Recompute all fail links in the trie.
     void update() {
-        LIBBASE_DEBUG(dirty = false);
+        dirty = false;
 
         // The root node fails to itself, which is already handled
         // by the 'Node' constructor. Next, all the children of the

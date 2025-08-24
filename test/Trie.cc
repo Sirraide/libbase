@@ -89,4 +89,56 @@ TEST_CASE("Trie: HTML Escaping (UTF-32)") {
     CHECK(trie.replace(input) == output);
 }
 
+TEST_CASE("Trie: Adding a pattern eventually recomputes failure links") {
+    trie trie{{"foot", "hand"}};
+    CHECK(trie.replace("foof foot foot foo") == "foof hand hand foo");
+
+    trie.add("oof", "bar");
+    CHECK(trie.replace("foof foot foot foo") == "fbar hand hand foo");
+}
+
+TEST_CASE("Trie: Backtracking after a match") {
+    trie trie{
+        {"foo", "bar"},
+        {"football", "baz"},
+        {"tba", "quux"},
+    };
+
+    CHECK(trie.replace("foox foox") == "barx barx");
+    CHECK(trie.replace("foofoo") == "barbar");
+    CHECK(trie.replace("footb") == "bartb");
+    CHECK(trie.replace("footba") == "barquux");
+    CHECK(trie.replace("footbal") == "barquuxl");
+    CHECK(trie.replace("football") == "baz");
+    CHECK(trie.replace("footbaq") == "barquuxq");
+    CHECK(trie.replace("footbafoo") == "barquuxbar");
+    CHECK(trie.replace("footballfoo") == "bazbar");
+}
+
+TEST_CASE("Trie: failure cases") {
+    trie trie{
+        {"football", "baz"},
+        {"otbas", "bar"},
+        {"tea", "quux"},
+    };
+
+    CHECK(trie.replace("footbas") == "fobar");
+    CHECK(trie.replace("footqtea") == "footqquux");
+    CHECK(trie.replace("footea") == "fooquux");
+    CHECK(trie.replace("xxxyyy") == "xxxyyy");
+}
+
+TEST_CASE("Trie: multiple failures in a row") {
+    trie trie {
+        {"abcdef", "1"},
+        {"bcdef", "3"},
+        {"cdef", "4"},
+        {"def", "5"},
+        {"ef", "6"},
+        {"g", "7"},
+    };
+
+    CHECK(trie.replace("abcdeg") == "abcde7");
+}
+
 #endif // __cpp_lib_generator
