@@ -89,15 +89,16 @@ public:
         nodes[current].replacement = string_type(replacement);
     }
 
-    /// Replace all occurrences of patterns in the input.
+    /// Replace all occurrences of the patterns in the trie in the input.
     ///
-    /// This function always returns a copy because replacing
-    /// elements means that we will most likely have to move
-    /// and reallocate anyway, so it’s cheaper to just allocate
-    /// one range instead of moving elements around constantly.
+    /// This function always returns a copy because replacing elements means
+    /// that we will most likely have to move and reallocate anyway, so it’s
+    /// cheaper to just allocate one range instead of moving elements around
+    /// constantly.
     auto replace(text_type input) -> string_type {
         if (dirty) update();
         const auto sz = usz(input.size());
+        const auto data = input.data();
         auto current = Root;
         string_type out;
         usz match_node = Root;
@@ -147,7 +148,7 @@ public:
             //
             // Note that 'current' is the node corresponding to the *previous*
             // character, i.e. the character at index 'i - 1'.
-            auto current_depth = nodes[current].depth;
+            const auto current_depth = nodes[current].depth;
 
             // We have a match.
             if (match_node != Root) {
@@ -161,7 +162,7 @@ public:
                 // "tba"]. If the input is "footbalq", we need to emit "foo" and
                 // backtrack to right after it so we can match the "tba" as well;
                 // for this to work, backtracking is necessary, and we can’t use
-                // failure links or anything like that for this..
+                // failure links or anything like that for this...
                 i = i - current_depth + nodes[match_node].depth;
                 current = match_node = Root;
                 continue;
@@ -186,8 +187,8 @@ public:
                 // Otherwise, the current character needs to be re-examined, but do
                 // append everything before it since it won’t be useful anymore.
                 out.append(
-                    input.begin() + isz(i - current_depth),
-                    input.begin() + isz(i)
+                    data + isz(i - current_depth),
+                    data + isz(i)
                 );
                 continue;
             }
@@ -198,8 +199,8 @@ public:
             // up M characters, we need to append 'M - N' characters, starting at
             // the index where we last began traversing the trie.
             out.append(
-                input.begin() + isz(i - current_depth),
-                input.begin() + isz(i - nodes[fail].depth)
+                data + isz(i - current_depth),
+                data + isz(i - nodes[fail].depth)
             );
         }
     }
