@@ -365,21 +365,39 @@ TEST_CASE("stream::remove()") {
 }
 
 TEST_CASE("stream::replace()") {
-    std::string s1 = "hello world";
-    std::string s2 = "aaa foo bbb aaa";
+    stream s1 = "hello world";
+    stream s2 = "aaa foo bbb aaa";
 
-    CHECK(stream{s1}.replace('l', 'X') == "heXXo worXd");
-    CHECK(stream{s1}.replace("l", "X") == "heXXo worXd");
-    CHECK(stream{s1}.replace("lo", "X") == "helX world");
-    CHECK(stream{s1}.replace("ol", 'X') == "hello world");
-    CHECK(stream{s1}.replace('o', 'o') == "hello world");
-    CHECK(stream{s1}.replace('q', "he") == "hello world");
+    CHECK(s1.replace('l', 'X') == "heXXo worXd");
+    CHECK(s1.replace("l", "X") == "heXXo worXd");
+    CHECK(s1.replace("lo", "X") == "helX world");
+    CHECK(s1.replace("ol", 'X') == "hello world");
+    CHECK(s1.replace('o', 'o') == "hello world");
+    CHECK(s1.replace('q', "he") == "hello world");
 
-    CHECK(stream{s2}.replace('a', 'X') == "XXX foo bbb XXX");
-    CHECK(stream{s2}.replace("aaa", "X") == "X foo bbb X");
-    CHECK(stream{s2}.replace("aaa", 'X') == "X foo bbb X");
-    CHECK(stream{s2}.replace("aaa", "aaaaaa") == "aaaaaa foo bbb aaaaaa");
-    CHECK(stream{s2}.replace("aaa", "ccc") == "ccc foo bbb ccc");
+    CHECK(s2.replace('a', 'X') == "XXX foo bbb XXX");
+    CHECK(s2.replace("aaa", "X") == "X foo bbb X");
+    CHECK(s2.replace("aaa", 'X') == "X foo bbb X");
+    CHECK(s2.replace("aaa", "aaaaaa") == "aaaaaa foo bbb aaaaaa");
+    CHECK(s2.replace("aaa", "ccc") == "ccc foo bbb ccc");
+}
+
+TEST_CASE("stream::replace_many()") {
+    stream s1 = "hello world";
+    stream s2 = "aaa foo bbb aaa";
+
+    CHECK(s1.replace_many("h", "X") == "Xello world");
+    CHECK(s1.replace_many("hl", "XX") == "XeXXo worXd");
+    CHECK(s1.replace_many("hl", "XY") == "XeYYo worYd");
+    CHECK(s1.replace_many("hl", "X") == "Xeo word");
+    CHECK(s1.replace_many("hl", "") == "eo word");
+    CHECK(s1.replace_many("hh", "XY") == "Xello world");
+
+    CHECK(s2.replace_many("afob", "") == "   ");
+    CHECK(s2.replace_many("afob ", "12345") == "111523354445111");
+    CHECK(s1.replace_many("h", "123") == "1ello world");
+    CHECK(s1.replace_many("", "123") == "hello world");
+    CHECK(s1.replace_many("", "") == "hello world");
 }
 
 TEST_CASE("stream::size()") {

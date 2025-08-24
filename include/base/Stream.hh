@@ -648,8 +648,10 @@ public:
 
     /// Replace all occurrences of a string in the stream and
     /// return the resulting string.
+    ///
+    /// \see base::trie for replacing multiple strings at once.
     [[nodiscard]] constexpr auto
-    replace(text_type from, text_type to) const noexcept -> string_type {
+    replace(text_type from, text_type to) const -> string_type {
         string_type str;
         usz pos = 0;
         for (;;) {
@@ -666,19 +668,52 @@ public:
         return str;
     }
 
+    /// \see replace(text_type from, text_type to) const
     [[nodiscard]] constexpr auto
-    replace(char_type from, text_type to) const noexcept -> string_type {
+    replace(char_type from, text_type to) const -> string_type {
         return replace(text_type{&from, 1}, to);
     }
 
+    /// \see replace(text_type from, text_type to) const
     [[nodiscard]] constexpr auto
-    replace(text_type from, char_type to) const noexcept -> string_type {
+    replace(text_type from, char_type to) const -> string_type {
         return replace(from, text_type{&to, 1});
     }
 
+    /// \see replace(text_type from, text_type to) const
     [[nodiscard]] constexpr auto
-    replace(char_type from, char_type to) const noexcept -> string_type {
+    replace(char_type from, char_type to) const -> string_type {
         return replace(text_type{&from, 1}, text_type{&to, 1});
+    }
+
+    /// Match and replace individual characters.
+    ///
+    /// This is similar to the Unix 'tr' utility.
+    ///
+    /// Given two strings of length N, this replaces every occurrence
+    /// of the I-th character of 'from' in this stream with the I-th
+    /// character of 'to'. If 'to' is shorter 'from', excess characters
+    /// will simply be deleted.
+    ///
+    /// If 'from' contains multiple instances of the same character,
+    /// all but the first will never be matched.
+    ///
+    /// Example:
+    ///
+    ///   stream("ababcd").replace_many("abc", "ef") // Yields "efefd".
+    ///
+    /// \see base::trie for replacing multiple (multi-character) strings
+    /// in one pass.
+    [[nodiscard]] constexpr auto
+    replace_many(text_type from, text_type to) const -> string_type {
+        string_type out;
+        basic_stream s{*this};
+        for (;;) {
+            out += s.take_until_any(from);
+            if (s.empty()) return out;
+            auto idx = from.find(s.take()[0]);
+            if (idx < to.size()) out += to[idx];
+        }
     }
 
     /// \return The size (= number of characters) of this stream.

@@ -13,22 +13,38 @@
 #ifdef __cpp_lib_generator
 
 namespace base {
-template <typename Range>
-class Trie;
+template <typename CharType>
+class basic_trie;
+
+using trie = basic_trie<char>;
+using u8trie = basic_trie<char8_t>;
+using u16trie = basic_trie<char16_t>;
+using u32trie = basic_trie<char32_t>;
+using wtrie = basic_trie<wchar_t>;
 }
 
 /// Trie for performing string replacement.
-template <typename Range>
-class base::Trie {
-    using Element = std::ranges::range_value_t<Range>;
+///
+/// This is intended to be used for matching multiple strings at
+/// once and replacing them all in a single pass over the input;
+/// if you’re only matching a single pattern or if all inputs and
+/// replacements are exactly one character, use stream::replace()
+/// or stream::replace_many() instead if possible.
+template <typename CharType>
+class base::basic_trie {
+public:
+    using char_type = CharType;
+    using text_type = std::basic_string_view<char_type>;
+    using string_type = std::basic_string<char_type>;
 
+private:
     /// A node for a single element in the trie.
     struct Node {
         /// Children of this node.
-        HashMap<Element, usz> children;
+        HashMap<char_type, usz> children;
 
         /// The replacement text for this node, if any.
-        std::optional<Range> replacement;
+        std::optional<string_type> replacement;
 
         /// Index of the node that this node fails to.
         usz fail = 0;
@@ -43,15 +59,16 @@ class base::Trie {
     /// Index of the root node.
     static constexpr usz Root = 0;
 
-    LIBBASE_DEBUG(bool dirty = false);
+    /// Whether we need to recompute the failure links.
+    bool dirty = false;
 
 public:
     /// Construct a new trie.
-    explicit Trie() = default;
+    explicit basic_trie() = default;
 
     /// Construct a trie from pairs.
-    Trie(std::initializer_list<std::pair<Range, Range>> pairs) {
-        for (auto [from, to] : pairs) add(std::move(from), std::move(to));
+    basic_trie(std::initializer_list<std::pair<text_type, text_type>> pairs) {
+        for (auto [from, to] : pairs) add(from, to);
         update();
     }
 
@@ -59,7 +76,7 @@ public:
     ///
     /// If the pattern already exists, the output text
     /// is replaced with the new one.
-    void add(Range pattern, Range replacement) {
+    void add(text_type pattern, text_type replacement) {
         auto current = Root;
 
         // Insert the pattern into the trie.
@@ -69,7 +86,7 @@ public:
             nodes[current].depth = usz(i + 1);
         }
 
-        nodes[current].replacement = std::move(replacement);
+        nodes[current].replacement = string_type(replacement);
     }
 
     /// Replace all occurrences of patterns in the input.
@@ -78,16 +95,14 @@ public:
     /// elements means that we will most likely have to move
     /// and reallocate anyway, so it’s cheaper to just allocate
     /// one range instead of moving elements around constantly.
-    auto replace(const Range& input) -> Range {
-        LIBBASE_DEBUG(
-            Assert(not dirty, "Matching against try w/o calling update")
-        );
-
-        Range out;
-        out.reserve(input.size()); // Conservative estimate.
+    auto replace(text_type input) -> string_type {
+        if (dirty) update();
+        const auto sz = usz(input.size());
         auto current = Root;
+        string_type out;
         usz match_start = 0;
         usz match_node = Root;
+        out.reserve(sz); // Conservative estimate.
 
         // Iterate through the input and perform matching.
         //
@@ -106,7 +121,7 @@ public:
         // match we’ve found so far at any given starting point, and
         // only append when we fail; this ensures that there is no
         // longer match at that position.
-        for (usz i = 0; i < rgs::size(input);) {
+        for (usz i = 0; i < sz;) {
             const auto& c = input[i];
 
             // Record whether this is a valid match.
@@ -193,10 +208,18 @@ public:
         return out;
     }
 
+private:
+    /// Allocate a new node.
+    auto allocate() -> usz {
+        dirty = true;
+        nodes.emplace_back();
+        return nodes.size() - 1;
+    }
+
+    /// Get the root node.
+    auto root() -> Node& { return nodes[0]; }
+
     /// Recompute all fail links in the trie.
-    ///
-    /// Call this after adding all patterns or modifying
-    /// the trie, otherwise, you’ll get incorrect results.
     void update() {
         LIBBASE_DEBUG(dirty = false);
 
@@ -242,15 +265,6 @@ public:
             }
         }
     }
-
-private:
-    auto allocate() -> usz {
-        LIBBASE_DEBUG(dirty = true);
-        nodes.emplace_back();
-        return nodes.size() - 1;
-    }
-
-    auto root() -> Node& { return nodes[0]; }
 };
 
 #endif // __cpp_lib_generator
