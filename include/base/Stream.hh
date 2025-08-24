@@ -180,21 +180,21 @@ public:
 
     /// Check if the stream contains a character.
     [[nodiscard]] constexpr auto
-    contains(char_type c) noexcept -> bool {
+    contains(char_type c) const noexcept -> bool {
         auto pos = _m_text.find(c);
         return pos != text_type::npos;
     }
 
     /// Check if the text contains a string.
     [[nodiscard]] constexpr auto
-    contains(text_type s) noexcept -> bool {
+    contains(text_type s) const noexcept -> bool {
         auto pos = _m_text.find(s);
         return pos != text_type::npos;
     }
 
     /// Check if the string contains any of a set of characters.
     [[nodiscard]] constexpr auto
-    contains_any(text_type chars) noexcept -> bool {
+    contains_any(text_type chars) const noexcept -> bool {
         auto pos = _m_text.find_first_of(chars);
         return pos != text_type::npos;
     }
