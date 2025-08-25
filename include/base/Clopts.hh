@@ -15,6 +15,7 @@
 #include <type_traits>
 #include <vector>
 #include <base/Utils.hh>
+#include <base/Numeric.hh>
 #include <base/FS.hh>
 
 /// \brief Main library namespace.
@@ -1002,22 +1003,11 @@ private:
 
     /// Helper to parse an integer or double.
     template <typename number_type, static_string name>
-    auto parse_number(std::string_view s, auto parse_func) -> number_type {
-        number_type i{};
-
-        // The empty string is a valid integer *and* float, apparently.
-        if (s.empty()) {
-            handle_error("Expected ", name.sv(), ", got empty string");
-            return i;
-        }
-
-        // Parse the number.
-        errno = 0;
-        char* pos{};
-        if constexpr (requires { parse_func(s.data(), &pos, 10); }) i = number_type(parse_func(s.data(), &pos, 10));
-        else i = number_type(parse_func(s.data(), &pos));
-        if (errno != 0 or *pos) handle_error(s, " does not appear to be a valid ", name.sv());
-        return i;
+    auto parse_number(std::string_view s) -> number_type {
+        auto res = Parse<number_type>(s);
+        if (res.has_value()) return res.value();
+        handle_error("'", s, "' is not a valid ", name.sv(), ": ", res.error());
+        return number_type();
     }
 
     /// Get the program name, if available.
@@ -1447,8 +1437,8 @@ private:
         }
 
         // Parse an integer or double.
-        else if constexpr (std::is_same_v<element, integer>) return parse_number<integer, "integer">(opt_val, std::strtoull);
-        else if constexpr (std::is_same_v<element, double>) return parse_number<double, "floating-point number">(opt_val, std::strtod);
+        else if constexpr (std::is_same_v<element, integer>) return parse_number<integer, "integer">(opt_val);
+        else if constexpr (std::is_same_v<element, double>) return parse_number<double, "floating-point number">(opt_val);
 
         // Should never get here.
         else CLOPTS_ERR("Unreachable");
