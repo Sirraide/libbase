@@ -1,5 +1,10 @@
-class base::fs::FileContents {
+#ifndef LIBBASE_FS_HH
+#   error Include <base/FS.hh> instead.
+#endif
+
+class base::fs::FileContents : public FileContentsBase {
     friend File;
+    friend FileContentsBase;
 
     void* ptr = nullptr;
     usz sz = 0;
@@ -26,18 +31,8 @@ public:
 
     ~FileContents() { Delete(); }
 
-    /// Get the data of this file.
-    template <typename T = char>
-    [[nodiscard]] auto data() const -> const T* { return static_cast<const T*>(ptr); }
-
-    /// Get the size of this file.
-    [[nodiscard]] auto size() const -> usz { return sz; }
-
-    /// Get the contents as a string view.
-    [[nodiscard]] auto view() const -> std::string_view {
-        return {static_cast<const char*>(ptr), sz};
-    }
-
 private:
+    auto _m_ptr() const -> const void* { return ptr; }
+    auto _m_size() const -> usz { return sz; }
     void Delete();
 };

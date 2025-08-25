@@ -15,13 +15,28 @@ static bool error_handler(std::string&& s) {
     throw std::runtime_error(s);
 }
 
-template <typename path_type = std::filesystem::path, typename contents_type = std::string>
-static auto this_file() -> std::pair<path_type, contents_type> {
+static auto this_file() -> std::pair<fs::Path, std::string> {
     std::string_view _file_ = __FILE__;
     std::ifstream f{__FILE__};
-    contents_type contents{std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>()};
-    path_type path{_file_.begin(), _file_.end()};
+    std::string contents{std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>()};
+    fs::Path path{_file_.begin(), _file_.end()};
     return std::pair{path, contents};
+}
+
+static auto range_to_string(const std::vector<char>& v) -> std::string {
+    return {v.begin(), v.end()};
+}
+
+static auto range_to_string(std::string v) -> std::string {
+    return std::move(v);
+}
+
+static auto range_to_string(const fs::Path& v) -> std::string {
+    return v.string();
+}
+
+static auto range_to_string(const fs::FileContents& v) -> std::string {
+    return {v.begin(), v.end()};
 }
 
 static void print_number_and_exit(void* arg, std::string_view) {
@@ -439,7 +454,8 @@ TEST_CASE("Calling from main() works as expected") {
 }
 
 TEST_CASE("File option can map a file properly") {
-    auto run = []<typename file> {
+    auto [path, contents] = this_file();
+    auto run = [&]<typename file> {
         using options = clopts<option<"file", "A file", file>>;
 
         std::array args = {
@@ -448,11 +464,10 @@ TEST_CASE("File option can map a file properly") {
             __FILE__,
         };
 
-        auto [path, contents] = this_file<typename file::path_type, typename file::contents_type>();
         auto opts = options::parse(args.size(), args.data(), error_handler);
         REQUIRE(opts.template get<"file">());
-        CHECK(opts.template get<"file">()->path == path);
-        CHECK(opts.template get<"file">()->contents == contents);
+        CHECK(range_to_string(opts.template get<"file">()->path) == range_to_string(path));
+        CHECK(range_to_string(opts.template get<"file">()->contents) == range_to_string(contents));
     };
 
     run.template operator()<file<>>();
@@ -802,7 +817,7 @@ TEST_CASE("Documentation compiles (example 1)") {
     auto repeat_count = opts.get<"--repeat">(1);
     std::string actual;
     for (std::int64_t i = 0; i < repeat_count; i++)
-        actual += file_contents;
+        actual += file_contents.view();
 
     auto [path, contents] = this_file();
     CHECK(actual == contents + contents + contents);

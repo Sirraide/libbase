@@ -1,20 +1,17 @@
-class base::fs::FileContents {
+#ifndef LIBBASE_FS_HH
+#   error Include <base/FS.hh> instead.
+#endif
+
+class base::fs::FileContents : public FileContentsBase {
     friend File;
+    friend FileContentsBase;
 
     std::vector<char> vec;
 
 public:
     FileContents() = default;
 
-    /// Get the data of this file.
-    template <typename T = char>
-    [[nodiscard]] auto data() const -> const T* { return reinterpret_cast<const T*>(vec.data()); }
-
-    /// Get the size of this file.
-    [[nodiscard]] auto size() const -> usz { return vec.size(); }
-
-    /// Get the contents as a string view.
-    [[nodiscard]] auto view() const -> std::string_view {
-        return {vec.data(), vec.size()};
-    }
+private:
+    auto _m_ptr() const -> const void* { return vec.data(); }
+    auto _m_size() const -> usz { return vec.size(); }
 };

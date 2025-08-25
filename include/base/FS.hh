@@ -17,6 +17,47 @@ namespace base::fs {
 namespace stdfs = std::filesystem;
 class File;
 class FileContents;
+class FileContentsBase;
+}
+
+namespace base::fs {
+class FileContentsBase {
+protected:
+    FileContentsBase() = default;
+
+public:
+    /// Get an iterator to the start of this file.
+    [[nodiscard]] auto begin(this const auto& self) -> const char* {
+        return self.data();
+    }
+
+    /// Get the data of this file.
+    template <typename T = char>
+    [[nodiscard]] auto data(this const auto& self) -> const T* {
+        return static_cast<const T*>(self._m_ptr());
+    }
+
+    /// Get an iterator to the end of this file.
+    [[nodiscard]] auto end(this const auto& self) -> const char* {
+        return self.data() + self.size();
+    }
+
+    /// Get the size of this file.
+    [[nodiscard]] auto size(this const auto& self) -> usz {
+        return self._m_size();
+    }
+
+    /// Get the contents as a span.
+    template <typename T = char>
+    [[nodiscard]] auto span(this const auto& self) -> std::span<const T> {
+        return {static_cast<const T*>(self.data()), self.size()};
+    }
+
+    /// Get the contents as a string view.
+    [[nodiscard]] auto view(this const auto& self) -> std::string_view {
+        return {static_cast<const char*>(self.data()), self.size()};
+    }
+};
 }
 
 #ifdef LIBBASE_FS_LINUX

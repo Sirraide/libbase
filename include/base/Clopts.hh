@@ -6,7 +6,6 @@
 #include <bitset>
 #include <cerrno>
 #include <cstring>
-#include <filesystem>
 #include <functional>
 #include <iostream>
 #include <optional>
@@ -16,23 +15,7 @@
 #include <type_traits>
 #include <vector>
 #include <base/Utils.hh>
-
-#ifndef CLOPTS_USE_MMAP
-#    ifdef __linux__
-#        define CLOPTS_USE_MMAP 1
-#    else
-#        define CLOPTS_USE_MMAP 0
-#    endif
-#endif
-
-#if CLOPTS_USE_MMAP
-#    include <fcntl.h>
-#    include <sys/mman.h>
-#    include <sys/stat.h>
-#    include <unistd.h>
-#else
-#    include <fstream>
-#endif
+#include <base/FS.hh>
 
 /// \brief Main library namespace.
 ///
@@ -63,7 +46,7 @@ using concat = typename concat_impl<T, U>::type;
 
 // TODO: Use pack indexing once the syntax is fixed and compilers
 // have actually started defining __cpp_pack_indexing.
-template <std::size_t i, typename... pack>
+template <usz i, typename... pack>
 using nth_type = std::tuple_element_t<i, std::tuple<pack...>>;
 
 /// Filter a pack of types.
@@ -94,11 +77,11 @@ using filter = typename filter_impl<cond, list<>, types...>::type;
 template <template <typename> typename get_key, typename... types>
 struct sort_impl {
 private:
-    static constexpr auto sorter = []<std::size_t ...i>(std::index_sequence<i...>) {
+    static constexpr auto sorter = []<usz ...i>(std::index_sequence<i...>) {
         static constexpr auto sorted = [] {
             std::array indices{i...};
             std::array lookup_table{get_key<types>::value...};
-            std::sort(indices.begin(), indices.end(), [&](std::size_t a, std::size_t b) {
+            std::sort(indices.begin(), indices.end(), [&](usz a, usz b) {
                 return lookup_table[a] < lookup_table[b];
             });
             return indices;
@@ -268,13 +251,6 @@ struct first_type {
 template <typename... rest>
 using first_type_t = typename first_type<rest...>::type;
 
-/// Execute code at end of scope.
-template <typename lambda>
-struct at_scope_exit {
-    lambda l;
-    ~at_scope_exit() { l(); }
-};
-
 /// Tag used for options that modify the options (parser) but
 /// do not constitute actual options in an of themselves.
 struct special_tag;
@@ -287,8 +263,8 @@ struct special_tag;
 #    define CLOPTS_STRLEN(str)  __builtin_strlen(str)
 #    define CLOPTS_STRCMP(a, b) __builtin_strcmp(a, b)
 #else
-constexpr inline std::size_t CLOPTS_STRLEN(const char* str) {
-    std::size_t len = 0;
+constexpr inline usz CLOPTS_STRLEN(const char* str) {
+    usz len = 0;
     while (*str++) ++len;
     return len;
 }
@@ -311,7 +287,7 @@ constexpr inline int CLOPTS_STRCMP(const char* a, const char* b) {
 #endif
 
 /// Constexpr to_string for integers. Returns the number of bytes written.
-constexpr std::size_t constexpr_to_string(char* out, std::int64_t i) {
+constexpr usz constexpr_to_string(char* out, i64 i) {
     // Special handling for 0.
     if (i == 0) {
         *out = '0';
@@ -330,7 +306,7 @@ constexpr std::size_t constexpr_to_string(char* out, std::int64_t i) {
     }
 
     std::reverse(start, out);
-    return std::size_t(out - start);
+    return usz(out - start);
 }
 
 /// Compile-time string.
@@ -382,7 +358,7 @@ struct static_string {
 
     /// API for static_assert.
     [[nodiscard]] constexpr auto data() const -> const char* { return arr; }
-    [[nodiscard]] constexpr auto size() const -> std::size_t { return len; }
+    [[nodiscard]] constexpr auto size() const -> usz { return len; }
 
     static constexpr bool is_static_string = true;
 };
@@ -391,10 +367,10 @@ struct static_string {
 template <size_t sz>
 static_string(const char (&)[sz]) -> static_string<sz>;
 
-template <std::size_t size>
+template <usz size>
 struct string_or_int {
     static_string<size> s{};
-    std::int64_t integer{};
+    i64 integer{};
     bool is_integer{};
 
     constexpr string_or_int(const char (&data)[size]) {
@@ -403,12 +379,12 @@ struct string_or_int {
         is_integer = false;
     }
 
-    constexpr string_or_int(std::int64_t integer)
+    constexpr string_or_int(i64 integer)
         : integer{integer}
         , is_integer{true} {}
 };
 
-string_or_int(std::int64_t) -> string_or_int<1>;
+string_or_int(i64) -> string_or_int<1>;
 
 // ===========================================================================
 //  Types.
@@ -428,10 +404,10 @@ struct values_impl {
         return (test.template operator()<data>() or ...);
     }
 
-    static constexpr auto print_values(char* out) -> std::size_t {
+    static constexpr auto print_values(char* out) -> usz {
         // TODO: Wrap and indent every 10 or so values?
         bool first = true;
-        auto append = [&]<auto value>() -> std::size_t {
+        auto append = [&]<auto value>() -> usz {
             if (first) first = false;
             else {
                 std::copy_n(", ", 2, out);
@@ -459,7 +435,7 @@ concept values_must_be_all_strings_or_all_ints = (data.is_integer and ...) or (n
 /// Values type.
 template <string_or_int... data>
 requires values_must_be_all_strings_or_all_ints<data...>
-struct values : values_impl<std::conditional_t<(data.is_integer and ...), std::int64_t, std::string>, data...> {};
+struct values : values_impl<std::conditional_t<(data.is_integer and ...), i64, std::string>, data...> {};
 
 template <typename _type, static_string...>
 struct ref {
@@ -471,7 +447,7 @@ template <typename type>
 concept is_valid_option_type = utils::is_same<type, std::string, // clang-format off
     bool,
     double,
-    int64_t,
+    i64,
     special_tag,
     callback_arg_type,
     callback_noarg_type
@@ -518,8 +494,8 @@ template <
     bool overridable>
 struct opt_impl {
     // There are four possible cases we need to handle here:
-    //   - Simple type: std::string, int64_t, ...
-    //   - Vector of simple type: std::vector<std::string>, std::vector<int64_t>, ...
+    //   - Simple type: std::string, i64, ...
+    //   - Vector of simple type: std::vector<std::string>, std::vector<i64>, ...
     //   - Values or ref type: values<...>, ref<...>
     //   - Vector of values or ref type: std::vector<values<...>>
 
@@ -542,7 +518,7 @@ struct opt_impl {
     static_assert(not std::is_void_v<canonical_type>, "Option type may not be void. Use bool instead");
     static_assert(
         is_valid_option_type<canonical_type>,
-        "Option type must be std::string, bool, int64_t, double, file_data, values<>, or callback"
+        "Option type must be std::string, bool, i64, double, file_data, values<>, or callback"
     );
 
     static constexpr decltype(_name) name = _name;
@@ -562,7 +538,7 @@ struct opt_impl {
         else return true;
     }
 
-    static constexpr auto print_values(char* out) -> std::size_t {
+    static constexpr auto print_values(char* out) -> usz {
         if constexpr (is_values) return declared_type_base::print_values(out);
         else return 0;
     }
@@ -579,79 +555,13 @@ struct opt_impl {
     std::exit(1);
 }
 
-template <typename file_data_type>
-static file_data_type map_file(
-    std::string_view path,
-    auto error_handler = [](std::string&& msg) { std::cerr << msg << "\n"; std::exit(1); }
-) {
-    const auto err = [&](std::string_view p) -> file_data_type {
-        std::string msg = "Could not read file \"";
-        msg += p;
-        msg += "\": ";
-        msg += ::strerror(errno);
-        error_handler(std::move(msg));
-        return {};
-    };
-
-#if CLOPTS_USE_MMAP
-    int fd = ::open(path.data(), O_RDONLY);
-    if (fd < 0) return err(path);
-
-    struct stat s {};
-    if (::fstat(fd, &s)) return err(path);
-    auto sz = size_t(s.st_size);
-    if (sz == 0) return {};
-
-    auto* mem = (char*) ::mmap(nullptr, sz, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-    if (mem == MAP_FAILED) return err(path);
-    ::close(fd);
-
-    // Construct the file contents.
-    typename file_data_type::contents_type ret;
-    auto pointer = reinterpret_cast<typename file_data_type::element_pointer>(mem);
-    if constexpr (requires { ret.assign(pointer, sz); }) ret.assign(pointer, sz);
-    else if constexpr (requires { ret.assign(pointer, pointer + sz); }) ret.assign(pointer, pointer + sz);
-    else CLOPTS_ERR("file_data_type::contents_type must have a callable assign member that takes a pointer and a size_t (or a begin and end iterator) as arguments.");
-    ::munmap(mem, sz);
-
-#else
-    using contents_type = typename file_data_type::contents_type;
-
-    // Read the file manually.
-    std::unique_ptr<FILE, decltype(&std::fclose)> f{std::fopen(path.data(), "rb"), std::fclose};
-    if (not f) return err(path);
-
-    // Get the file size.
-    std::fseek(f.get(), 0, SEEK_END);
-    auto sz = std::size_t(std::ftell(f.get()));
-    std::fseek(f.get(), 0, SEEK_SET);
-
-    // Read the file.
-    contents_type ret;
-    ret.resize(sz);
-    std::size_t n_read = 0;
-    while (n_read < sz) {
-        auto n = std::fread(ret.data() + n_read, 1, sz - n_read, f.get());
-        if (n < 0) return err(path);
-        if (n == 0) break;
-        n_read += n;
-    }
-#endif
-
-    // Construct the file data.
-    file_data_type dat;
-    dat.path = typename file_data_type::path_type{path.begin(), path.end()};
-    dat.contents = std::move(ret);
-    return dat;
-}
-
 /// Get the name of an option type.
 template <typename t>
 static consteval auto type_name() -> static_string<25> {
     static_string<25> buffer;
     if constexpr (utils::is<t, std::string>) buffer.append("string");
     else if constexpr (utils::is<t, bool>) buffer.append("bool");
-    else if constexpr (utils::is<t, std::int64_t, double>) buffer.append("number");
+    else if constexpr (utils::is<t, i64, double>) buffer.append("number");
     else if constexpr (requires { t::is_file_data; }) buffer.append("file");
     else if constexpr (detail::is_callback<t>) buffer.append("arg");
     else if constexpr (detail::is_vector_v<t>) {
@@ -753,7 +663,7 @@ class clopts_impl<list<opts...>, list<special...>> {
     using opt_by_name = nth_type<optindex<name>(), opts...>;
 
     // I hate not having pack indexing.
-    template <std::size_t i, static_string str, static_string... strs>
+    template <usz i, static_string str, static_string... strs>
     static constexpr auto nth_str() {
         if constexpr (i == 0) return str;
         else return nth_str<i - 1, strs...>();
@@ -768,11 +678,11 @@ class clopts_impl<list<opts...>, list<special...>> {
     static consteval bool check_duplicate_options() {
         // State is ok initially.
         bool ok = true;
-        std::size_t i = 0;
+        usz i = 0;
 
         // Iterate over each option for each option.
         While<opts...>(ok, [&]<typename opt>() {
-            std::size_t j = 0;
+            usz j = 0;
             While<opts...>(ok, [&]<typename opt2>() {
                 // If the options are not the same, but their names are the same
                 // then this is an error. Iteration will stop at this point because
@@ -793,11 +703,11 @@ class clopts_impl<list<opts...>, list<special...>> {
     static consteval bool check_short_opts() {
         // State is ok initially.
         bool ok = true;
-        std::size_t i = 0;
+        usz i = 0;
 
         // Iterate over each option for each option.
         While<opts...>(ok, [&]<typename opt>() {
-            std::size_t j = 0;
+            usz j = 0;
             While<opts...>(ok, [&]<typename opt2>() {
                 // Check the condition.
                 ok = i == j or not requires { opt::is_short; } or not opt2::name.sv().starts_with(opt::name.sv());
@@ -918,7 +828,7 @@ class clopts_impl<list<opts...>, list<special...>> {
     using help_string_t = static_string<1024 + 1024 * sizeof...(opts)>; // Size should be ‘big enough’™.
     using optvals_tuple_t = std::tuple<storage_type_t<opts>...>;
     using string = std::string;
-    using integer = int64_t;
+    using integer = i64;
 
     static constexpr bool has_stop_parsing = (requires { special::is_stop_parsing; } or ...);
 
@@ -1306,7 +1216,7 @@ private:
     //  References.
     // =======================================================================
     /// Add a referenced option to a tuple.
-    template <std::size_t index, static_string name>
+    template <usz index, static_string name>
     void add_referenced_option(auto& tuple) {
         // +1 here because the first index is the actual option value.
         auto& storage = std::get<index + 1>(tuple);
@@ -1321,7 +1231,7 @@ private:
     /// Add all referenced options to a tuple.
     template <typename type, static_string... args>
     auto add_referenced_options(auto& tuple, ref<type, args...>) {
-        [&]<std::size_t... i>(std::index_sequence<i...>) {
+        [&]<usz... i>(std::index_sequence<i...>) {
             (add_referenced_option<i, nth_str<i, args...>()>(tuple), ...);
         }(std::make_index_sequence<sizeof...(args)>());
     }
@@ -1509,7 +1419,32 @@ private:
         else if constexpr (std::is_same_v<element, std::string>) return std::string{opt_val};
 
         // If it’s a file, read its contents.
-        else if constexpr (requires { element::is_file_data; }) return detail::map_file<element>(opt_val, error_handler);
+        else if constexpr (requires { element::is_file_data; }) {
+            auto res = File::Read(opt_val);
+            if (not res.has_value()) {
+                error_handler(std::format("Error reading file '{}': {}", opt_val, res.error()));
+                return {};
+            }
+
+            element dat;
+            dat.path = typename element::path_type{opt_val.begin(), opt_val.end()};
+
+            auto contents = std::move(res.value());
+            if constexpr (utils::is_same<fs::FileContents, typename element::contents_type>) {
+                dat.contents = std::move(contents);
+            } else {
+                using contents_element = element::contents_type::value_type;
+                static_assert(
+                    utils::is_same<contents_element, char, char8_t, i8, u8, std::byte>,
+                    "Element type of 'contents' container for file_data must be one of:  [char, char8_t, i8, u8, std::byte]"
+                );
+
+                auto data = reinterpret_cast<const contents_element*>(contents.data());
+                dat.contents = typename element::contents_type{data, data + contents.size()};
+            }
+
+            return dat;
+        }
 
         // Parse an integer or double.
         else if constexpr (std::is_same_v<element, integer>) return parse_number<integer, "integer">(opt_val, std::strtoull);
@@ -1565,7 +1500,7 @@ private:
         if constexpr (has_stop_parsing) {
             optvals.unprocessed_args = std::span<const char*>{
                 argv + argi,
-                static_cast<std::size_t>(argc - argi),
+                static_cast<usz>(argc - argi),
             };
         }
     }
@@ -1658,12 +1593,10 @@ struct short_option : detail::opt_impl<_name, _description, _type, required, ove
 } // namespace experimental
 
 /// A file.
-template <typename contents_type_t = std::string, typename path_type_t = std::filesystem::path>
+template <typename contents_type_t = fs::FileContents, typename path_type_t = fs::Path>
 struct file {
     using contents_type = contents_type_t;
     using path_type = path_type_t;
-    using element_type = typename contents_type::value_type;
-    using element_pointer = std::add_pointer_t<element_type>;
     static constexpr bool is_file_data = true;
 
     /// The file path.
