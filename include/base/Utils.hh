@@ -33,7 +33,7 @@ concept ConvertibleRange = rgs::range<T> and std::convertible_to<rgs::range_valu
 template <typename... Types>
 struct list {
     template <typename Callable>
-    static void each(Callable&& callable) {
+    constexpr static void each(Callable&& callable) {
         (callable.template operator()<Types>(), ...);
     }
 };
