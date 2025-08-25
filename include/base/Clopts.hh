@@ -25,6 +25,9 @@
 namespace command_line_options {
 using namespace base;
 
+template <typename contents_type_t, typename path_type_t>
+struct file;
+
 // ===========================================================================
 //  Internals.
 // ===========================================================================
@@ -386,6 +389,68 @@ struct string_or_int {
 };
 
 string_or_int(i64) -> string_or_int<1>;
+
+// ===========================================================================
+//  Parsers.
+// ===========================================================================
+template <typename>
+struct arg_parser;
+
+template <>
+struct arg_parser<i64> {
+    auto parse(std::string_view val) -> Result<i64> {
+        return Parse<i64>(val);
+    }
+
+    static auto name() -> std::string_view { return "integer"; }
+};
+
+template <>
+struct arg_parser<double> {
+    auto parse(std::string_view val) -> Result<double> {
+        return Parse<double>(val);
+    }
+
+    static auto name() -> std::string_view { return "floating-point number"; }
+};
+
+template <>
+struct arg_parser<std::string> {
+    auto parse(std::string_view val) -> std::string {
+        return std::string(val);
+    }
+};
+
+template <typename contents_type, typename path_type>
+struct arg_parser<file<contents_type, path_type>> {
+    using data = file<contents_type, path_type>;
+    auto parse(std::string_view val) -> Result<data> {
+        auto res = File::Read(val);
+        if (not res.has_value()) return Error("Error reading file '{}': {}", val, res.error());
+
+        data dat;
+        dat.path = path_type{val.begin(), val.end()};
+
+        auto contents = std::move(res.value());
+        if constexpr (utils::is_same<fs::FileContents, contents_type>) {
+            dat.contents = std::move(contents);
+        } else {
+            using contents_element = contents_type::value_type;
+            static_assert(
+                utils::is_same<contents_element, char, char8_t, i8, u8, std::byte>,
+                "Element type of 'contents' container for file_data must be one of: "
+                "[char, char8_t, i8, u8, std::byte]"
+            );
+
+            auto data = reinterpret_cast<const contents_element*>(contents.data());
+            dat.contents = contents_type{data, data + contents.size()};
+        }
+
+        return dat;
+    }
+
+    static auto name() -> std::string_view { return "file"; }
+};
 
 // ===========================================================================
 //  Types.
@@ -997,15 +1062,6 @@ private:
         );
     }
 
-    /// Helper to parse an integer or double.
-    template <typename number_type, static_string name>
-    auto parse_number(std::string_view s) -> number_type {
-        auto res = Parse<number_type>(s);
-        if (res.has_value()) return res.value();
-        error("'{}' is not a valid {}: {}", s, name.sv(), res.error());
-        return number_type();
-    }
-
     /// Get the program name, if available.
     auto program_name() const -> std::string_view {
         if (argv) return argv[0];
@@ -1247,6 +1303,8 @@ private:
 
         // Otherwise, parse the argument.
         else {
+            static_assert(detail::has_argument<typename opt::single_element_type>);
+
             // Create the argument value.
             auto value = make_arg<opt>(opt_val);
 
@@ -1385,49 +1443,17 @@ private:
 
     /// Parse an option value.
     template <typename opt>
-    auto make_arg(std::string_view opt_val) -> typename opt::single_element_type {
-        using element = typename opt::single_element_type;
-
-        // Make sure this option takes an argument.
-        if constexpr (not detail::has_argument<element>) CLOPTS_ERR("This option type does not take an argument");
-
-        // Strings do not require parsing.
-        else if constexpr (std::is_same_v<element, std::string>) return std::string{opt_val};
-
-        // If it’s a file, read its contents.
-        else if constexpr (requires { element::is_file_data; }) {
-            auto res = File::Read(opt_val);
-            if (not res.has_value()) {
-                error_handler(std::format("Error reading file '{}': {}", opt_val, res.error()));
-                return {};
-            }
-
-            element dat;
-            dat.path = typename element::path_type{opt_val.begin(), opt_val.end()};
-
-            auto contents = std::move(res.value());
-            if constexpr (utils::is_same<fs::FileContents, typename element::contents_type>) {
-                dat.contents = std::move(contents);
-            } else {
-                using contents_element = element::contents_type::value_type;
-                static_assert(
-                    utils::is_same<contents_element, char, char8_t, i8, u8, std::byte>,
-                    "Element type of 'contents' container for file_data must be one of:  [char, char8_t, i8, u8, std::byte]"
-                );
-
-                auto data = reinterpret_cast<const contents_element*>(contents.data());
-                dat.contents = typename element::contents_type{data, data + contents.size()};
-            }
-
-            return dat;
+    auto make_arg(std::string_view opt_val) -> opt::single_element_type {
+        using element = opt::single_element_type;
+        arg_parser<element> p;
+        auto res = p.parse(opt_val);
+        if constexpr (requires { res.has_value(); }) {
+            if (res.has_value()) return std::move(res.value());
+            error("Value '{}' is not a valid {}: {}", opt_val, arg_parser<element>::name(), res.error());
+            return element();
+        } else {
+            return res;
         }
-
-        // Parse an integer or double.
-        else if constexpr (std::is_same_v<element, integer>) return parse_number<integer, "integer">(opt_val);
-        else if constexpr (std::is_same_v<element, double>) return parse_number<double, "floating-point number">(opt_val);
-
-        // Should never get here.
-        else CLOPTS_ERR("Unreachable");
     }
 
     /// Check if we should stop parsing.
