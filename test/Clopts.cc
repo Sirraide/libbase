@@ -39,9 +39,7 @@ static auto range_to_string(const fs::FileContents& v) -> std::string {
     return {v.begin(), v.end()};
 }
 
-static void print_number_and_exit(void* arg, std::string_view) {
-    int* i = reinterpret_cast<int*>(arg);
-    std::cout << *i;
+static void print_number_and_exit(void*, std::string_view) {
     std::exit(0);
 }
 

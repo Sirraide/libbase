@@ -7,7 +7,7 @@
 #include <cerrno>
 #include <cstring>
 #include <functional>
-#include <iostream>
+#include <print>
 #include <optional>
 #include <span>
 #include <string>
@@ -551,7 +551,7 @@ struct opt_impl {
 // ===========================================================================
 /// Default help handler.
 [[noreturn]] inline void default_help_handler(std::string_view program_name, std::string_view msg) {
-    std::cerr << "Usage: " << program_name << " " << msg;
+    std::println(stderr, "Usage: {} {}", program_name, msg);
     std::exit(1);
 }
 
@@ -942,8 +942,8 @@ private:
     /// Error handler that is used if the user doesn’t provide one.
     bool default_error_handler(std::string&& errmsg) {
         auto name = program_name();
-        if (not name.empty()) std::cerr << name << ": ";
-        std::cerr << errmsg << "\n";
+        if (not name.empty()) std::print(stderr, "{}: ", name);
+        std::println(stderr, "{}", errmsg);
 
         // Invoke the help option.
         bool invoked = false;
@@ -959,9 +959,9 @@ private:
 
         // If no help option was found, print the help message.
         if (not invoked) {
-            std::cerr << "Usage: ";
-            if (not name.empty()) std::cerr << name << " ";
-            std::cerr << help();
+            std::print(stderr, "Usage: ");
+            if (not name.empty()) std::print(stderr, "{} ", name);
+            std::println(stderr, "{}", help());
         }
 
         std::exit(1);
