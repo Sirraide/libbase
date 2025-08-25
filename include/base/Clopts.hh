@@ -969,13 +969,9 @@ private:
     }
 
     /// Invoke the error handler and set the error flag.
-    void handle_error(auto first, auto&&... msg_parts) {
-        // Append the message parts.
-        std::string msg = std::string{std::move(first)};
-        ((msg += std::forward<decltype(msg_parts)>(msg_parts)), ...);
-
-        // Dispatch the error.
-        has_error = not error_handler(std::move(msg));
+    template <typename ...Args>
+    void error(std::format_string<Args...> fmt, Args&&... args) {
+        has_error = not error_handler(std::format(fmt, std::forward<Args>(args)...));
     }
 
     /// Invoke the help callback of the help option.
@@ -1006,7 +1002,7 @@ private:
     auto parse_number(std::string_view s) -> number_type {
         auto res = Parse<number_type>(s);
         if (res.has_value()) return res.value();
-        handle_error("'", s, "' is not a valid ", name.sv(), ": ", res.error());
+        error("'{}' is not a valid {}: {}", s, name.sv(), res.error());
         return number_type();
     }
 
@@ -1047,11 +1043,7 @@ private:
             not detail::is_callback<typename opt::single_element_type>
         ) {
             if (not opt::is_overridable and found<opt::name>()) {
-                std::string errmsg;
-                errmsg += "Duplicate option: \"";
-                errmsg += opt::name.sv();
-                errmsg += "\"";
-                handle_error(std::move(errmsg));
+                error("Duplicate option: \"{}\"", opt::name.sv());
             }
         }
 
@@ -1262,13 +1254,7 @@ private:
             // value matches one of them.
             if constexpr (opt::is_values) {
                 if (not opt::is_valid_option_value(value)) {
-                    handle_error(
-                        "Invalid value for option '",
-                        std::string(opt_str),
-                        "': '",
-                        std::string(opt_val),
-                        "'"
-                    );
+                    error("Invalid value for option '{}': '{}'", opt_str, opt_val);
                 }
             }
 
@@ -1323,7 +1309,7 @@ private:
         else {
             // No more command line arguments left.
             if (++argi == argc) {
-                handle_error("Missing argument for option \"", opt_str, "\"");
+                error("Missing argument for option '{}'", opt_str);
                 return false;
             }
 
@@ -1464,11 +1450,7 @@ private:
 
             // Attempt to handle the option.
             if (not handle_non_positional(opt_str) and not handle_positional(opt_str)) {
-                std::string errmsg;
-                errmsg += "Unrecognized option: \"";
-                errmsg += opt_str;
-                errmsg += "\"";
-                handle_error(std::move(errmsg));
+                error("Unrecognized option: '{}'", opt_str);
             }
 
             // Stop parsing if there was an error.
@@ -1477,13 +1459,8 @@ private:
 
         // Make sure all required options were found.
         Foreach<opts...>([&]<typename opt>() {
-            if (not found<opt::name>() and opt::is_required) {
-                std::string errmsg;
-                errmsg += "Option \"";
-                errmsg += opt::name.sv();
-                errmsg += "\" is required";
-                handle_error(std::move(errmsg));
-            }
+            if (not found<opt::name>() and opt::is_required)
+                error("Option '{}' is required", opt::name.sv());
         });
 
         // Save unprocessed options.
