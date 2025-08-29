@@ -5,37 +5,37 @@
 #include <base/StringUtils.hh>
 
 auto base::utils::Escape(
-    std::string_view str,
+    str s,
     bool escape_double_quotes,
     bool escape_per_cent_signs
 ) -> std::string {
-    std::string s;
-    for (auto c : str) {
+    std::string out;
+    for (auto c : s) {
         switch (c) {
-            case '\n': s += "\\n"; break;
-            case '\r': s += "\\r"; break;
-            case '\t': s += "\\t"; break;
-            case '\v': s += "\\v"; break;
-            case '\f': s += "\\f"; break;
-            case '\a': s += "\\a"; break;
-            case '\b': s += "\\b"; break;
-            case '\\': s += "\\\\"; break;
-            case '\0': s += "\\0"; break;
-            case '\033': s += "\\e"; break;
+            case '\n': out += "\\n"; break;
+            case '\r': out += "\\r"; break;
+            case '\t': out += "\\t"; break;
+            case '\v': out += "\\v"; break;
+            case '\f': out += "\\f"; break;
+            case '\a': out += "\\a"; break;
+            case '\b': out += "\\b"; break;
+            case '\\': out += "\\\\"; break;
+            case '\0': out += "\\0"; break;
+            case '\033': out += "\\e"; break;
             case '"':
-                if (escape_double_quotes) s += "\\\"";
-                else s += c;
+                if (escape_double_quotes) out += "\\\"";
+                else out += c;
                 break;
             case '%':
-                if (escape_per_cent_signs) s += "%%";
-                else s += c;
+                if (escape_per_cent_signs) out += "%%";
+                else out += c;
                 break;
             default:
-                if (text::IsPrint(c)) s += c;
-                else s += std::format("\\x{:02x}", static_cast<u8>(c));
+                if (text::IsPrint(c)) out += c;
+                else out += std::format("\\x{:02x}", static_cast<u8>(c));
         }
     }
-    return s;
+    return out;
 }
 
 auto base::utils::HumanReadable(u64 value) -> std::string {
@@ -53,21 +53,21 @@ auto base::utils::HumanReadable(i64 value) -> std::string {
     return HumanReadable(static_cast<u64>(value));
 }
 
-auto base::utils::Indent(std::string_view str, u32 width) -> std::string {
+auto base::utils::Indent(str s, u32 width) -> std::string {
     std::string out;
     std::string id(width, ' ');
     bool first = true;
-    for (auto l : stream(str).lines()) {
+    for (auto l : s.lines()) {
         if (not first) out += "\n";
         else first = false;
         if (l.empty()) continue;
         out += id;
-        out += l.text();
+        out += l;
     }
     return out;
 }
 
-void base::utils::ThrowOrAbort(const std::string& message, std::source_location loc) {
+void base::utils::ThrowOrAbort(std::string_view message, std::source_location loc) {
 #ifdef __cpp_exceptions
     auto m = std::format("Error at {}:{}: {}", loc.file_name(), loc.line(), message);
     throw std::runtime_error(m);

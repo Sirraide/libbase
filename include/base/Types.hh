@@ -32,7 +32,7 @@ namespace utils {
 /// Used instead of 'Assert()' in some places so we can catch the
 /// exception in unit tests.
 [[noreturn]] void ThrowOrAbort(
-    const std::string& message,
+    std::string_view message,
     std::source_location loc = std::source_location::current()
 );
 }

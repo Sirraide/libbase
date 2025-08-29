@@ -111,60 +111,60 @@ TEST_CASE("regex_match::extract") {
     CHECK(r[1]->extract(input).size() == input.substr(4, 2).size());
 }
 
-TEST_CASE("stream::matches()") {
+TEST_CASE("str::matches()") {
     regex r = "a+b+"sv;
 
-    CHECK(stream("ab").matches(r));
-    CHECK(stream("aaab").matches(r));
-    CHECK(stream("aaabbb").matches(r));
-    CHECK(not stream("a").matches(r));
-    CHECK(not stream("b").matches(r));
-    CHECK(not stream("ba").matches(r));
-    CHECK(not stream("").matches(r));
+    CHECK(str("ab").matches(r));
+    CHECK(str("aaab").matches(r));
+    CHECK(str("aaabbb").matches(r));
+    CHECK(not str("a").matches(r));
+    CHECK(not str("b").matches(r));
+    CHECK(not str("ba").matches(r));
+    CHECK(not str("").matches(r));
 
-    CHECK(stream("ab").matches("a+b+"));
-    CHECK(stream("aaab").matches("a+b+"));
-    CHECK(stream("aaabbb").matches("a+b+"));
-    CHECK(not stream("a").matches("a+b+"));
-    CHECK(not stream("b").matches("a+b+"));
-    CHECK(not stream("ba").matches("a+b+"));
-    CHECK(not stream("").matches("a+b+"));
+    CHECK(str("ab").matches("a+b+"));
+    CHECK(str("aaab").matches("a+b+"));
+    CHECK(str("aaabbb").matches("a+b+"));
+    CHECK(not str("a").matches("a+b+"));
+    CHECK(not str("b").matches("a+b+"));
+    CHECK(not str("ba").matches("a+b+"));
+    CHECK(not str("").matches("a+b+"));
 }
 
-TEST_CASE("stream::find()") {
+TEST_CASE("str::find()") {
     regex r = "a+b+"sv;
 
-    CHECK(stream("ab").find(r) == regex_match(0, 2));
-    CHECK(stream("aaab").find(r) == regex_match(0, 4));
-    CHECK(stream("qqqaaabbb").find(r) == regex_match(3, 9));
-    CHECK(stream("qqqaaabbbqqabq").find(r) == regex_match(3, 9));
-    CHECK(stream("qabqqaaabbbqqabq").find(r) == regex_match(1, 3));
-    CHECK(stream("ba").find(r) == std::nullopt);
-    CHECK(stream("").find(r) == std::nullopt);
+    CHECK(str("ab").find(r) == regex_match(0, 2));
+    CHECK(str("aaab").find(r) == regex_match(0, 4));
+    CHECK(str("qqqaaabbb").find(r) == regex_match(3, 9));
+    CHECK(str("qqqaaabbbqqabq").find(r) == regex_match(3, 9));
+    CHECK(str("qabqqaaabbbqqabq").find(r) == regex_match(1, 3));
+    CHECK(str("ba").find(r) == std::nullopt);
+    CHECK(str("").find(r) == std::nullopt);
 
-    CHECK(stream("ab").find("a+b+") == regex_match(0, 2));
-    CHECK(stream("aaab").find("a+b+") == regex_match(0, 4));
-    CHECK(stream("qqqaaabbb").find("a+b+") == regex_match(3, 9));
-    CHECK(stream("qqqaaabbbqqabq").find("a+b+") == regex_match(3, 9));
-    CHECK(stream("qabqqaaabbbqqabq").find("a+b+") == regex_match(1, 3));
-    CHECK(stream("ba").find("a+b+") == std::nullopt);
-    CHECK(stream("").find("a+b+") == std::nullopt);
+    CHECK(str("ab").find_regex("a+b+") == regex_match(0, 2));
+    CHECK(str("aaab").find_regex("a+b+") == regex_match(0, 4));
+    CHECK(str("qqqaaabbb").find_regex("a+b+") == regex_match(3, 9));
+    CHECK(str("qqqaaabbbqqabq").find_regex("a+b+") == regex_match(3, 9));
+    CHECK(str("qabqqaaabbbqqabq").find_regex("a+b+") == regex_match(1, 3));
+    CHECK(str("ba").find_regex("a+b+") == std::nullopt);
+    CHECK(str("").find_regex("a+b+") == std::nullopt);
 }
 
-TEST_CASE("stream::take_until()") {
+TEST_CASE("str::take_until()") {
     regex r = "a+b+"sv;
 
-    CHECK(stream("ab").take_until(r) == "");
-    CHECK(stream("aaab").take_until(r) == "");
-    CHECK(stream("qqqaaabbb").take_until(r) == "qqq");
-    CHECK(stream("qqqaaabbbqqabq").take_until(r) == "qqq");
-    CHECK(stream("qqqqqabqaaabbb").take_until(r) == "qqqqq");
-    CHECK(stream("qabqqaaabbbqqabq").take_until(r) == "q");
-    CHECK(stream("ba").take_until(r) == "ba");
-    CHECK(stream("foo").take_until(r) == "foo");
-    CHECK(stream("").take_until(r) == "");
+    CHECK(str("ab").take_until(r) == "");
+    CHECK(str("aaab").take_until(r) == "");
+    CHECK(str("qqqaaabbb").take_until(r) == "qqq");
+    CHECK(str("qqqaaabbbqqabq").take_until(r) == "qqq");
+    CHECK(str("qqqqqabqaaabbb").take_until(r) == "qqqqq");
+    CHECK(str("qabqqaaabbbqqabq").take_until(r) == "q");
+    CHECK(str("ba").take_until(r) == "ba");
+    CHECK(str("foo").take_until(r) == "foo");
+    CHECK(str("").take_until(r) == "");
 
-    stream s{"qabqqaaabbbqqabq"};
+    str s{"qabqqaaabbbqqabq"};
     CHECK(s.take_until(r) == "q");
     CHECK(s == "abqqaaabbbqqabq");
     s.drop(2);
@@ -177,15 +177,15 @@ TEST_CASE("stream::take_until()") {
     CHECK(s.take_until(r) == "q");
     CHECK(s.empty());
 
-    CHECK(stream("ab").take_until_or_empty(r) == "");
-    CHECK(stream("aaab").take_until_or_empty(r) == "");
-    CHECK(stream("qqqaaabbb").take_until_or_empty(r) == "qqq");
-    CHECK(stream("qqqaaabbbqqabq").take_until_or_empty(r) == "qqq");
-    CHECK(stream("qqqqqabqaaabbb").take_until_or_empty(r) == "qqqqq");
-    CHECK(stream("qabqqaaabbbqqabq").take_until_or_empty(r) == "q");
-    CHECK(stream("ba").take_until_or_empty(r) == "");
-    CHECK(stream("foo").take_until_or_empty(r) == "");
-    CHECK(stream("").take_until_or_empty(r) == "");
+    CHECK(str("ab").take_until_or_empty(r) == "");
+    CHECK(str("aaab").take_until_or_empty(r) == "");
+    CHECK(str("qqqaaabbb").take_until_or_empty(r) == "qqq");
+    CHECK(str("qqqaaabbbqqabq").take_until_or_empty(r) == "qqq");
+    CHECK(str("qqqqqabqaaabbb").take_until_or_empty(r) == "qqqqq");
+    CHECK(str("qabqqaaabbbqqabq").take_until_or_empty(r) == "q");
+    CHECK(str("ba").take_until_or_empty(r) == "");
+    CHECK(str("foo").take_until_or_empty(r) == "");
+    CHECK(str("").take_until_or_empty(r) == "");
 }
 
 #endif

@@ -35,7 +35,7 @@ struct Context {
     std::vector<Style> styles;
     std::string_view fmt;
     std::string out;
-    stream s;
+    str s;
     bool use_colours;
 
     Context(std::string_view fmt, bool use_colours) : fmt(fmt), s(fmt), use_colours(use_colours) {
@@ -85,13 +85,13 @@ struct Context {
     // if the format string is somehow invalid.
     auto ParseFormat(Style style) -> Style {
         // Handle resetting.
-        if (s[0].value() == 'r') {
+        if (s[0] == 'r') {
             style = {};
             s.drop();
         }
 
         while (not s.consume('(')) {
-            switch (auto c = s.take().at(0)) {
+            switch (auto c = s.take()[0]) {
                 default: utils::ThrowOrAbort(std::format("Invalid formatting character in '{}': '{}'", fmt, c));
                 case 'b':
                     style.bold = true;
@@ -111,8 +111,8 @@ struct Context {
 
                 case 'u':
                     style.underline = true;
-                    if ("123456789"sv.contains(s[0].value())) {
-                        style.underline_colour = u8(*s[0] - '0');
+                    if ("123456789"sv.contains(s[0])) {
+                        style.underline_colour = u8(s[0] - '0');
                         s.drop();
                     }
                     break;

@@ -7,11 +7,15 @@
 #include <base/Macros.hh>
 #include <base/Numeric.hh>
 #include <base/Result.hh>
-#include <base/Stream.hh>
+#include <base/Str.hh>
 #include <base/StringUtils.hh>
 #include <base/Types.hh>
 #include <base/Utils.hh>
 #include <chrono>
+
+#define LIBBASE_SUPPRESS_STREAM_HH_DEPRECATION_WARNING
+#    include <base/Stream.hh>
+#undef LIBBASE_SUPPRESS_STREAM_HH_DEPRECATION_WARNING
 
 namespace base {
 using namespace std::literals;

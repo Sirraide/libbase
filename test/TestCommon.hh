@@ -36,6 +36,14 @@ struct Catch::StringMaker<RawString> {
     }
 };
 
+template <std::formattable<char> T>
+struct Catch::StringMaker<std::optional<T>> {
+    static std::string convert(const std::optional<T>& res) {
+        if (not res.has_value()) return "nullopt";
+        return std::format("some({})", res.value());
+    }
+};
+
 inline auto operator""_raw(const char* str, size_t len) -> RawString {
     return {std::string{str, len}};
 }

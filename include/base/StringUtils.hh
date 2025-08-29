@@ -2,12 +2,12 @@
 #define LIBBASE_STRING_UTILS_HH
 
 #include <base/Utils.hh>
-#include <base/Stream.hh>
+#include <base/Str.hh>
 
 namespace base::utils {
 /// Escape non-printable and formatting characters in a string.
 auto Escape(
-    std::string_view str,
+    str s,
     bool escape_double_quotes = false,
     bool escape_per_cent_signs = false
 ) -> std::string;
@@ -21,7 +21,7 @@ auto escaped(Range&& r, bool escape_double_quotes) {
 }
 
 /// Indent a string.
-auto Indent(std::string_view str, u32 width) -> std::string;
+auto Indent(str s, u32 width) -> std::string;
 
 /// Join a range of strings.
 ///
@@ -33,7 +33,7 @@ template <typename Range, typename Proj = std::identity>
 requires std::is_invocable_v<Proj, rgs::range_value_t<Range>>
 std::string join(
     Range&& range,
-    std::string_view sep = ", ",
+    str sep = ", ",
     std::format_string<decltype(std::invoke(
         std::declval<Proj>(),
         std::declval<const rgs::range_value_t<Range>&>()
@@ -61,7 +61,7 @@ std::string join_as(
 template <typename Range>
 auto quoted(Range&& r, bool quote_always = false) {
     return vws::transform(LIBBASE_FWD(r), [quote_always]<typename T>(T&& el) {
-        if (quote_always or stream{std::string_view{el}}.contains_any(stream::whitespace())) return std::format("\"{}\"", el);
+        if (quote_always or str{el}.contains_any(str::whitespace())) return std::format("\"{}\"", el);
         return std::string{std::forward<T>(el)};
     });
 }
@@ -73,9 +73,9 @@ auto quote_escaped(Range&& r, bool quote_always = false) {
 }
 
 /// Replace all occurrences of `from` with `to` in `str`.
-[[deprecated("Use `stream(str).replace(from, to)` instead")]]
-inline void ReplaceAll(std::string& str, std::string_view from, std::string_view to) {
-    str = stream(str).replace(from, to);
+[[deprecated("Use `str(str).replace(from, to)` instead")]]
+inline void ReplaceAll(std::string& s, std::string_view from, std::string_view to) {
+    s = str(s).replace(from, to);
 }
 } // namespace base::utils
 
