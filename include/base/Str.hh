@@ -28,10 +28,16 @@
 }()
 
 namespace base {
-/// \brief A string of characters.
+/// 'std::string_view' replacement.
 ///
-/// This is a non-owning wrapper around a blob of text intended for simple
-/// parsing tasks. Streams are cheap to copy and should be passed by value.
+/// This is basically a 'std::basic_string_view', except that it has a number
+/// of additional helper functions mostly related to parsing and other text
+/// transformations.
+///
+/// This used to be called 'stream' and was used *only* for parsing, but over
+/// time I was finding myself writing 'stream(sv).something()' all the time
+/// (where 'sv' is a std::string_view), so I decided it would be simpler to just
+/// switch to using 'str' everywhere instead.
 template <typename CharType>
 class basic_str {
 public:
