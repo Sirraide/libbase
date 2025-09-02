@@ -610,6 +610,7 @@ TEST_CASE("str::split()") {
 
 TEST_CASE("str::starts_with") {
     std::string s = "hello world";
+    std::u32string s2 = U"hello world";
 
     CHECK(str{s}.starts_with('h'));
     CHECK(str{s}.starts_with("h"));
@@ -617,10 +618,18 @@ TEST_CASE("str::starts_with") {
     CHECK(str{s}.starts_with("hello"));
     CHECK_FALSE(str{s}.starts_with("hx"));
     CHECK_FALSE(str{s}.starts_with("xhello"));
+
+    CHECK(str32{s2}.starts_with(U'h'));
+    CHECK(str32{s2}.starts_with(U"h"));
+    CHECK(str32{s2}.starts_with(U"he"));
+    CHECK(str32{s2}.starts_with(U"hello"));
+    CHECK_FALSE(str32{s2}.starts_with(U"hx"));
+    CHECK_FALSE(str32{s2}.starts_with(U"xhello"));
 }
 
 TEST_CASE("str::starts_with_any") {
     std::string s = "hello world";
+    std::u32string s2 = U"hello world";
 
     CHECK(str{s}.starts_with_any("h"));
     CHECK(str{s}.starts_with_any("eh"));
@@ -628,6 +637,13 @@ TEST_CASE("str::starts_with_any") {
     CHECK(str{s}.starts_with_any("hx"));
     CHECK(str{s}.starts_with_any("xhello"));
     CHECK_FALSE(str{s}.starts_with_any("x"));
+
+    CHECK(str32{s2}.starts_with_any(U"h"));
+    CHECK(str32{s2}.starts_with_any(U"eh"));
+    CHECK(str32{s2}.starts_with_any(U"hello"));
+    CHECK(str32{s2}.starts_with_any(U"hx"));
+    CHECK(str32{s2}.starts_with_any(U"xhello"));
+    CHECK_FALSE(str32{s2}.starts_with_any(U"x"));
 }
 
 TEST_CASE("str::swap()") {

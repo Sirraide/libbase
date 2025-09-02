@@ -877,7 +877,7 @@ public:
     /// \see starts_with(char_type) const
     [[nodiscard]] constexpr auto
     starts_with(basic_str prefix) const noexcept -> bool {
-        return _m_text.starts_with(prefix);
+        return _m_text.starts_with(prefix._m_text);
     }
     ///@}
 
@@ -1010,7 +1010,7 @@ public:
     /// \see take_back_until(char_type)
     [[nodiscard]] constexpr auto
     take_back_until(basic_str s) noexcept -> basic_str {
-        return _m_take_back<false>(_m_text.rfind(s), s.size());
+        return _m_take_back<false>(_m_text.rfind(s._m_text), s.size());
     }
 
     /// \see take_back_until(char_type)
@@ -1034,7 +1034,7 @@ public:
     /// \see take_back_until(char_type)
     [[nodiscard]] constexpr auto
     take_back_until_or_empty(basic_str s) noexcept -> basic_str {
-        return _m_take_back<true>(_m_text.rfind(s), s.size());
+        return _m_take_back<true>(_m_text.rfind(s._m_text), s.size());
     }
     ///@}
 
