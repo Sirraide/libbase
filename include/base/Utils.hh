@@ -136,6 +136,14 @@ void splice(Container& container, Iterator begin_remove, Iterator end_remove, In
     rgs::copy(std::forward<Input>(input_range), begin_remove);
 }
 
+/// Sort elements in a range and unique them.
+template <typename Container>
+void unique_sort(Container&& r) {
+    rgs::sort(r);
+    auto [first, last] = rgs::unique(r);
+    r.erase(first, last);
+}
+
 /// std::visit, but with a better order of arguments.
 template <typename Variant, typename Visitor>
 constexpr decltype(auto) Visit(Visitor&& visitor, Variant&& variant) {

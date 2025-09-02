@@ -257,6 +257,24 @@ TEST_CASE("basic_zstring construction") {
     CHECK(*utils::u32zstring().c_str() == 0);
 }
 
+TEST_CASE("unique_sort") {
+    std::vector v1 = {1, 1, 2, 3, 6, 7, 1, 3, 9, 8, 5, 4, 8, 0, 4, 1};
+    utils::unique_sort(v1);
+    CHECK(v1 == std::vector{0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
+
+    std::vector<int> v2;
+    utils::unique_sort(v2);
+    CHECK(v2 == std::vector<int>{});
+
+    std::vector v3{1};
+    utils::unique_sort(v3);
+    CHECK(v3 == std::vector{1});
+
+    std::vector v4{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    utils::unique_sort(v4);
+    CHECK(v4 == std::vector{1});
+}
+
 TEST_CASE("Try") {
     static const auto IncrementEven = [](int n) -> Result<int> {
         if (n & 1) return Error("not even!");
