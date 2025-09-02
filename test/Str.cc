@@ -364,6 +364,7 @@ TEST_CASE("str::first_any()") {
 
 TEST_CASE("str::fold_any()") {
     std::string s = "abcdaabbccddabcd";
+    std::u32string s2 = U"abcdaabbccddabcd";
 
     CHECK(str{s}.fold_any("", 'q') == s);
     CHECK(str{s}.fold_any("xyzw", 'q') == s);
@@ -374,6 +375,17 @@ TEST_CASE("str::fold_any()") {
     CHECK(str{s}.fold_any("dbca", 'q') == "q");
     CHECK(str{s}.fold_any("ab", "q") == "qcdqccddqcd");
     CHECK(str{s}.fold_any("ad", "q") == "qbcqbbccqbcq");
+
+
+    CHECK(str32{s2}.fold_any(U"", U'q') == s2);
+    CHECK(str32{s2}.fold_any(U"xyzw", U'q') == s2);
+    CHECK(str32{s2}.fold_any(U"a", U'a') == U"abcdabbccddabcd");
+    CHECK(str32{s2}.fold_any(U"a", U'q') == U"qbcdqbbccddqbcd");
+    CHECK(str32{s2}.fold_any(U"a", U"q") == U"qbcdqbbccddqbcd");
+    CHECK(str32{s2}.fold_any(U"abcd", U'q') == U"q");
+    CHECK(str32{s2}.fold_any(U"dbca", U'q') == U"q");
+    CHECK(str32{s2}.fold_any(U"ab", U"q") == U"qcdqccddqcd");
+    CHECK(str32{s2}.fold_any(U"ad", U"q") == U"qbcqbbccqbcq");
 }
 
 TEST_CASE("str::fold_ws()") {

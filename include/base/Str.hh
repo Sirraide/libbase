@@ -620,7 +620,7 @@ public:
 
     /// Equivalent to `fold(basic_str::whitespace())`.
     [[nodiscard]] constexpr auto
-    fold_ws(basic_str replacement = " ") const noexcept -> string_type {
+    fold_ws(basic_str replacement = LIBBASE_STR_LIT(" ")) const noexcept -> string_type {
         return fold_any(whitespace(), replacement);
     }
 
