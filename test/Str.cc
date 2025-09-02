@@ -1153,6 +1153,8 @@ TEST_CASE("str: implicit conversion to string view") {
 TEST_CASE("str: formatter") {
     CHECK(std::format("123 {}", str("abc")) == "123 abc");
     CHECK(std::format("123 {}", str("abc").take(2)) == "123 ab");
+    CHECK(std::format("123 {}", str32(U"abc")) == "123 abc");
+    CHECK(std::format("123 {}", str32(U"abc").take(2)) == "123 ab");
 }
 
 TEST_CASE("str: hashable") {

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <base/Assert.hh>
 #include <base/Regex.hh>
+#include <base/Text.hh>
 #include <base/Utils.hh>
 #include <cstddef>
 #include <optional>
@@ -1414,6 +1415,24 @@ struct std::formatter<base::str> : std::formatter<std::string_view> {
         return std::formatter<std::string_view>::format(std::string_view(s), ctx);
     }
 };
+
+#ifdef LIBBASE_ENABLE_UNICODE_SUPPORT
+template <typename CharType>
+struct std::formatter<base::basic_str<CharType>> : std::formatter<std::string_view> {
+    template <typename FormatContext>
+    auto format(base::basic_str<CharType> s, FormatContext& ctx) const {
+        return std::formatter<std::string_view>::format(base::text::ToUTF8(s), ctx);
+    }
+};
+#else
+template <typename CharType>
+struct std::formatter<base::basic_str<CharType>> {
+    static_assert(
+        false,
+        "Formatting str types other than 'str' is only supported if LIBBASE_ENABLE_UNICODE_SUPPORT is enabled"
+    );
+};
+#endif
 
 template <typename CharType>
 struct std::hash<base::basic_str<CharType>> :
