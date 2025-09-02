@@ -1125,8 +1125,10 @@ TEST_CASE("str::operator<=>") {
 }
 
 TEST_CASE("str: implicit conversion to string view") {
-    [[maybe_unused]] std::string_view sv;
-    sv = str();
+    [[maybe_unused]] std::string_view sv1;
+    [[maybe_unused]] std::u32string_view sv2;
+    sv1 = str();
+    sv2 = str32();
 }
 
 TEST_CASE("str: formatter") {

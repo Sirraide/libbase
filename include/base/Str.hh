@@ -1324,7 +1324,7 @@ public:
     }
 
     /// Implicit conversion to a string view.
-    /* implicit */ operator std::string_view() const noexcept { return _m_text; }
+    /* implicit */ operator text_type() const noexcept { return _m_text; }
 
 private:
     // Return characters until position `n` (exclusive)
