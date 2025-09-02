@@ -1164,3 +1164,9 @@ TEST_CASE("str: hashable") {
     CHECK(m.at(str("123")) == 123);
     CHECK(m.at(str("456")) == 456);
 }
+
+TEST_CASE("str: Lexicographical sort") {
+    std::vector<str> v{"mc", "d", "e", "g", "x", "y", "e", "mm", "ma", "mb", "mq"};
+    rgs::sort(v);
+    CHECK(v == std::vector<str>{"d", "e", "e", "g", "ma", "mb", "mc", "mm", "mq", "x", "y"});
+}

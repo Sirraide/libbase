@@ -1310,7 +1310,7 @@ public:
     /// Equality comparison operator.
     [[nodiscard]] constexpr bool
     operator==(const std::convertible_to<basic_str> auto& other) const noexcept {
-        return basic_str(other)._m_text == _m_text;
+        return _m_text == basic_str(other)._m_text;
     }
 
     /// Three-way comparison operator.
@@ -1321,7 +1321,7 @@ public:
     /// overloads for that case anyway, just do this instead.
     [[nodiscard]] constexpr auto
     operator<=>(const std::convertible_to<basic_str> auto& other) const noexcept -> std::strong_ordering {
-        return basic_str(other)._m_text <=> _m_text;
+        return _m_text <=> basic_str(other)._m_text;
     }
 
     /// Implicit conversion to a string view.
