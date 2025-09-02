@@ -10,8 +10,6 @@
 #include <unordered_map>
 #include <vector>
 
-#ifdef __cpp_lib_generator
-
 namespace base {
 template <typename CharType>
 class basic_trie;
@@ -225,8 +223,8 @@ private:
         // Then, process the tree in BFS order. The queue only ever
         // contains nodes whose fail links have already been computed,
         // so we can safely use them.
-        for (auto i : queue.stream()) {
-            auto& parent = nodes[i];
+        while (not queue.empty()) {
+            auto& parent = nodes[queue.dequeue()];
 
             // Compute the children’s fail links.
             for (auto& c : parent.children) {
@@ -256,7 +254,5 @@ private:
         }
     }
 };
-
-#endif // __cpp_lib_generator
 
 #endif // LIBBASE_TRIE_HH
