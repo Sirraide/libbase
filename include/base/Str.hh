@@ -680,7 +680,7 @@ public:
     ///
     /// This always splits on '\n', irrespective of platform.
     [[nodiscard]] constexpr auto lines() const noexcept {
-        return split("\n");
+        return split(LIBBASE_STR_LIT("\n"));
     }
 
 #ifdef LIBBASE_ENABLE_PCRE2

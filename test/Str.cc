@@ -600,6 +600,7 @@ TEST_CASE("str::slice()") {
 
 TEST_CASE("str::split()") {
     std::string s = "aa\nbb\ncc\nbb\ncc";
+    std::u32string s2 = U"aa\nbb\ncc\nbb\ncc";
 
     SECTION ("1") {
         auto lines = str{s}.lines();
@@ -617,6 +618,12 @@ TEST_CASE("str::split()") {
         auto cc = str{s}.split("cc");
         REQUIRE(rgs::distance(cc) == 3);
         CHECK_THAT(cc, RangeEquals(std::vector{"aa\nbb\n"sv, "\nbb\n"sv, ""sv}));
+    }
+
+    SECTION ("4") {
+        auto lines = str32{s2}.lines();
+        REQUIRE(rgs::distance(lines) == 5);
+        CHECK_THAT(lines, RangeEquals(std::vector{U"aa"sv, U"bb"sv, U"cc"sv, U"bb"sv, U"cc"sv}));
     }
 }
 
