@@ -12,6 +12,11 @@
 #include <string_view>
 #include <utility>
 
+#if defined(LIBBASE_ENABLE_LLVM_BINDINGS) and __has_include(<llvm/ADT/StringRef.h>)
+#   define LIBBASE_ENABLE_LLVM_BINDINGS_STR
+#   include <llvm/ADT/StringRef.h>
+#endif
+
 #define LIBBASE_STR_LIT(lit) [] {                           \
     using namespace std::string_view_literals;              \
     if constexpr (std::is_same_v<char_type, char>)          \
@@ -74,6 +79,12 @@ public:
     template <usz n>
     constexpr basic_str(const char_type (&chars)[n]) noexcept
         : _m_text(chars, n - 1) {}
+
+    /// Construct a str from a string ref.
+#ifdef LIBBASE_ENABLE_LLVM_BINDINGS_STR
+    constexpr basic_str(::llvm::StringRef ref) noexcept requires std::is_same_v<char_type, char>
+        : _m_text(ref) {}
+#endif
 
     /// \return The last character of the string, or an empty optional
     ///         if the string is empty.
