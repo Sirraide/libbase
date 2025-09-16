@@ -1258,10 +1258,6 @@ public:
     ///@}
 
     /// Get the underlying string view for this string.
-    ///
-    /// This function is deprecated because str is implicitly convertible
-    /// to string_view and should also just be used instead of string_view.
-    [[deprecated("Try just not calling text()")]]
     [[nodiscard]] constexpr auto
     text() const noexcept -> text_type { return _m_text; }
 
