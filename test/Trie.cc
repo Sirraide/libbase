@@ -141,4 +141,32 @@ TEST_CASE("Trie: multiple failures in a row") {
     CHECK(trie.replace("abcdeg") == "abcde7");
 }
 
+TEST_CASE("Trie::get()") {
+    trie trie {
+        {"abcdef", "1"},
+        {"bcdef", "3"},
+        {"cdef", "4"},
+        {"def", "5"},
+        {"ef", "6"},
+        {"g", "7"},
+    };
+
+    CHECK(trie.get("abcdef") == "1");
+    CHECK(trie.get("bcdef") == "3");
+    CHECK(trie.get("cdef") == "4");
+    CHECK(trie.get("def") == "5");
+    CHECK(trie.get("ef") == "6");
+    CHECK(trie.get("g") == "7");
+
+    CHECK(trie.get("abcdefg") == std::nullopt);
+    CHECK(trie.get("abcde") == std::nullopt);
+    CHECK(trie.get("abc") == std::nullopt);
+    CHECK(trie.get("a") == std::nullopt);
+    CHECK(trie.get("defg") == std::nullopt);
+    CHECK(trie.get("x") == std::nullopt);
+    CHECK(trie.get("qqqq") == std::nullopt);
+    CHECK(trie.get("ef ") == std::nullopt);
+    CHECK(trie.get("") == std::nullopt);
+}
+
 #endif // __cpp_lib_generator

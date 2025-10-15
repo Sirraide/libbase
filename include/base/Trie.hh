@@ -87,6 +87,19 @@ public:
         nodes[current].replacement = string_type(replacement);
     }
 
+    /// Check if the trie contains a pattern and return its replacement.
+    auto get(text_type pattern) const -> std::optional<text_type> {
+        auto current = Root;
+
+        // Insert the pattern into the trie.
+        for (auto [i, el] : utils::enumerate(pattern)) {
+            if (auto child = nodes[current].children.get(el)) current = *child;
+            else return std::nullopt;
+        }
+
+        return nodes[current].replacement;
+    }
+
     /// Replace all occurrences of the patterns in the trie in the input.
     ///
     /// This function always returns a copy because replacing elements means
