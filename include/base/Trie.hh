@@ -90,14 +90,23 @@ public:
     /// Check if the trie contains a pattern and return its replacement.
     auto get(text_type pattern) const -> std::optional<text_type> {
         auto current = Root;
-
-        // Insert the pattern into the trie.
-        for (auto [i, el] : utils::enumerate(pattern)) {
+        for (auto el : pattern) {
             if (auto child = nodes[current].children.get(el)) current = *child;
             else return std::nullopt;
         }
-
         return nodes[current].replacement;
+    }
+
+    /// Check if this trie contains a string that matches the start of
+    /// the input text.
+    bool is_prefix_of(text_type haystack) const {
+        auto current = Root;
+        for (auto el : haystack) {
+            if (nodes[current].replacement.has_value()) return true;
+            if (auto child = nodes[current].children.get(el)) current = *child;
+            else return false;
+        }
+        return nodes[current].replacement.has_value();
     }
 
     /// Replace all occurrences of the patterns in the trie in the input.

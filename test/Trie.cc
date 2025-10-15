@@ -1,8 +1,6 @@
 #include "TestCommon.hh"
 #include <base/Trie.hh>
 
-#ifdef __cpp_lib_generator
-
 using namespace base;
 
 trie t{{"foo", "bar"}};
@@ -169,4 +167,35 @@ TEST_CASE("Trie::get()") {
     CHECK(trie.get("") == std::nullopt);
 }
 
-#endif // __cpp_lib_generator
+TEST_CASE("Trie::is_prefix_of()") {
+    trie trie {
+        {"abcdef", "1"},
+        {"bcdef", "3"},
+        {"cdef", "4"},
+        {"def", "5"},
+        {"ef", "6"},
+        {"g", "7"},
+    };
+
+    CHECK(trie.is_prefix_of("abcdef"));
+    CHECK(trie.is_prefix_of("abcdefqq"));
+    CHECK(trie.is_prefix_of("bcdef"));
+    CHECK(trie.is_prefix_of("bcdefqq"));
+    CHECK(trie.is_prefix_of("cdef"));
+    CHECK(trie.is_prefix_of("cdefq"));
+    CHECK(trie.is_prefix_of("def"));
+    CHECK(trie.is_prefix_of("defafaefaef"));
+    CHECK(trie.is_prefix_of("ef"));
+    CHECK(trie.is_prefix_of("efafaef"));
+    CHECK(trie.is_prefix_of("g"));
+    CHECK(trie.is_prefix_of("ga"));
+
+    CHECK(not trie.is_prefix_of("abcde"));
+    CHECK(not trie.is_prefix_of("abcd"));
+    CHECK(not trie.is_prefix_of("cde"));
+    CHECK(not trie.is_prefix_of("cdeg"));
+    CHECK(not trie.is_prefix_of("cd"));
+    CHECK(not trie.is_prefix_of("cdq"));
+    CHECK(not trie.is_prefix_of("qq"));
+    CHECK(not trie.is_prefix_of("xafcaefgagef"));
+}
