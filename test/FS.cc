@@ -6,10 +6,11 @@
 
 using namespace base;
 using namespace base::fs;
+namespace std_fs = std::filesystem;
 
 #define TRelFileName "file-that-does-not-exist"
-auto TPath = std::filesystem::temp_directory_path() / TRelFileName;
-auto TDirPath = std::filesystem::temp_directory_path() / "dir-that-does-not-exist";
+auto TPath = std_fs::temp_directory_path() / TRelFileName;
+auto TDirPath = std_fs::temp_directory_path() / "dir-that-does-not-exist";
 
 auto ThisFile() -> std::string_view {
     static std::string file_contents = [] {
@@ -23,16 +24,16 @@ auto ThisFile() -> std::string_view {
 }
 
 TEST_CASE("CurrentDirectory()") {
-    CHECK(fs::CurrentDirectory() == std::filesystem::current_path());
+    CHECK(CurrentDirectory() == std_fs::current_path());
 }
 
 TEST_CASE("ChangeDirectory()") {
-    auto old = fs::CurrentDirectory();
-    REQUIRE(old != std::filesystem::temp_directory_path());
-    fs::ChangeDirectory(std::filesystem::temp_directory_path()).value();
-    CHECK(std::filesystem::current_path() == std::filesystem::temp_directory_path());
-    fs::ChangeDirectory(old).value();
-    CHECK(std::filesystem::current_path() == old);
+    auto old = CurrentDirectory();
+    REQUIRE(old != std_fs::temp_directory_path());
+    ChangeDirectory(std_fs::temp_directory_path()).value();
+    CHECK(std_fs::current_path() == std_fs::temp_directory_path());
+    ChangeDirectory(old).value();
+    CHECK(std_fs::current_path() == old);
 }
 
 TEST_CASE("ExecutablePath") {
@@ -43,6 +44,31 @@ TEST_CASE("ExecutablePath") {
 #else
     // The generic implementation doesn’t support this.
     CHECK(fs::ExecutablePath().error() == "ExecutablePath() is not supported on this platform");
+#endif
+}
+
+TEST_CASE("TempPath") {
+    auto p1 = TempPath("foo");
+    auto p2 = TempPath("foo");
+    auto p3 = TempPath("bar");
+    auto p4 = TempPath("");
+    auto p5 = TempPath();
+
+    CHECK(p1 != p2);
+    CHECK(p1 != p3);
+    CHECK(p1 != p4);
+    CHECK(p1 != p5);
+
+    CHECK(p1.ends_with(".foo"));
+    CHECK(p2.ends_with(".foo"));
+    CHECK(p3.ends_with(".bar"));
+
+#ifdef __linux__
+    CHECK(p1.starts_with("/tmp/"));
+    CHECK(p2.starts_with("/tmp/"));
+    CHECK(p3.starts_with("/tmp/"));
+    CHECK(p4.starts_with("/tmp/"));
+    CHECK(p5.starts_with("/tmp/"));
 #endif
 }
 
@@ -94,7 +120,7 @@ TEST_CASE("File::Delete, File::Exists") {
 
 TEST_CASE("File::Delete (Recursive)") {
     File::Delete(TPath, false).value();
-    std::filesystem::create_directories(TPath / "a" / "b" / "c");
+    std_fs::create_directories(TPath / "a" / "b" / "c");
 
     CHECK(File::Exists(TPath / "a" / "b" / "c"));
     CHECK(File::Delete(TPath, false).error() == std::format("Could not delete path '{}': Directory not empty", TPath.string()));

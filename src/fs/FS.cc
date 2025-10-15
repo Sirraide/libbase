@@ -3,6 +3,8 @@
 #include <cerrno>
 #include <cstring>
 #include <filesystem>
+#include <random>
+#include <thread>
 
 #ifdef __linux__
 #    include <fcntl.h>
@@ -44,6 +46,48 @@ auto fs::GetFilesInDirectory(PathRef dir, bool recursive) -> Result<std::vector<
         for (auto path : Try(IterateFilesInDirectory<false>(dir))) res.push_back(Path(path));
     }
     return res;
+}
+
+auto fs::TempPath(str extension) -> std::string {
+    std::mt19937 rd(std::random_device{}());
+
+    // Get the temporary directory.
+    auto tmp_dir = std_fs::temp_directory_path();
+
+    // Use the pid on Linux, and another random number on Windows.
+#ifdef __linux__
+    auto pid = std::to_string(u32(getpid()));
+#else
+    auto pid = std::to_string(rd());
+#endif
+
+    // Get the current time and tid.
+    auto now = chr::system_clock::now().time_since_epoch().count();
+    auto tid = std::to_string(u32(std::hash<std::thread::id>{}(std::this_thread::get_id())));
+
+    // And some random letters too.
+    //
+    // Do NOT use `char` for this because it’s signed on some systems (including mine),
+    // which completely breaks the modulo operation below... Thanks a lot, C.
+    std::array<u8, 8> rand{};
+    rgs::generate(rand, [&] { return rd() % 26 + 'a'; });
+
+    // Create a unique file name.
+    auto tmp_name = std::format(
+        "{}.{}.{}.{}",
+        pid,
+        tid,
+        now,
+        std::string_view{reinterpret_cast<char*>(rand.data()), rand.size()}
+    );
+
+    // Append it to the temporary directory.
+    auto f = tmp_dir / tmp_name;
+    if (not extension.empty()) {
+        if (not extension.starts_with(".")) f += '.';
+        f += extension;
+    }
+    return f;
 }
 
 auto File::Delete(PathRef path, bool recursive) -> Result<bool> {

@@ -80,6 +80,9 @@ auto IterateFilesInDirectory(PathRef dir) {
     if (not ec) return Res{vws::filter(std::move(it), filter)};
     return Res{Error("Could not iterate directory '{}': {}", dir.string(), ec.message())};
 }
+
+/// Get a temporary file path.
+auto TempPath(str extension = {}) -> std::string;
 } // namespace base::fs
 
 namespace base {
