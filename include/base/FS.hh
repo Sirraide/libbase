@@ -5,6 +5,7 @@
 #include <base/detail/SystemInfo.hh>
 #include <base/Macros.hh>
 #include <base/Result.hh>
+#include <base/Str.hh>
 #include <base/Types.hh>
 #include <cstdio>
 #include <cstring>
