@@ -955,6 +955,28 @@ TEST_CASE("str::take_while") {
     CHECK(str{s}.take_while([](char c) { return "w loeh"sv.contains(c); }) == "hello wo"sv);
 }
 
+TEST_CASE("str::take_back") {
+    std::string s1 = "hello world";
+    CHECK(str(s1).take_back() == "d");
+    CHECK(str(s1).take_back(0) == "");
+    CHECK(str(s1).take_back(1) == "d");
+    CHECK(str(s1).take_back(2) == "ld");
+    CHECK(str(s1).take_back(5) == "world");
+    CHECK(str(s1).take_back(1000) == "hello world");
+
+    str s = s1;
+    CHECK(s.take_back() == "d");
+    CHECK(s == "hello worl");
+    CHECK(s.take_back(2) == "rl");
+    CHECK(s == "hello wo");
+    CHECK(s.take_back(5) == "lo wo");
+    CHECK(s == "hel");
+    CHECK(s.take_back(0) == "");
+    CHECK(s == "hel");
+    CHECK(s.take_back(1000) == "hel");
+    CHECK(s == "");
+}
+
 TEST_CASE("str::take_back_until") {
     std::string s = "hello world";
 
@@ -1093,6 +1115,69 @@ TEST_CASE("str::take_back_until: whitespace") {
     CHECK(s.take_back_until_any_or_empty(ws) == ""sv);
     CHECK(s.take_back_until_any_or_empty(ws) == ""sv);
     CHECK(s == "foo");
+}
+
+TEST_CASE("str::take_back_while") {
+    std::string s1 = "hello world";
+    std::string s2 = "aaabbbccc";
+
+    CHECK(str{s1}.take_back_while('d') == "d");
+    CHECK(str{s1}.drop_back_while('d') == "hello worl");
+
+    CHECK(str{s1}.take_back_while('x') == "");
+    CHECK(str{s1}.drop_back_while('x') == "hello world");
+
+    str s = s2;
+    CHECK(s.take_back_while('c') == "ccc");
+    CHECK(s.take_back_while('b') == "bbb");
+    CHECK(s.take_back_while('a') == "aaa");
+
+    s = s2;
+    CHECK(s.drop_back_while('c') == "aaabbb");
+    CHECK(s.drop_back_while('b') == "aaa");
+    CHECK(s.drop_back_while('a') == "");
+
+    s = s2;
+    CHECK(s.take_back_while('x') == "");
+    CHECK(s.drop_back_while('x') == "aaabbbccc");
+    CHECK(s == s2);
+}
+
+TEST_CASE("str::take_back_while_any") {
+    std::string s1 = "hello world";
+    std::string s2 = "aaabbbccc";
+
+    CHECK(str{s1}.take_back_while_any("drl") == "rld");
+    CHECK(str{s1}.drop_back_while_any("drl") == "hello wo");
+
+    CHECK(str{s1}.take_back_while_any("dorl") == "orld");
+    CHECK(str{s1}.drop_back_while_any("dorl") == "hello w");
+
+    CHECK(str{s1}.take_back_while_any("abcdefghijklmnopqrstuvwxyz") == "world");
+    CHECK(str{s1}.drop_back_while_any("abcdefghijklmnopqrstuvwxyz") == "hello ");
+
+    CHECK(str{s1}.take_back_while_any("abcdefghijklmnopqrstuvwxyz ") == "hello world");
+    CHECK(str{s1}.drop_back_while_any("abcdefghijklmnopqrstuvwxyz ") == "");
+
+    CHECK(str{s2}.take_back_while_any("cb") == "bbbccc");
+    CHECK(str{s2}.drop_back_while_any("cb") == "aaa");
+
+    CHECK(str{s2}.take_back_while_any("cab") == "aaabbbccc");
+    CHECK(str{s2}.drop_back_while_any("cab") == "");
+
+    CHECK(str{s2}.take_back_while_any("xyz") == "");
+    CHECK(str{s2}.drop_back_while_any("xyz") == "aaabbbccc");
+
+    str s = s2;
+    CHECK(s.take_back_while_any("cb") == "bbbccc");
+    CHECK(s.take_back_while_any("a") == "aaa");
+
+    s = s2;
+    CHECK(s.drop_back_while_any("cb") == "aaa");
+    CHECK(s.drop_back_while_any("a") == "");
+
+    CHECK(str(s2).take_back_while_any("") == "");
+    CHECK(str(s2).drop_back_while_any("") == "aaabbbccc");
 }
 
 TEST_CASE("str::string()") {

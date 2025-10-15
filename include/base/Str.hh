@@ -374,6 +374,20 @@ public:
         (void) take_back_until_or_empty(std::move(c));
         return *this;
     }
+
+    /// \see take_back_until(char_type)
+    constexpr auto
+    drop_back_while(char_type c) noexcept -> basic_str& {
+        (void) take_back_while(c);
+        return *this;
+    }
+
+    /// \see take_back_until(char_type)
+    constexpr auto
+    drop_back_while_any(basic_str chars) noexcept -> basic_str& {
+        (void) take_back_while_any(chars);
+        return *this;
+    }
     ///@}
 
     ///@{
@@ -930,6 +944,15 @@ public:
         return _m_advance(n);
     }
 
+    /// Get N characters from the end of the string.
+    [[nodiscard]] constexpr auto
+    take_back(size_type n = 1) noexcept -> basic_str {
+        if (n > size()) n = size();
+        auto chars = slice(size() - n, size());
+        _m_text.remove_suffix(n);
+        return chars;
+    }
+
     /// @{
     /// Get a delimited character sequence from the string.
     ///
@@ -1053,6 +1076,20 @@ public:
     [[nodiscard]] constexpr auto
     take_back_until_or_empty(basic_str s) noexcept -> basic_str {
         return _m_take_back<true>(_m_text.rfind(s._m_text), s.size());
+    }
+
+    /// \see take_back_until(char_type)
+    [[nodiscard]] constexpr auto
+    take_back_while(char_type c) noexcept -> basic_str {
+        return _m_take_back<false>(_m_text.find_last_not_of(c));
+    }
+
+    /// \see take_back_until(char_type)
+    [[nodiscard]] constexpr auto
+    take_back_while_any(basic_str chars) noexcept -> basic_str {
+        auto pos = _m_text.find_last_not_of(chars._m_text);
+        if (pos == text_type::npos) return std::exchange(_m_text, text_type());
+        return take_back(size() - pos - 1);
     }
     ///@}
 
