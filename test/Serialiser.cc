@@ -418,6 +418,18 @@ TEST_CASE("Serialisation: std::variant") {
     );
 }
 
+TEST_CASE("Serialisation: Size") {
+    Test(Size(), Bytes(0, 0, 0, 0, 0, 0, 0, 0 ));
+    Test(Size::Bits(8), Bytes(0, 0, 0, 0, 0, 0, 0, 8), Bytes(8, 0, 0, 0, 0, 0, 0, 0));
+    Test(Size::Bytes(8), Bytes(0, 0, 0, 0, 0, 0, 0, 64), Bytes(64, 0, 0, 0, 0, 0, 0, 0));
+}
+
+TEST_CASE("Serialisation: Align") {
+    Test(Align(), Bytes(0));
+    Test(Align(2), Bytes(1));
+    Test(Align(8), Bytes(3));
+}
+
 TEST_CASE("Serialisation: Magic number") {
     static constexpr auto M1 = ser::Magic("1234");
     static constexpr auto M2 = ser::Magic{'1', u8(2), std::byte(3), '4'};
