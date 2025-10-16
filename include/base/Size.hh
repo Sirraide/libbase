@@ -35,6 +35,8 @@ class Align {
     LIBBASE_SERIALISE(Align, log_value);
     u8 log_value;
 
+    Align(ser::deserialise_tag, u8 log_value) : log_value{log_value} {}
+
 public:
     /// Create an alignment of 1 byte.
     [[nodiscard]] constexpr Align() : log_value{0} {}

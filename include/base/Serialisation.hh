@@ -1,20 +1,34 @@
 #ifndef LIBBASE_SERIALISATION_HH
 #define LIBBASE_SERIALISATION_HH
 
+#include <array>
 #include <base/Result.hh>
 #include <base/StringUtils.hh>
 #include <base/Types.hh>
 #include <base/Utils.hh>
 #include <span>
+#include <string>
+#include <tuple>
 #include <utility>
+#include <variant>
 #include <vector>
 
-#define LIBBASE_SERIALISE(Class, ...)                                                                \
-    template <std::endian E> friend class ::base::ser::Reader;                                       \
-    template <std::endian E> friend class ::base::ser::Writer;                                       \
-    template <std::endian E> void serialise(::base::ser::Writer<E>& buf) const { buf(__VA_ARGS__); } \
-    template <std::endian E> auto deserialise(::base::ser::Reader<E>& buf) -> Result<> { return buf(__VA_ARGS__); } \
-    explicit Class(::base::ser::detail::deserialise_tag_t) {}
+#define LIBBASE_SERIALISE(Class, ...)                                                                      \
+    template <std::endian E> friend class ::base::ser::Reader;                                             \
+    template <std::endian E> friend class ::base::ser::Writer;                                             \
+    template <std::endian E> void serialise(::base::ser::Writer<E>& w) const { w(__VA_ARGS__); }           \
+    template <std::endian E> static auto deserialise(::base::ser::Reader<E>& r) -> Result<Class> {         \
+        return std::apply(                                                                                 \
+            [](auto&&... args) {                                                                           \
+                if constexpr (requires { Class{::base::ser::deserialise_tag{}, LIBBASE_FWD(args)...}; }) { \
+                    return Class{::base::ser::deserialise_tag{}, LIBBASE_FWD(args)...};                    \
+                } else {                                                                                   \
+                    return Class{LIBBASE_FWD(args)...};                                                    \
+                }                                                                                          \
+            },                                                                                             \
+            Try(r.template read<decltype(std::tuple(__VA_ARGS__))>())                                      \
+        );                                                                                                 \
+    }
 
 /// ====================================================================
 ///  Serialisation
@@ -22,13 +36,17 @@
 ///
 /// This defines a Reader and Writer pair for serialising and deserialising
 /// objects. The simplest way of using this for your own types is to use the
-/// LIBBASE_SERIALISE() macro. This macro requires every field of a type to
-/// be default-constructible.
+/// LIBBASE_SERIALISE() macro.
 ///
 /// class Foo {
 ///     LIBBASE_SERIALISE(Foo, field1, field2, field3, ...);
 ///     ...
 /// };
+///
+/// The deserialiser will then invoke a constructor that takes values of type
+/// 'decltype(field1)', 'decltype(field2)', etc. in that order. If a constructor
+/// exists whose first parameter is of type 'base::ser::deserialise_tag', then
+/// that constructor is called instead.
 ///
 /// If this is not possible, perhaps because the type in question is defined
 /// in another library, you can implement specialisations of Serialiser<T>
@@ -40,9 +58,7 @@
 ///     static void serialise(Writer<E>& w, const Foo& f) { ... }
 /// };
 namespace base::ser {
-namespace detail {
-struct deserialise_tag_t {};
-}
+struct deserialise_tag {};
 
 template <std::endian SerialisedEndianness>  class Reader;
 template <std::endian SerialisedEndianness>  class Writer;
@@ -147,30 +163,11 @@ class base::ser::Reader {
 public:
     explicit Reader(InputSpan data) : data(data) {}
 
-    /// Read several fields from the buffer.
-    template <typename... Fields>
-    auto operator()(Fields&&... fields) -> Result<> {
-        Result<> result;
-        (void) (([&] {
-            auto res = read<std::remove_cvref_t<Fields>>();
-            if (not res.has_value()) {
-                result = std::unexpected(std::move(res.error()));
-                return false;
-            }
-
-            std::forward<Fields>(fields) = std::move(res.value());
-            return true;
-        }()) and ...);
-        return result;
-    }
-
     /// Deserialise an object that provides a 'deserialise()' member.
     template <typename T, typename Self>
-    requires requires (Self& self, T& t) { t.deserialise(self); }
+    requires requires (Self& self) { T::deserialise(self); }
     auto read(this Self& self) -> Result<T> {
-        T t{detail::deserialise_tag_t{}};
-        Try(t.deserialise(self));
-        return t;
+        return T::deserialise(self);
     }
 
     /// Deserialise an object for which there is a 'Serialiser<T>' specialisation.
@@ -514,6 +511,42 @@ template <std::endian E>
 struct base::ser::Serialiser<std::monostate, E> {
     static auto deserialise(Reader<E>&) -> Result<std::monostate> { return std::monostate{}; }
     static void serialise(Writer<E>&, std::monostate) {}
+};
+
+/// Serialiser for 'std::tuple'.
+template <typename ...Ts, std::endian E>
+struct base::ser::Serialiser<std::tuple<Ts...>, E> {
+    static_assert(
+        (base::utils::is_same<std::remove_cvref_t<Ts>, Ts> and ...),
+        "Cannot serialise a std::tuple that contains reference or const-qualified types"
+    );
+
+    static auto deserialise(Reader<E>& r) -> Result<std::tuple<Ts...>> {
+        Result<> result;
+        std::tuple<std::optional<Ts>...> elements;
+        [&]<usz ...I>(std::index_sequence<I...>) {
+            ([&] {
+                auto res = r.template read<Ts...[I]>();
+                if (not res) {
+                    result = std::unexpected(std::move(res).error());
+                    return false;
+                }
+
+                std::get<I>(elements) = std::move(res).value();
+                return true;
+            }() and ...);
+        }(std::make_index_sequence<sizeof...(Ts)>());
+
+        Try(std::move(result));
+        return std::apply(
+            [](auto&&... v) { return std::tuple<Ts...>{std::move(v).value()...}; },
+            std::move(elements)
+        );
+    }
+
+    static void serialise(Writer<E>& w, const std::tuple<Ts...>& ts) {
+        std::apply([&] (const auto& ...v) { ((w << v), ...); }, ts);
+    }
 };
 
 /// Serialiser for magic numbers.

@@ -420,6 +420,22 @@ TEST_CASE("Serialisation: std::variant") {
     );
 }
 
+TEST_CASE("Serialisation: std::tuple") {
+    using T = std::tuple<u8, int, std::string>;
+
+    T t{u8(42), 44, "abc"};
+    auto big = Bytes(42, 0, 0, 0, 44, 0, 0, 0, 0, 0, 0, 0, 3, 'a', 'b', 'c');
+    auto little = Bytes(42, 44, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 'a', 'b', 'c');
+
+    // Catch2 doesn’t like it when you compare tuples apparently.
+    CHECK(SerialiseBE(t) == big);
+    CHECK(SerialiseLE(t) == little);
+    CHECK((DeserialiseBE<T>(big) == t));
+    CHECK((DeserialiseLE<T>(little) == t));
+    CHECK((DeserialiseBE<T>(SerialiseBE(t)) == t));
+    CHECK((DeserialiseLE<T>(SerialiseLE(t)) == t));
+}
+
 TEST_CASE("Serialisation: Size") {
     Test(Size(), Bytes(0, 0, 0, 0, 0, 0, 0, 0 ));
     Test(Size::Bits(8), Bytes(0, 0, 0, 0, 0, 0, 0, 8), Bytes(8, 0, 0, 0, 0, 0, 0, 0));
