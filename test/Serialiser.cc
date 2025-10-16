@@ -496,7 +496,7 @@ TEST_CASE("Serialisation: manual implementation") {
 
 namespace {
 class S {
-    LIBBASE_SERIALISE(x);
+    LIBBASE_SERIALISE(S, x);
     int x;
 
 public:

@@ -32,7 +32,7 @@ concept BytePointer = // clang-format off
 
 /// Used to represent the alignment of a type in bytes.
 class Align {
-    LIBBASE_SERIALISE(log_value);
+    LIBBASE_SERIALISE(Align, log_value);
     u8 log_value;
 
 public:
@@ -94,7 +94,7 @@ public:
 ///
 /// Helpers to align the size to a given alignment are also provided.
 class Size {
-    LIBBASE_SERIALISE(raw);
+    LIBBASE_SERIALISE(Size, raw);
 
 public:
     static constexpr u64 BitsPerByte = 8;

@@ -9,11 +9,12 @@
 #include <utility>
 #include <vector>
 
-#define LIBBASE_SERIALISE(...)                                                                       \
+#define LIBBASE_SERIALISE(Class, ...)                                                                \
     template <std::endian E> friend class ::base::ser::Reader;                                       \
     template <std::endian E> friend class ::base::ser::Writer;                                       \
     template <std::endian E> void serialise(::base::ser::Writer<E>& buf) const { buf(__VA_ARGS__); } \
-    template <std::endian E> auto deserialise(::base::ser::Reader<E>& buf) -> Result<> { return buf(__VA_ARGS__); }
+    template <std::endian E> auto deserialise(::base::ser::Reader<E>& buf) -> Result<> { return buf(__VA_ARGS__); } \
+    explicit Class(::base::ser::detail::deserialise_tag_t) {}
 
 /// ====================================================================
 ///  Serialisation
@@ -25,7 +26,7 @@
 /// be default-constructible.
 ///
 /// class Foo {
-///     LIBBASE_SERIALISE(field1, field2, field3, ...);
+///     LIBBASE_SERIALISE(Foo, field1, field2, field3, ...);
 ///     ...
 /// };
 ///
@@ -39,6 +40,10 @@
 ///     static void serialise(Writer<E>& w, const Foo& f) { ... }
 /// };
 namespace base::ser {
+namespace detail {
+struct deserialise_tag_t {};
+}
+
 template <std::endian SerialisedEndianness>  class Reader;
 template <std::endian SerialisedEndianness>  class Writer;
 
@@ -163,7 +168,7 @@ public:
     template <typename T, typename Self>
     requires requires (Self& self, T& t) { t.deserialise(self); }
     auto read(this Self& self) -> Result<T> {
-        T t{};
+        T t{detail::deserialise_tag_t{}};
         Try(t.deserialise(self));
         return t;
     }
