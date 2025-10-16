@@ -36,6 +36,13 @@ struct Catch::StringMaker<RawString> {
     }
 };
 
+template <>
+struct Catch::StringMaker<char32_t> {
+    static std::string convert(char32_t value) {
+        return std::format("U+{:04X}", std::uint32_t(value));
+    }
+};
+
 template <std::formattable<char> T>
 struct Catch::StringMaker<std::optional<T>> {
     static std::string convert(const std::optional<T>& res) {

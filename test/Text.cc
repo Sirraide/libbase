@@ -17,13 +17,6 @@ struct Catch::StringMaker<c32> {
     }
 };
 
-template <>
-struct Catch::StringMaker<char32_t> {
-    static std::string convert(char32_t value) {
-        return std::format("U+{:04X}", u32(value));
-    }
-};
-
 #ifdef LIBBASE_ENABLE_UNICODE_SUPPORT
 template <>
 struct Catch::StringMaker<std::u32string> {
