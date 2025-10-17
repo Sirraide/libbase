@@ -588,9 +588,19 @@ TEST_CASE("Serialisation: Derived serialiser") {
 
     DerivedWriter writer{buf};
     writer << Foo{42};
+    writer << std::vector<Foo>{{1}, {2}, {3}};
 
     DerivedReader reader{buf, 43};
     auto foo = reader.read<Foo>().value();
     CHECK(foo.x == 42);
     CHECK(foo.y == 43);
+
+    auto foovec = reader.read<std::vector<Foo>>().value();
+    REQUIRE(foovec.size() == 3);
+    CHECK(foovec[0].x == 1);
+    CHECK(foovec[0].y == 43);
+    CHECK(foovec[1].x == 2);
+    CHECK(foovec[1].y == 43);
+    CHECK(foovec[2].x == 3);
+    CHECK(foovec[2].y == 43);
 }

@@ -52,10 +52,10 @@
 /// in another library, you can implement specialisations of Serialiser<T>
 /// for your type:
 ///
-/// template <std::endian E>
-/// struct base::Serialiser<Foo, E> {
-///     static auto deserialise(Reader<E>& r) -> Result<Foo> { ... }
-///     static void serialise(Writer<E>& w, const Foo& f) { ... }
+/// template <>
+/// struct base::Serialiser<Foo> {
+///     static auto deserialise(auto& r) -> Result<Foo> { ... }
+///     static void serialise(auto& w, const Foo& f) { ... }
 /// };
 namespace base::ser {
 struct deserialise_tag {};
@@ -120,7 +120,7 @@ Magic(Vals...) -> Magic<sizeof...(Vals)>;*/
 ///
 /// Generally, you should prefer using the LIBBASE_SERIALISE()
 /// macro instead.
-template <typename T, std::endian E>
+template <typename T>
 struct Serialiser;
 
 /// Deserialise a type from a span of bytes.
@@ -173,9 +173,9 @@ public:
     /// Deserialise an object for which there is a 'Serialiser<T>' specialisation.
     template <typename T, typename Self>
     requires requires (Self& self) {
-        { Serialiser<T, E>::deserialise(self) } -> std::convertible_to<Result<T>>;
+        { Serialiser<T>::deserialise(self) } -> std::convertible_to<Result<T>>;
     } auto read(this Self& self) -> Result<T> {
-        return Serialiser<T, E>::deserialise(self);
+        return Serialiser<T>::deserialise(self);
     }
 
     /// Extraction operator.
@@ -185,6 +185,8 @@ public:
         std::forward<T>(t) = Try(self.template read<T>());
         return {};
     }
+
+    static constexpr auto endianness() -> std::endian { return E; }
 
     /// Set the data buffer that this reader should read from.
     void set_data(InputSpan new_data) { data = new_data; }
@@ -222,9 +224,9 @@ public:
     /// Serialise an object for which there is a 'Serialiser<T>' specialisation.
     template <typename Self, typename T>
     requires requires (Self& self, const T& t) {
-        Serialiser<std::remove_cvref_t<T>, E>::serialise(self, t);
+        Serialiser<std::remove_cvref_t<T>>::serialise(self, t);
     } void write(this Self& self, const T& t) {
-        Serialiser<std::remove_cvref_t<T>, E>::serialise(self, t);
+        Serialiser<std::remove_cvref_t<T>>::serialise(self, t);
     }
 
     /// Chaining operator.
@@ -247,6 +249,8 @@ public:
 
     /// Append raw bytes.
     void append_bytes(const void* ptr, usz count);
+
+    static constexpr auto endianness() -> std::endian { return E; }
 };
 
 extern template class base::ser::Reader<std::endian::little>;
@@ -278,79 +282,79 @@ void base::ser::Serialise(std::vector<std::byte>& into, const T& t) {
 ///  Built-in Serialisers
 /// ====================================================================
 /// Serialiser for integer types.
-template <std::integral Int, std::endian E>
-struct base::ser::Serialiser<Int, E> {
-    static auto deserialise(Reader<E>& r) -> Result<Int> {
+template <std::integral Int>
+struct base::ser::Serialiser<Int> {
+    static auto deserialise(auto& r) -> Result<Int> {
         Int val{};
         Try(r.read_bytes_into(&val, sizeof(Int)));
-        if constexpr (E != std::endian::native) val = std::byteswap(val);
+        if constexpr (r.endianness() != std::endian::native) val = std::byteswap(val);
         return val;
     }
 
-    static void serialise(Writer<E>& w, Int val) {
-        if constexpr (E != std::endian::native) val = std::byteswap(val);
+    static void serialise(auto& w, Int val) {
+        if constexpr (w.endianness() != std::endian::native) val = std::byteswap(val);
         w.append_bytes(&val, sizeof(Int));
     }
 };
 
 /// Serialiser for 'bool'.
-template <std::endian E>
-struct base::ser::Serialiser<bool, E> {
-    static auto deserialise(Reader<E>& r) -> Result<bool> {
+template <>
+struct base::ser::Serialiser<bool> {
+    static auto deserialise(auto& r) -> Result<bool> {
         return bool(Try(r.template read<u8>()));
     }
 
-    static void serialise(Writer<E>& w, bool value) {
+    static void serialise(auto& w, bool value) {
         // Store as a u8 to avoid serialising padding bits.
         w << u8(value);
     }
 };
 
 /// Serialiser for 'float'.
-template <std::endian E>
-struct base::ser::Serialiser<float, E> {
-    static auto deserialise(Reader<E>& r) -> Result<float> {
+template <>
+struct base::ser::Serialiser<float> {
+    static auto deserialise(auto& r) -> Result<float> {
         return std::bit_cast<float>(Try(r.template read<u32>()));
     }
 
-    static void serialise(Writer<E>& w, float value) {
+    static void serialise(auto& w, float value) {
         w << std::bit_cast<u32>(value);
     }
 };
 
 /// Serialiser for 'double'.
-template <std::endian E>
-struct base::ser::Serialiser<double, E> {
-    static auto deserialise(Reader<E>& r) -> Result<double> {
+template <>
+struct base::ser::Serialiser<double> {
+    static auto deserialise(auto& r) -> Result<double> {
         return std::bit_cast<double>(Try(r.template read<u64>()));
     }
 
-    static void serialise(Writer<E>& w, double value) {
+    static void serialise(auto& w, double value) {
         w << std::bit_cast<u64>(value);
     }
 };
 
 /// Serialiser for enums.
-template <typename Enum, std::endian E>
+template <typename Enum>
 requires std::is_enum_v<Enum>
-struct base::ser::Serialiser<Enum, E> {
+struct base::ser::Serialiser<Enum> {
     using Base = std::underlying_type_t<Enum>;
 
-    static auto deserialise(Reader<E>& r) -> Result<Enum> {
+    static auto deserialise(auto& r) -> Result<Enum> {
         return Enum(Try(r.template read<Base>()));
     }
 
-    static void serialise(Writer<E>& w, Enum value) {
+    static void serialise(auto& w, Enum value) {
         w << Base(value);
     }
 };
 
 /// Serialiser for strings.
-template <base::utils::is_same<char, char8_t, char16_t, char32_t> Char, std::endian E>
-struct base::ser::Serialiser<std::basic_string<Char>, E> {
+template <base::utils::is_same<char, char8_t, char16_t, char32_t> Char>
+struct base::ser::Serialiser<std::basic_string<Char>> {
     using SizeType = u64; // Not 'size_t' because that’s platform-dependent.
 
-    static auto deserialise(Reader<E>& r) -> Result<std::basic_string<Char>> {
+    static auto deserialise(auto& r) -> Result<std::basic_string<Char>> {
         std::basic_string<Char> str;
         auto size = Try(r.template read<SizeType>());
         if (size > SizeType(str.max_size())) [[unlikely]] {
@@ -368,7 +372,7 @@ struct base::ser::Serialiser<std::basic_string<Char>, E> {
         });
         Try(std::move(read_result));
 
-        if constexpr (E != std::endian::native and sizeof(Char) != sizeof(char)) {
+        if constexpr (r.endianness() != std::endian::native and sizeof(Char) != sizeof(char)) {
             rgs::transform(
                 str.begin(),
                 str.end(),
@@ -380,11 +384,11 @@ struct base::ser::Serialiser<std::basic_string<Char>, E> {
         return str;
     }
 
-    static void serialise(Writer<E>& w, const std::basic_string<Char>& str) {
+    static void serialise(auto& w, const std::basic_string<Char>& str) {
         w << SizeType(str.size());
 
         usz size_bytes = usz(str.size()) * sizeof(Char);
-        if constexpr (E != std::endian::native and sizeof(Char) != sizeof(char)) {
+        if constexpr (w.endianness() != std::endian::native and sizeof(Char) != sizeof(char)) {
             auto bytes = w.allocate(size_bytes);
             rgs::transform(
                 str.begin(),
@@ -401,7 +405,7 @@ struct base::ser::Serialiser<std::basic_string<Char>, E> {
 /// Serialiser for vector-like types.
 ///
 /// This handles 'std::vector', 'llvm::SmallVector', etc.
-template <typename Vector, std::endian E>
+template <typename Vector>
 requires requires (const Vector& cv, Vector& v, std::size_t sz)
 {
     typename Vector::value_type;
@@ -412,11 +416,11 @@ requires requires (const Vector& cv, Vector& v, std::size_t sz)
     { cv.end() };
     { v.push_back(std::declval<typename Vector::value_type>()) };
 }
-struct base::ser::Serialiser<Vector, E> {
+struct base::ser::Serialiser<Vector> {
     using SizeType = u64; // Not 'size_t' because that’s platform-dependent.
     using Element = Vector::value_type;
 
-    static auto deserialise(Reader<E>& r) -> Result<Vector> {
+    static auto deserialise(auto& r) -> Result<Vector> {
         Vector vec;
         auto size = Try(r.template read<SizeType>());
         if (size > SizeType(vec.max_size())) [[unlikely]] {
@@ -436,49 +440,49 @@ struct base::ser::Serialiser<Vector, E> {
         return vec;
     }
 
-    static void serialise(Writer<E>& w, const Vector& v) {
+    static void serialise(auto& w, const Vector& v) {
         w << SizeType(v.size());
         for (const Element& val : v) w << val;
     }
 };
 
 /// Serialiser for 'std::array'.
-template <typename Element, std::size_t N, std::endian E>
-struct base::ser::Serialiser<std::array<Element, N>, E> {
-    static auto deserialise(Reader<E>& r) -> Result<std::array<Element, N>> {
+template <typename Element, std::size_t N>
+struct base::ser::Serialiser<std::array<Element, N>> {
+    static auto deserialise(auto& r) -> Result<std::array<Element, N>> {
         std::array<Element, N> array;
         for (usz i = 0; i < N; ++i)
             array[i] = Try(r.template read<Element>());
         return array;
     }
 
-    static void serialise(Writer<E>& w, const std::array<Element, N>& array) {
+    static void serialise(auto& w, const std::array<Element, N>& array) {
         for (const Element& val : array) w << val;
     }
 };
 
 /// Serialiser for 'std::optional'.
-template <typename Value, std::endian E>
-struct base::ser::Serialiser<std::optional<Value>, E> {
-    static auto deserialise(Reader<E>& r) -> Result<std::optional<Value>> {
+template <typename Value>
+struct base::ser::Serialiser<std::optional<Value>> {
+    static auto deserialise(auto& r) -> Result<std::optional<Value>> {
         bool present = Try(r.template read<bool>());
         if (not present) return std::nullopt;
         return Try(r.template read<Value>());
     }
 
-    static void serialise(Writer<E>& w, const std::optional<Value>& value) {
+    static void serialise(auto& w, const std::optional<Value>& value) {
         w << value.has_value();
         if (value.has_value()) w << *value;
     }
 };
 
 /// Serialiser for 'std::variant'.
-template <typename ...Ts, std::endian E>
-struct base::ser::Serialiser<std::variant<Ts...>, E> {
+template <typename ...Ts>
+struct base::ser::Serialiser<std::variant<Ts...>> {
     using IndexType = u64;
     using Variant = std::variant<Ts...>;
 
-    static auto deserialise(Reader<E>& r) -> Result<Variant> {
+    static auto deserialise(auto& r) -> Result<Variant> {
         IndexType index = Try(r.template read<IndexType>());
         if (index >= sizeof...(Ts)) [[unlikely]] {
             return Error(
@@ -503,28 +507,28 @@ struct base::ser::Serialiser<std::variant<Ts...>, E> {
         return std::move(value.value());
     }
 
-    static void serialise(Writer<E>& w, const Variant& value) {
+    static void serialise(auto& w, const Variant& value) {
         w << IndexType(value.index());
         std::visit([&](const auto& v) { w << v; }, value);
     }
 };
 
 /// Serialiser for 'std::monostate'.
-template <std::endian E>
-struct base::ser::Serialiser<std::monostate, E> {
-    static auto deserialise(Reader<E>&) -> Result<std::monostate> { return std::monostate{}; }
-    static void serialise(Writer<E>&, std::monostate) {}
+template <>
+struct base::ser::Serialiser<std::monostate> {
+    static auto deserialise(auto&) -> Result<std::monostate> { return std::monostate{}; }
+    static void serialise(auto&, std::monostate) {}
 };
 
 /// Serialiser for 'std::tuple'.
-template <typename ...Ts, std::endian E>
-struct base::ser::Serialiser<std::tuple<Ts...>, E> {
+template <typename ...Ts>
+struct base::ser::Serialiser<std::tuple<Ts...>> {
     static_assert(
         (base::utils::is_same<std::remove_cvref_t<Ts>, Ts> and ...),
         "Cannot serialise a std::tuple that contains reference or const-qualified types"
     );
 
-    static auto deserialise(Reader<E>& r) -> Result<std::tuple<Ts...>> {
+    static auto deserialise(auto& r) -> Result<std::tuple<Ts...>> {
         Result<> result;
         std::tuple<std::optional<Ts>...> elements;
         [&]<usz ...I>(std::index_sequence<I...>) {
@@ -547,24 +551,24 @@ struct base::ser::Serialiser<std::tuple<Ts...>, E> {
         );
     }
 
-    static void serialise(Writer<E>& w, const std::tuple<Ts...>& ts) {
+    static void serialise(auto& w, const std::tuple<Ts...>& ts) {
         std::apply([&] (const auto& ...v) { ((w << v), ...); }, ts);
     }
 };
 
 /// Serialiser for 'std::pair'.
-template <typename A, typename B, std::endian E>
-struct base::ser::Serialiser<std::pair<A, B>, E> {
+template <typename A, typename B>
+struct base::ser::Serialiser<std::pair<A, B>> {
     using Pair = std::pair<A, B>;
 
-    static auto deserialise(Reader<E>& r) -> Result<Pair> {
+    static auto deserialise(auto& r) -> Result<Pair> {
         return Pair{
             Try(r.template read<A>()),
             Try(r.template read<B>()),
         };
     }
 
-    static void serialise(Writer<E>& w, const Pair& pair) {
+    static void serialise(auto& w, const Pair& pair) {
         w << pair.first << pair.second;
     }
 };
