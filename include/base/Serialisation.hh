@@ -186,6 +186,9 @@ public:
         return {};
     }
 
+    /// Set the data buffer that this reader should read from.
+    void set_data(InputSpan new_data) { data = new_data; }
+
     /// Check how many bytes are left in the buffer.
     [[nodiscard]] auto size() const -> usz { return data.size(); }
 

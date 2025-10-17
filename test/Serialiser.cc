@@ -454,6 +454,30 @@ TEST_CASE("Serialisation: Align") {
     Test(Align(8), Bytes(3));
 }
 
+TEST_CASE("Serialisation: Reader::set_data()") {
+    ByteBuffer b1;
+    ByteBuffer b2;
+    ser::WriterLE w{b2};
+    w << 1 << 2 << 3 << 4;
+
+    ser::ReaderLE r{b1};
+    CHECK(not r.read<int>().has_value());
+
+    r.set_data(b2);
+    CHECK(r.read<int>() == 1);
+    CHECK(r.read<int>() == 2);
+    CHECK(r.read<int>() == 3);
+    CHECK(r.read<int>() == 4);
+    CHECK(not r.read<int>().has_value());
+
+    r.set_data(b2);
+    CHECK(r.read<int>() == 1);
+    CHECK(r.read<int>() == 2);
+    CHECK(r.read<int>() == 3);
+    CHECK(r.read<int>() == 4);
+    CHECK(not r.read<int>().has_value());
+}
+
 /*TEST_CASE("Serialisation: Magic number") {
     static constexpr auto M1 = ser::Magic("1234");
     static constexpr auto M2 = ser::Magic{'1', u8(2), std::byte(3), '4'};
