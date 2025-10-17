@@ -549,6 +549,23 @@ struct base::ser::Serialiser<std::tuple<Ts...>, E> {
     }
 };
 
+/// Serialiser for 'std::pair'.
+template <typename A, typename B, std::endian E>
+struct base::ser::Serialiser<std::pair<A, B>, E> {
+    using Pair = std::pair<A, B>;
+
+    static auto deserialise(Reader<E>& r) -> Result<Pair> {
+        return Pair{
+            Try(r.template read<A>()),
+            Try(r.template read<B>()),
+        };
+    }
+
+    static void serialise(Writer<E>& w, const Pair& pair) {
+        w << pair.first << pair.second;
+    }
+};
+
 /// Serialiser for magic numbers.
 /*template <base::usz n>
 template <std::endian E>

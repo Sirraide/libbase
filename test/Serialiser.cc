@@ -436,6 +436,12 @@ TEST_CASE("Serialisation: std::tuple") {
     CHECK((DeserialiseLE<T>(SerialiseLE(t)) == t));
 }
 
+TEST_CASE("Serialisation: std::pair") {
+    Test(std::pair<std::monostate, std::monostate>{}, Bytes());
+    Test(std::pair<u8, int>(42, 44), Bytes(42, 0, 0, 0, 44), Bytes(42, 44, 0, 0, 0));
+    Test(std::pair<u8, std::pair<i16, char>>(42, {1, 'x'}), Bytes(42, 0, 1, 'x'), Bytes(42, 1, 0, 'x'));
+}
+
 TEST_CASE("Serialisation: Size") {
     Test(Size(), Bytes(0, 0, 0, 0, 0, 0, 0, 0 ));
     Test(Size::Bits(8), Bytes(0, 0, 0, 0, 0, 0, 0, 8), Bytes(8, 0, 0, 0, 0, 0, 0, 0));
@@ -516,7 +522,7 @@ class S {
     int x;
 
 public:
-    S() = default;
+    // NOT default constructible!
     S(int x): x{x} {}
     constexpr auto operator<=>(const S&) const = default;
 };
