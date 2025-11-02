@@ -255,6 +255,12 @@ TEST_CASE("str::ends_with()") {
     CHECK(str{s}.ends_with("world"));
     CHECK_FALSE(str{s}.ends_with("lx"));
     CHECK_FALSE(str{s}.ends_with("worldx"));
+
+    CHECK(str{s}.ends_with(text::IsAlnum));
+    CHECK(str{s}.ends_with(text::IsAlpha));
+    CHECK_FALSE(str{s}.ends_with(text::IsDigit));
+    CHECK_FALSE(str{s}.ends_with(text::IsBinary));
+    CHECK_FALSE(str{s}.ends_with(text::IsSpace));
 }
 
 TEST_CASE("str::ends_with_any()") {
@@ -637,6 +643,12 @@ TEST_CASE("str::starts_with") {
     CHECK(str{s}.starts_with("hello"));
     CHECK_FALSE(str{s}.starts_with("hx"));
     CHECK_FALSE(str{s}.starts_with("xhello"));
+
+    CHECK(str{s}.starts_with(text::IsAlnum));
+    CHECK(str{s}.starts_with(text::IsAlpha));
+    CHECK_FALSE(str{s}.starts_with(text::IsDigit));
+    CHECK_FALSE(str{s}.starts_with(text::IsBinary));
+    CHECK_FALSE(str{s}.starts_with(text::IsSpace));
 
     CHECK(str32{s2}.starts_with(U'h'));
     CHECK(str32{s2}.starts_with(U"h"));

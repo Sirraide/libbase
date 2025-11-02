@@ -523,6 +523,14 @@ public:
     }
 
     /// \see ends_with(char_type) const
+    template <typename UnaryPredicate>
+    requires requires (UnaryPredicate c) { c(char_type{}); }
+    [[nodiscard]] constexpr auto
+    ends_with(UnaryPredicate c) const noexcept(noexcept(c(char_type{}))) -> bool {
+        return not _m_text.empty() and std::invoke(c, _m_text.back());
+    }
+
+    /// \see ends_with(char_type) const
     [[nodiscard]] constexpr auto
     ends_with(basic_str suffix) const noexcept -> bool {
         return _m_text.ends_with(suffix);
@@ -915,6 +923,14 @@ public:
     [[nodiscard]] constexpr auto
     starts_with(char_type prefix) const noexcept -> bool {
         return not _m_text.empty() and _m_text.front() == prefix;
+    }
+
+    /// \see starts_with(char_type) const
+    template <typename UnaryPredicate>
+    requires requires (UnaryPredicate c) { c(char_type{}); }
+    [[nodiscard]] constexpr auto
+    starts_with(UnaryPredicate c) const noexcept(noexcept(c(char_type{}))) -> bool {
+        return not _m_text.empty() and std::invoke(c, _m_text.front());
     }
 
     /// \see starts_with(char_type) const
