@@ -5,6 +5,7 @@
 #include <base/Assert.hh>
 #include <base/Regex.hh>
 #include <base/Text.hh>
+#include <base/TrieMap.hh>
 #include <base/Utils.hh>
 #include <cstddef>
 #include <optional>
@@ -707,6 +708,16 @@ public:
     /// This always splits on '\n', irrespective of platform.
     [[nodiscard]] constexpr auto lines() const noexcept {
         return split(LIBBASE_STR_LIT("\n"));
+    }
+
+    /// Match the start of the stream against a trie; if it matches, return
+    /// the match and drop that many characters from the start of the stream.
+    template <typename ValueType>
+    auto match_prefix(const BasicTrieMap<char_type, ValueType>& trie) -> std::optional<ValueType> {
+        auto match = trie.match_prefix(text());
+        if (not match.has_value()) return std::nullopt;
+        drop(match->first);
+        return std::move(match->second);
     }
 
 #ifdef LIBBASE_ENABLE_PCRE2
