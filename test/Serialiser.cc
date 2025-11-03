@@ -381,6 +381,33 @@ TEST_CASE("Serialisation: std::vector") {
     }
 }
 
+TEST_CASE("Serialisation: std::deque") {
+    std::deque<u8> a{1, 2, 3, 4, 5, 6};
+    std::deque<u16> b{1, 2, 3, 4, 5, 6};
+
+    Test(std::deque<u8>{}, Bytes(0, 0, 0, 0, 0, 0, 0, 0));
+    Test(std::deque<u16>{}, Bytes(0, 0, 0, 0, 0, 0, 0, 0));
+
+    Test(a, Bytes(0, 0, 0, 0, 0, 0, 0, 6, 1, 2, 3, 4, 5, 6), Bytes(6, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6));
+    Test(b, Bytes(0, 0, 0, 0, 0, 0, 0, 6, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6), Bytes(6, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0));
+
+    SECTION("Extra trailing data") {
+        CHECK(DeserialiseBE<std::deque<u8>>(0, 0, 0, 0, 0, 0, 0, 6, 1, 2, 3, 4, 5, 6, 0xff) == a);
+        CHECK(DeserialiseLE<std::deque<u8>>(6, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 0xff) == a);
+        CHECK(DeserialiseBE<std::deque<u16>>(0, 0, 0, 0, 0, 0, 0, 6, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 0xff) == b);
+        CHECK(DeserialiseLE<std::deque<u16>>(6, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 0, 0xff) == b);
+    }
+
+    SECTION("Not enough data") {
+        CHECK_THROWS(DeserialiseBE<std::deque<u8>>(0, 0, 0, 0, 0, 0, 0));
+        CHECK_THROWS(DeserialiseLE<std::deque<u8>>(0, 0, 0, 0, 0, 0));
+        CHECK_THROWS(DeserialiseBE<std::deque<u8>>(0, 0, 0, 0, 0, 0, 0, 7, 1, 2, 3, 4, 5));
+        CHECK_THROWS(DeserialiseLE<std::deque<u8>>(7, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5));
+        CHECK_THROWS(DeserialiseBE<std::deque<u16>>(0, 0, 0, 0, 0, 0, 0, 6, 1, 0, 2, 0, 3, 0, 4, 0, 5));
+        CHECK_THROWS(DeserialiseLE<std::deque<u16>>(6, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 3, 0));
+    }
+}
+
 TEST_CASE("Serialisation: std::optional<>") {
     Test(std::optional<int>{}, Bytes(0));
     Test(std::optional<std::string>{}, Bytes(0));
@@ -440,6 +467,48 @@ TEST_CASE("Serialisation: std::pair") {
     Test(std::pair<std::monostate, std::monostate>{}, Bytes());
     Test(std::pair<u8, int>(42, 44), Bytes(42, 0, 0, 0, 44), Bytes(42, 44, 0, 0, 0));
     Test(std::pair<u8, std::pair<i16, char>>(42, {1, 'x'}), Bytes(42, 0, 1, 'x'), Bytes(42, 1, 0, 'x'));
+}
+
+TEST_CASE("Serialisation: empty standard types") {
+    Test(std::monostate(), Bytes());
+    Test(nullptr, Bytes());
+}
+
+TEST_CASE("Serialisation: std::map") {
+    using M1 = std::map<u8, u8>;
+    using M2 = std::map<std::string, u16>;
+    using M3 = std::map<u16, std::string>;
+
+    Test(M1(), Bytes(0, 0, 0, 0, 0, 0, 0, 0));
+    Test(M2(), Bytes(0, 0, 0, 0, 0, 0, 0, 0));
+    Test(M3(), Bytes(0, 0, 0, 0, 0, 0, 0, 0));
+
+    Test(
+        M1{{1, 2}, {3, 4}},
+        Bytes(0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 3, 4),
+        Bytes(2, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4)
+    );
+
+    Test(M2{{"a", 2}, {"bc", 4}, {"def", 42}},
+        Bytes(
+            0, 0, 0, 0, 0, 0, 0, 3,
+            0, 0, 0, 0, 0, 0, 0, 1, 'a',
+            0, 2,
+            0, 0, 0, 0, 0, 0, 0, 2, 'b', 'c',
+            0, 4,
+            0, 0, 0, 0, 0, 0, 0, 3, 'd', 'e', 'f',
+            0, 42
+        ),
+        Bytes(
+            3, 0, 0, 0, 0, 0, 0, 0,
+            1, 0, 0, 0, 0, 0, 0, 0, 'a',
+            2, 0,
+            2, 0, 0, 0, 0, 0, 0, 0, 'b', 'c',
+            4, 0,
+            3, 0, 0, 0, 0, 0, 0, 0, 'd', 'e', 'f',
+            42, 0
+        )
+    );
 }
 
 TEST_CASE("Serialisation: Size") {

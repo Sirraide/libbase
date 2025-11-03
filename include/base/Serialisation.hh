@@ -297,6 +297,13 @@ struct base::ser::Serialiser<Int> {
     }
 };
 
+/// Disallow serialising 'wchar_t' as its size is platform-dependent.
+template <>
+struct base::ser::Serialiser<wchar_t> {
+    static auto deserialise(auto& r) -> Result<wchar_t> = delete("Serialising wchar_t is not supported");
+    static void deserialise(wchar_t) = delete("Serialising wchar_t is not supported");
+};
+
 /// Serialiser for 'bool'.
 template <>
 struct base::ser::Serialiser<bool> {
@@ -406,7 +413,7 @@ struct base::ser::Serialiser<std::basic_string<Char>> {
 ///
 /// This handles 'std::vector', 'llvm::SmallVector', etc.
 template <typename Vector>
-requires requires (const Vector& cv, Vector& v, std::size_t sz)
+requires requires (const Vector& cv, Vector& v)
 {
     typename Vector::value_type;
     typename Vector::size_type;
@@ -520,6 +527,16 @@ struct base::ser::Serialiser<std::monostate> {
     static void serialise(auto&, std::monostate) {}
 };
 
+/// Serialiser for 'std::nullptr_t'.
+///
+/// I sometimes use nullptr_t in variants to mark null values; it’s a unit
+/// type, so don’t bother actually serialising it.
+template <>
+struct base::ser::Serialiser<std::nullptr_t> {
+    static auto deserialise(auto&) -> Result<std::nullptr_t> { return nullptr; }
+    static void serialise(auto&, std::nullptr_t) {}
+};
+
 /// Serialiser for 'std::tuple'.
 template <typename ...Ts>
 struct base::ser::Serialiser<std::tuple<Ts...>> {
@@ -570,6 +587,52 @@ struct base::ser::Serialiser<std::pair<A, B>> {
 
     static void serialise(auto& w, const Pair& pair) {
         w << pair.first << pair.second;
+    }
+};
+
+/// Serialiser for map-like types.
+template <typename Map>
+requires requires (const Map& cm, Map& m) {
+    typename Map::key_type;
+    typename Map::mapped_type;
+    typename Map::size_type;
+    { cm.size() } -> std::convertible_to<std::size_t>;
+    { cm.max_size() } -> std::convertible_to<std::size_t>;
+    { cm.begin() };
+    { cm.end() };
+    { m[std::declval<typename Map::key_type>()] = std::declval<typename Map::mapped_type>() };
+}
+struct base::ser::Serialiser<Map> {
+    using SizeType = u64; // Not 'size_t' because that’s platform-dependent.
+    using Key = Map::key_type;
+    using Value = Map::mapped_type;
+
+    static auto deserialise(auto& r) -> Result<Map> {
+        Map map;
+        auto size = Try(r.template read<SizeType>());
+        if (size > SizeType(map.max_size())) [[unlikely]] {
+            return Error(
+                "Input size {} exceeds maximum size {}",
+                size,
+                map.max_size()
+            );
+        }
+
+        if constexpr (requires { map.reserve(size); })
+            map.reserve(size);
+
+        for (SizeType i = 0; i < size; ++i) {
+            Key key = Try(r.template read<Key>());
+            Value value = Try(r.template read<Value>());
+            map[std::move(key)] = std::move(value);
+        }
+
+        return map;
+    }
+
+    static void serialise(auto& w, const Map& v) {
+        w << SizeType(v.size());
+        for (const auto& [key, val] : v) w << key << val;
     }
 };
 
