@@ -57,7 +57,7 @@ private:
     std::vector<NodeData> nodes{1};
 
     /// Map from nodes to replacements; these are stored externally because
-    /// most nodes don’t have replacements, and storing and empty string in
+    /// most nodes don’t have replacements, and storing an empty string in
     /// them would just be a waste of memory.
     Map<Node, string_type> replacements;
 
