@@ -7,10 +7,25 @@
 #include <base/Types.hh>
 #include <queue>
 #include <ranges>
-#include <unordered_map>
 #include <vector>
 
+#if __has_include(<flat_map>)
+#    include <flat_map>
+#else
+#    include <unordered_map>
+#endif
+
 namespace base {
+namespace detail {
+#if __has_include(<flat_map>)
+template <typename CharType, typename StringType>
+using ChildMap = std::flat_map<CharType, StringType>;
+#else
+template <typename CharType, typename StringType>
+using ChildMap = std::unordered_map<CharType, StringType>;
+#endif
+}
+
 template <typename CharType>
 class basic_trie;
 
@@ -39,23 +54,26 @@ private:
     /// A node for a single element in the trie.
     struct Node {
         /// Children of this node.
-        HashMap<char_type, usz> children;
+        detail::ChildMap<char_type, u32> children;
 
         /// The replacement text for this node, if any.
-        std::optional<string_type> replacement;
+        string_type replacement;
 
-        /// Index of the node that this node fails to.
-        usz fail = 0;
+        /// Whether we have a replacement.
+        u32 has_replacement : 1;
 
         /// Depth of the node. The root node has depth 0.
-        usz depth = 0;
+        u32 depth : 31 = 0;
+
+        /// Index of the node that this node fails to.
+        u32 fail = 0;
     };
 
     /// All nodes in the trie.
     std::vector<Node> nodes{1};
 
     /// Index of the root node.
-    static constexpr usz Root = 0;
+    static constexpr u32 Root = 0;
 
     /// Whether we need to recompute the failure links.
     bool dirty = false;
@@ -79,22 +97,25 @@ public:
 
         // Insert the pattern into the trie.
         for (auto [i, el] : utils::enumerate(pattern)) {
-            if (auto child = nodes[current].children.get(el)) current = *child;
+            if (auto ch = child(current, el)) current = *ch;
             else current = nodes[current].children[el] = allocate();
             nodes[current].depth = usz(i + 1);
         }
 
         nodes[current].replacement = string_type(replacement);
+        nodes[current].has_replacement = true;
     }
 
     /// Check if the trie contains a pattern and return its replacement.
     auto get(text_type pattern) const -> std::optional<text_type> {
         auto current = Root;
         for (auto el : pattern) {
-            if (auto child = nodes[current].children.get(el)) current = *child;
+            if (auto ch = child(current, el)) current = *ch;
             else return std::nullopt;
         }
-        return nodes[current].replacement;
+
+        if (nodes[current].has_replacement) return std::optional(text_type(nodes[current].replacement));
+        return std::nullopt;
     }
 
     /// Check if this trie contains a string that matches the start of
@@ -102,11 +123,11 @@ public:
     bool is_prefix_of(text_type haystack) const {
         auto current = Root;
         for (auto el : haystack) {
-            if (nodes[current].replacement.has_value()) return true;
-            if (auto child = nodes[current].children.get(el)) current = *child;
+            if (nodes[current].has_replacement) return true;
+            if (auto ch = child(current, el)) current = *ch;
             else return false;
         }
-        return nodes[current].replacement.has_value();
+        return nodes[current].has_replacement;
     }
 
     /// Replace all occurrences of the patterns in the trie in the input.
@@ -117,12 +138,12 @@ public:
     /// constantly.
     auto replace(text_type input) -> string_type {
         if (dirty) update();
-        const auto sz = usz(input.size());
+        const auto sz = u32(input.size());
         const auto end = input.end();
         auto it = input.begin();
         auto current = Root;
         string_type out;
-        usz match_node = Root;
+        u32 match_node = Root;
         out.reserve(sz); // Conservative estimate.
 
         // Iterate through the input and perform matching.
@@ -148,7 +169,7 @@ public:
             // We need to check this here instead of after we advance below to
             // make sure we recompute this property when we fail and reexamine
             // the current character.
-            if (nodes[current].replacement.has_value())
+            if (nodes[current].has_replacement)
                 match_node = current;
 
             // Go to the child node if there is one.
@@ -157,8 +178,8 @@ public:
             // may end up having to backtrack even after reaching the end.
             if (it != end) {
                 const auto c = *it;
-                if (auto child = nodes[current].children.get(c)) {
-                    current = *child;
+                if (auto ch = child(current, c)) {
+                    current = *ch;
                     ++it;
                     continue;
                 }
@@ -173,7 +194,7 @@ public:
             // We have a match.
             if (match_node != Root) {
                 // Append the replacement text.
-                out += nodes[match_node].replacement.value();
+                out += nodes[match_node].replacement;
 
                 // Backtrack to to the end of the current match.
                 //
@@ -220,10 +241,18 @@ public:
 
 private:
     /// Allocate a new node.
-    auto allocate() -> usz {
+    auto allocate() -> u32 {
         dirty = true;
         nodes.emplace_back();
-        return nodes.size() - 1;
+        return u32(nodes.size() - 1);
+    }
+
+    /// Get the child of a node.
+    auto child(std::same_as<u32> auto node, std::same_as<CharType> auto child) const -> std::optional<u32> {
+        auto& children = nodes.at(node).children;
+        auto it = children.find(child);
+        if (it == children.end()) return std::nullopt;
+        return it->second;
     }
 
     /// Get the root node.
@@ -236,7 +265,7 @@ private:
         // The root node fails to itself, which is already handled
         // by the 'Node' constructor. Next, all the children of the
         // root fail to the root.
-        Queue<usz> queue;
+        Queue<u32> queue;
         for (auto n : root().children | vws::values) {
             nodes[n].fail = Root;
             queue.push(n);
@@ -249,7 +278,7 @@ private:
             auto& parent = nodes[queue.dequeue()];
 
             // Compute the children’s fail links.
-            for (auto& c : parent.children) {
+            for (auto [character, child_node] : parent.children) {
                 // The algorithm for computing a fail node is as follows:
                 //
                 //   1. Let F be the parent’s fail node.
@@ -259,19 +288,19 @@ private:
                 //   4. Let F be F’s fail node and go to step 2.
                 //
                 for (auto f = parent.fail; /* nothing */; f = nodes[f].fail) {
-                    if (auto child = nodes[f].children.get(c.first)) {
-                        nodes[c.second].fail = *child;
+                    if (auto ch = child(f, character)) {
+                        nodes[child_node].fail = *ch;
                         break;
                     }
 
                     if (f == Root) {
-                        nodes[c.second].fail = Root;
+                        nodes[child_node].fail = Root;
                         break;
                     }
                 }
 
                 // And register the grandchildren for processing.
-                queue.push(c.second);
+                queue.push(child_node);
             }
         }
     }
