@@ -14,6 +14,10 @@
 #include <variant>
 #include <vector>
 
+#if __has_include(<flat_map>)
+#    include <flat_map>
+#endif
+
 #ifdef __cpp_lib_generator
 #    include <generator>
 #endif
@@ -27,6 +31,15 @@
 /// this also means that it is safe to e.g. slice a base::Queue
 /// down to a std::queue.
 namespace base {
+/// The preferred map type for this platform.
+#if __has_include(<flat_map>)
+template <typename CharType, typename StringType>
+using Map = std::flat_map<CharType, StringType>;
+#else
+template <typename CharType, typename StringType>
+using Map = std::unordered_map<CharType, StringType>;
+#endif
+
 /// Wrapper around 'std::unordered_map' that provides 'get()',
 /// and 'get_or()'.
 template <

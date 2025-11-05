@@ -9,23 +9,7 @@
 #include <ranges>
 #include <vector>
 
-#if __has_include(<flat_map>)
-#    include <flat_map>
-#else
-#    include <unordered_map>
-#endif
-
 namespace base {
-namespace detail {
-#if __has_include(<flat_map>)
-template <typename CharType, typename StringType>
-using ChildMap = std::flat_map<CharType, StringType>;
-#else
-template <typename CharType, typename StringType>
-using ChildMap = std::unordered_map<CharType, StringType>;
-#endif
-}
-
 template <typename CharType>
 class basic_trie;
 
@@ -51,29 +35,34 @@ public:
     using string_type = std::basic_string<char_type>;
 
 private:
-    /// A node for a single element in the trie.
-    struct Node {
-        /// Children of this node.
-        detail::ChildMap<char_type, u32> children;
+    /// Type used to refer to a node.
+    using Node = u32;
 
-        /// The replacement text for this node, if any.
-        string_type replacement;
+    /// A node for a single element in the trie.
+    struct NodeData {
+        /// Children of this node.
+        Map<char_type, Node> children;
 
         /// Whether we have a replacement.
-        u32 has_replacement : 1;
+        Node has_replacement : 1;
 
         /// Depth of the node. The root node has depth 0.
-        u32 depth : 31 = 0;
+        Node depth : 31 = 0;
 
         /// Index of the node that this node fails to.
-        u32 fail = 0;
+        Node fail = 0;
     };
 
     /// All nodes in the trie.
-    std::vector<Node> nodes{1};
+    std::vector<NodeData> nodes{1};
+
+    /// Map from nodes to replacements; these are stored externally because
+    /// most nodes don’t have replacements, and storing and empty string in
+    /// them would just be a waste of memory.
+    Map<Node, string_type> replacements;
 
     /// Index of the root node.
-    static constexpr u32 Root = 0;
+    static constexpr Node Root = 0;
 
     /// Whether we need to recompute the failure links.
     bool dirty = false;
@@ -102,7 +91,7 @@ public:
             nodes[current].depth = usz(i + 1);
         }
 
-        nodes[current].replacement = string_type(replacement);
+        replacements[current] = string_type(replacement);
         nodes[current].has_replacement = true;
     }
 
@@ -114,7 +103,7 @@ public:
             else return std::nullopt;
         }
 
-        if (nodes[current].has_replacement) return std::optional(text_type(nodes[current].replacement));
+        if (nodes[current].has_replacement) return std::optional(text_type(replacements.at(current)));
         return std::nullopt;
     }
 
@@ -143,7 +132,7 @@ public:
         auto it = input.begin();
         auto current = Root;
         string_type out;
-        u32 match_node = Root;
+        Node match_node = Root;
         out.reserve(sz); // Conservative estimate.
 
         // Iterate through the input and perform matching.
@@ -194,7 +183,7 @@ public:
             // We have a match.
             if (match_node != Root) {
                 // Append the replacement text.
-                out += nodes[match_node].replacement;
+                out += replacements.at(match_node);
 
                 // Backtrack to to the end of the current match.
                 //
@@ -241,14 +230,14 @@ public:
 
 private:
     /// Allocate a new node.
-    auto allocate() -> u32 {
+    auto allocate() -> Node {
         dirty = true;
         nodes.emplace_back();
-        return u32(nodes.size() - 1);
+        return Node(nodes.size() - 1);
     }
 
     /// Get the child of a node.
-    auto child(std::same_as<u32> auto node, std::same_as<CharType> auto child) const -> std::optional<u32> {
+    auto child(std::same_as<Node> auto node, std::same_as<CharType> auto child) const -> std::optional<Node> {
         auto& children = nodes.at(node).children;
         auto it = children.find(child);
         if (it == children.end()) return std::nullopt;
@@ -256,7 +245,7 @@ private:
     }
 
     /// Get the root node.
-    auto root() -> Node& { return nodes[0]; }
+    auto root() -> NodeData& { return nodes[0]; }
 
     /// Recompute all fail links in the trie.
     void update() {
@@ -265,7 +254,7 @@ private:
         // The root node fails to itself, which is already handled
         // by the 'Node' constructor. Next, all the children of the
         // root fail to the root.
-        Queue<u32> queue;
+        Queue<Node> queue;
         for (auto n : root().children | vws::values) {
             nodes[n].fail = Root;
             queue.push(n);
