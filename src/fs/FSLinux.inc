@@ -1,4 +1,4 @@
-void FileContents::Delete() {
+void FileContentsBase::Delete() {
     if (ptr) munmap(ptr, sz);
 }
 

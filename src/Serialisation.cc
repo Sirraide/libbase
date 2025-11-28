@@ -19,7 +19,7 @@ auto Reader<E>::read_bytes_into(void* ptr, usz count) -> Result<> {
 }
 
 template <std::endian E>
-auto Reader<E>::read_bytes(usz count) -> Result<std::span<const std::byte>> {
+auto Reader<E>::read_bytes(usz count) -> Result<ByteSpan> {
     if (size() < count) [[unlikely]] {
         return Error(
             "Not enough data to read {} bytes ({} bytes left)",
@@ -28,13 +28,13 @@ auto Reader<E>::read_bytes(usz count) -> Result<std::span<const std::byte>> {
         );
     }
 
-    auto span = std::span{data.data(), count};
+    auto span = ByteSpan{data.data(), count};
     data = data.subspan(count);
     return span;
 }
 
 template <std::endian E>
-auto Writer<E>::allocate(u64 bytes) -> std::span<std::byte> {
+auto Writer<E>::allocate(u64 bytes) -> MutableByteSpan {
     auto old_size = data.size();
     data.resize(old_size + bytes);
     return {data.data() + old_size, bytes};

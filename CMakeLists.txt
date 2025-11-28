@@ -155,12 +155,14 @@ endif()
 ## ============================================================================
 option(LIBBASE_LITE "Enable lite mode" OFF)
 option(LIBBASE_ENABLE_PCRE2 "Enable PCRE2 support" ON)
+option(LIBBASE_ENABLE_ZSTD "Enable ZSTD support" ON)
 option(LIBBASE_USE_LIBASSERT "Use libassert" ON)
 option(LIBBASE_ENABLE_UNICODE_SUPPORT "Enable Unicode support" ON)
 option(LIBBASE_LLVM_BINDINGS "Enable LLVM bindings" OFF)
 
 if (LIBBASE_LITE)
     set(LIBBASE_ENABLE_PCRE2 OFF)
+    set(LIBBASE_ENABLE_ZSTD OFF)
     set(LIBBASE_USE_LIBASSERT OFF)
     set(LIBBASE_ENABLE_UNICODE_SUPPORT OFF)
 endif()
@@ -208,6 +210,24 @@ if (LIBBASE_USE_LIBASSERT)
 
     target_compile_definitions(libbase PUBLIC LIBBASE_USE_LIBASSERT)
     target_link_libraries(libbase PUBLIC libassert::assert)
+endif()
+
+## Add 'zstd' for compression.
+if (LIBBASE_ENABLE_ZSTD)
+    set(ZSTD_BUILD_PROGRAMS OFF)
+    set(ZSTD_BUILD_CONTRIB OFF)
+    set(ZSTD_BUILD_TESTS OFF)
+    set(ZSTD_BUILD_STATIC ON)
+    set(ZSTD_BUILD_SHARED OFF)
+    set(ZSTD_LEGACY_SUPPORT OFF)
+    FetchContent_Declare(
+        zstd
+        GIT_REPOSITORY https://github.com/facebook/zstd
+        GIT_TAG        v1.5.7
+    )
+    FetchContent_MakeAvailable(zstd)
+    target_compile_definitions(libbase PUBLIC LIBBASE_ENABLE_ZSTD)
+    target_link_libraries(libbase PUBLIC libzstd_static)
 endif()
 
 ## Add a proper regex engine.

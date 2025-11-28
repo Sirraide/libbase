@@ -75,3 +75,11 @@ void base::utils::ThrowOrAbort(std::string_view message, std::source_location lo
     Fatal("Error at {}:{}: {}", loc.file_name(), loc.line(), message);
 #endif
 }
+
+auto base::ByteSpan::str() const -> basic_str<char> {
+    return {reinterpret_cast<const char*>(data()), size()};
+}
+
+auto base::MutableByteSpan::str() const -> basic_str<char> {
+    return {reinterpret_cast<const char*>(data()), size()};
+}

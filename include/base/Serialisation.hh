@@ -3,6 +3,7 @@
 
 #include <array>
 #include <base/Result.hh>
+#include <base/Span.hh>
 #include <base/StringUtils.hh>
 #include <base/Types.hh>
 #include <base/Utils.hh>
@@ -68,25 +69,7 @@ using ReaderBE = Reader<std::endian::big>;
 using WriterLE = Writer<std::endian::little>;
 using WriterBE = Writer<std::endian::big>;
 
-/// Span of bytes that can be constructed from various other
-/// representations of ‘a blob of data’.
-struct InputSpan : std::span<const std::byte> {
-    using std::span<const std::byte>::span;
-
-    explicit InputSpan(const char* data, usz size)
-        : std::span<const std::byte>(reinterpret_cast<const std::byte*>(data), size) {}
-
-    explicit InputSpan(const u8* data, usz size)
-        : std::span<const std::byte>(reinterpret_cast<const std::byte*>(data), size) {}
-
-    InputSpan(std::span<const std::byte> data) : std::span<const std::byte>(data) {}
-    InputSpan(std::span<const char> data) : InputSpan(data.data(), data.size()) {}
-    InputSpan(std::span<const u8> data) : InputSpan(data.data(), data.size()) {}
-
-    template <usz n>
-    explicit InputSpan(const char (&str)[n])
-        : std::span<const std::byte>(reinterpret_cast<const std::byte*>(str), n) {}
-};
+using InputSpan [[deprecated("Use ByteSpan instead")]] = ByteSpan;
 
 /// Magic number to check the serialised data is valid.
 /// TODO: Add this back and use a static_string template parameter for it.
@@ -127,7 +110,7 @@ struct Serialiser;
 ///
 /// @tparam SerialisedEndianness The output endianness of the serialised data.
 template <typename T, std::endian SerialisedEndianness>
-auto Deserialise(InputSpan data) -> Result<T>;
+auto Deserialise(ByteSpan data) -> Result<T>;
 
 /// Serialise a type to a vector of bytes.
 ///
@@ -158,10 +141,10 @@ consteval bool CheckEndianness(std::endian e) {
 template <std::endian E>
 class base::ser::Reader {
     static_assert(CheckEndianness(E));
-    InputSpan data;
+    ByteSpan data;
 
 public:
-    explicit Reader(InputSpan data) : data(data) {}
+    explicit Reader(ByteSpan data) : data(data) {}
 
     /// Deserialise an object that provides a 'deserialise()' member.
     template <typename T, typename Self>
@@ -189,13 +172,13 @@ public:
     static constexpr auto endianness() -> std::endian { return E; }
 
     /// Set the data buffer that this reader should read from.
-    void set_data(InputSpan new_data) { data = new_data; }
+    void set_data(ByteSpan new_data) { data = new_data; }
 
     /// Check how many bytes are left in the buffer.
     [[nodiscard]] auto size() const -> usz { return data.size(); }
 
     /// Read bytes from the buffer.
-    auto read_bytes(usz count) -> Result<std::span<const std::byte>>;
+    auto read_bytes(usz count) -> Result<ByteSpan>;
 
     /// Read bytes into a memory location.
     auto read_bytes_into(void* v, usz count) -> Result<>;
@@ -245,7 +228,7 @@ public:
     ///    auto buf = Allocate(value.size());
     ///    ExternalSerialisationFunction(value, buf.data(), buf.size());
     ///
-    auto allocate(u64 bytes) -> std::span<std::byte>;
+    auto allocate(u64 bytes) -> MutableByteSpan;
 
     /// Append raw bytes.
     void append_bytes(const void* ptr, usz count);
@@ -260,7 +243,7 @@ extern template class base::ser::Writer<std::endian::little>;
 extern template class base::ser::Writer<std::endian::big>;
 
 template <typename T, std::endian SerialisedEndianness>
-auto base::ser::Deserialise(InputSpan data) -> Result<T> {
+auto base::ser::Deserialise(ByteSpan data) -> Result<T> {
     Reader<SerialisedEndianness> r{data};
     return r.template read<T>();
 }

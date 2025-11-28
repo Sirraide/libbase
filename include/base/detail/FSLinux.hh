@@ -1,20 +1,20 @@
-class base::fs::FileContents {
+class base::fs::FileContentsBase {
     friend File;
 
     void* ptr = nullptr;
     usz sz = 0;
 
-    explicit FileContents(void* ptr, usz sz) : ptr(ptr), sz(sz) {}
+    explicit FileContentsBase(void* ptr, usz sz) : ptr(ptr), sz(sz) {}
 
 public:
-    FileContents() = default;
-    FileContents(const FileContents&) = delete;
-    FileContents& operator=(const FileContents&) = delete;
-    FileContents(FileContents&& other) noexcept
+    FileContentsBase() = default;
+    FileContentsBase(const FileContentsBase&) = delete;
+    FileContentsBase& operator=(const FileContentsBase&) = delete;
+    FileContentsBase(FileContentsBase&& other) noexcept
         : ptr(std::exchange(other.ptr, nullptr)),
           sz(std::exchange(other.sz, 0)) {}
 
-    FileContents& operator=(FileContents&& other) noexcept {
+    FileContentsBase& operator=(FileContentsBase&& other) noexcept {
         if (this != &other) {
             Delete();
             ptr = std::exchange(other.ptr, nullptr);
@@ -24,19 +24,14 @@ public:
         return *this;
     }
 
-    ~FileContents() { Delete(); }
+    ~FileContentsBase() { Delete(); }
 
     /// Get the data of this file.
-    template <typename T = char>
+    template <utils::ByteSizedPointee T = char>
     [[nodiscard]] auto data() const -> const T* { return static_cast<const T*>(ptr); }
 
     /// Get the size of this file.
     [[nodiscard]] auto size() const -> usz { return sz; }
-
-    /// Get the contents as a string view.
-    [[nodiscard]] auto view() const -> std::string_view {
-        return {static_cast<const char*>(ptr), sz};
-    }
 
 private:
     void Delete();

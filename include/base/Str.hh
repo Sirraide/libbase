@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <base/Assert.hh>
 #include <base/Regex.hh>
+#include <base/Span.hh>
 #include <base/Text.hh>
 #include <base/TrieMap.hh>
 #include <base/Utils.hh>
@@ -67,7 +68,7 @@ public:
     constexpr basic_str(text_type text) noexcept : _m_text(text) {}
 
     /// Construct a new string from a span.
-    constexpr basic_str(std::span<char_type> span) noexcept : _m_text(span.data(), span.size()) {}
+    constexpr basic_str(Span<char_type> span) noexcept : _m_text(span.data(), span.size()) {}
 
     /// Construct a new string from text.
     constexpr basic_str(const string_type& text) noexcept : _m_text(text) {}

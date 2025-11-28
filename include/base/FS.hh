@@ -5,19 +5,21 @@
 #include <base/detail/SystemInfo.hh>
 #include <base/Macros.hh>
 #include <base/Result.hh>
+#include <base/Span.hh>
 #include <base/Str.hh>
 #include <base/Types.hh>
+#include <base/Utils.hh>
 #include <cstdio>
-#include <cstring>
 #include <filesystem>
 #include <memory>
+#include <span>
 #include <string_view>
 #include <vector>
 
 namespace base::fs {
 namespace stdfs = std::filesystem;
 class File;
-class FileContents;
+class FileContentsBase;
 }
 
 #ifdef LIBBASE_FS_LINUX
@@ -27,12 +29,13 @@ class FileContents;
 #endif
 
 namespace base::fs {
-struct InputView;
-struct OutputView;
+class FileContents;
 
 enum struct OpenMode : u8;
 
-using InputVector = std::span<const InputView>;
+using InputView [[deprecated("Use ByteSpan instead")]] = ByteSpan;
+using OutputView [[deprecated("Use MutableByteSpan instead")]] = MutableByteSpan;
+using InputVector = Span<ByteSpan>;
 using Path = stdfs::path;
 using PathRef = const stdfs::path&;
 
@@ -110,50 +113,19 @@ enum struct base::fs::OpenMode : base::u8 {
     ReadAppend = Read | Write | Append,
 };
 
-struct base::fs::InputView : std::span<const std::byte> {
-    using std::span<const std::byte>::span;
-    using std::span<const std::byte>::operator=;
+class base::fs::FileContents : public FileContentsBase {
+public:
+    using FileContentsBase::FileContentsBase;
 
-    // Allow construction from string view.
-    InputView(std::string_view sv) noexcept
-        : std::span<const std::byte>(
-              reinterpret_cast<const std::byte*>(sv.data()),
-              sv.size()
-          ) {}
+    /// Get the contents as a span.
+    [[nodiscard]] auto span() const -> ByteSpan {
+        return {data<std::byte>(), size()};
+    }
 
-    // Allow construction from char buffer.
-    InputView(const CharBuffer auto& buf) noexcept
-        : std::span<const std::byte>(
-              reinterpret_cast<const std::byte*>(buf.data()),
-              buf.size()
-          ) {}
-
-    // Allow wrapping a compile-time constant char array.
-    template <usz N>
-    InputView(const char (&arr)[N]) noexcept
-        : std::span<const std::byte>(
-              reinterpret_cast<const std::byte*>(arr),
-              arr[N - 1] == '\0' ? N - 1 : N
-          ) {}
-};
-
-struct base::fs::OutputView : std::span<std::byte> {
-    using std::span<std::byte>::span;
-    using std::span<std::byte>::operator=;
-
-    // Allow construction from char range.
-    OutputView(std::span<char> buf) noexcept
-        : std::span<std::byte>(
-              reinterpret_cast<std::byte*>(buf.data()),
-              buf.size()
-          ) {}
-
-    // Allow construction from char buffer.
-    OutputView(CharBuffer auto& buf) noexcept
-        : std::span<std::byte>(
-              reinterpret_cast<std::byte*>(buf.data()),
-              buf.size()
-          ) {}
+    /// Get the contents as a string view.
+    [[nodiscard]] auto view() const -> std::string_view {
+        return {data(), size()};
+    }
 };
 
 /// A handle to a file on disk.
@@ -184,7 +156,7 @@ public:
     ///         error if the file could not be read from. A short read
     ///         is not an error and can happen if the file is smaller
     ///         than the buffer.
-    auto read(OutputView into) noexcept -> Result<usz>;
+    auto read(MutableByteSpan into) noexcept -> Result<usz>;
 
     /// Rewind the file to the beginning.
     void rewind() noexcept;
@@ -196,7 +168,7 @@ public:
     auto resize(usz size) noexcept -> Result<>;
 
     /// Write to the file.
-    auto write(InputView data) noexcept -> Result<>;
+    auto write(ByteSpan data) noexcept -> Result<>;
 
     /// Write to the file using scatter/gather I/O.
     auto writev(InputVector data) noexcept -> Result<>;
@@ -225,7 +197,7 @@ public:
         // A short read is possible here if the file is being resized by
         // someone else; there is nothing we can really do about that, so
         // don’t bother checking the size here.
-        Try(f.read(std::span(buffer.data() + sz, f.size())));
+        Try(f.read(MutableByteSpan(buffer.data() + sz, f.size())));
         return {};
     }
 
@@ -244,7 +216,7 @@ public:
     ///
     /// This automatically creates any intermediate
     /// directories that do not exist.
-    static auto Write(PathRef path, InputView data) noexcept -> Result<>;
+    static auto Write(PathRef path, ByteSpan data) noexcept -> Result<>;
 };
 
 #endif

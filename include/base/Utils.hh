@@ -11,7 +11,6 @@
 #include <variant>
 
 namespace base::utils {
-
 /// Check if one or more types are the same, ignoring top-level references
 /// and cv qualifiers.
 template <typename T, typename... Us>
@@ -26,8 +25,8 @@ template <typename T, typename... Us>
 concept convertible_to_any = (std::convertible_to<T, Us> or ...);
 
 /// Range of things that are convertible to a certain type.
-template <typename T, typename ElemTy>
-concept ConvertibleRange = rgs::range<T> and std::convertible_to<rgs::range_value_t<T>, ElemTy>;
+template <typename T, typename ...ElemTys>
+concept ConvertibleRange = rgs::range<T> and (std::convertible_to<rgs::range_value_t<T>, ElemTys> or ...);
 
 /// A list of types.
 template <typename... Types>
@@ -210,7 +209,35 @@ using zstring = basic_zstring<char>;
 using u8zstring = basic_zstring<char8_t>;
 using u16zstring = basic_zstring<char16_t>;
 using u32zstring = basic_zstring<char32_t>;
+
+/// A byte-sized type or 'void'.
+///
+/// Basically, this concept denotes any type 'T' such that 'T*' can reasonably
+/// be used as ‘a pointer to a bunch of bytes’.
+template <typename T>
+concept ByteSizedPointee = utils::is_same<std::remove_cv_t<T>,
+    void,
+    char,
+    signed char,
+    unsigned char,
+    std::byte
+>;
+
+/// A byte-sized pointer.
+template <typename T>
+concept BytePointer = std::is_pointer_v<T> and ByteSizedPointee<std::remove_pointer_t<T>>;
+
+/// A range of bytes.
+template <typename Range>
+concept SizedByteRange = requires (Range r) {
+    { r.data() } -> BytePointer;
+    { r.size() } -> std::convertible_to<usz>;
+};
 } // namespace base::utils
+
+namespace base {
+using utils::BytePointer;
+}
 
 template <typename CharType>
 struct std::formatter<base::utils::basic_zstring<CharType>> : std::formatter<std::basic_string_view<CharType>> {

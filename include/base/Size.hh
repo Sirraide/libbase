@@ -17,19 +17,6 @@ static_assert(CHAR_BIT == 8, "Platforms where CHAR_BIT != 8 are not supported!")
 
 class Size;
 
-/// A byte-sized pointer.
-template <typename T>
-concept BytePointer = // clang-format off
-    std::is_pointer_v<T> and
-    utils::is_same<std::remove_cv_t<std::remove_pointer_t<T>>,
-        void,
-        char,
-        signed char,
-        unsigned char,
-        std::byte
-    >;
-// clang-format on
-
 /// Used to represent the alignment of a type in bytes.
 class Align {
     LIBBASE_SERIALISE(Align, log_value);

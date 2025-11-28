@@ -139,7 +139,7 @@ auto File::Open(PathRef path, OpenMode mode) noexcept -> Result<File> {
     return f;
 }
 
-auto File::Write(PathRef path, InputView data) noexcept -> Result<> {
+auto File::Write(PathRef path, ByteSpan data) noexcept -> Result<> {
     std::error_code ec;
     auto parent = path.parent_path();
     if (not parent.empty()) std_fs::create_directories(parent, ec);
@@ -148,7 +148,7 @@ auto File::Write(PathRef path, InputView data) noexcept -> Result<> {
     return f.write(data);
 }
 
-auto File::read(OutputView into) noexcept -> Result<usz> {
+auto File::read(MutableByteSpan into) noexcept -> Result<usz> {
     if ((+open_mode & +OpenMode::Read) == 0) return Error("File is not open for reading");
     usz n_read = 0;
     while (not into.empty() and not std::feof(handle.get())) {
@@ -182,7 +182,7 @@ auto File::size() noexcept -> usz {
     return s;
 }
 
-auto File::write(InputView data) noexcept -> Result<> {
+auto File::write(ByteSpan data) noexcept -> Result<> {
     if ((+open_mode & +OpenMode::Write) == 0) return Error("File is not open for writing");
     while (not data.empty()) {
         auto r = std::fwrite(data.data(), 1, data.size(), handle.get());

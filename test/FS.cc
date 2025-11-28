@@ -269,7 +269,7 @@ TEST_CASE("File::resize, File::write") {
 
 TEST_CASE("File::writev") {
     auto f = File::Open(TPath, OpenMode::ReadWrite).value();
-    InputView input[]{"foobarbaz\n"sv, "quxquux\n"};
+    ByteSpan input[]{"foobarbaz\n"sv, "quxquux\n"};
 
     f.resize(0).value();
     CHECK(f.size() == 0);
