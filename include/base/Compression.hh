@@ -1,6 +1,8 @@
 #ifndef LIBBASE_COMPRESSION_HH
 #define LIBBASE_COMPRESSION_HH
 
+#ifdef LIBBASE_ENABLE_ZSTD
+
 #include <base/Serialisation.hh>
 #include <base/Size.hh>
 
@@ -94,5 +96,7 @@ template <typename Buffer = std::vector<std::byte>>
     return b;
 }
 }
+
+#endif // LIBBASE_ENABLE_ZSTD
 
 #endif // LIBBASE_COMPRESSION_HH

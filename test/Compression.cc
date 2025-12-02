@@ -1,3 +1,5 @@
+#ifdef LIBBASE_ENABLE_ZSTD
+
 #include "TestCommon.hh"
 
 #include <base/Compression.hh>
@@ -18,3 +20,5 @@ TEST_CASE("Compression tests") {
     std::string s{data.span().str()};
     CHECK(s + s == ByteSpan(decompressed).str());
 }
+
+#endif // LIBBASE_ENABLE_ZSTD

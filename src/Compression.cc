@@ -1,3 +1,5 @@
+#ifdef LIBBASE_ENABLE_ZSTD
+
 #include <base/Compression.hh>
 #include <zstd.h>
 
@@ -60,3 +62,4 @@ auto detail::GetDecompressedSize(ByteSpan input) -> Result<usz> {
     return res;
 }
 
+#endif // LIBBASE_ENABLE_ZSTD
