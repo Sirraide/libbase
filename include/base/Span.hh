@@ -48,6 +48,7 @@ public:
 
     SpanImpl(ValueType& v) : Base{std::addressof(v), 1} {}
     SpanImpl(ValueType&& v) : Base{std::addressof(v), 1} {}
+    SpanImpl(std::span<ValueType> s) : Base{s} {}
 
     // We don’t implement '<=>' to accommodate classes that e.g. only support '==' but not '<'.
 #define COMPARE(ret, op, impl)                                                            \

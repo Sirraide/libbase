@@ -136,3 +136,15 @@ TEST_CASE("Span: comparison") {
     CHECK_FALSE(Span<Spaceship>(b2) < Span<Spaceship>(b1));
     CHECK_FALSE(Span<Spaceship>(b1) > Span<Spaceship>(b2));
 }
+
+
+TEST_CASE("Construct Span from std::span") {
+    std::span<int> x;
+    std::span<const int> x2;
+    MutableSpan<int> y1 = x;
+    MutableSpan<int> y2{x};
+    Span<int> y3 = x;
+    Span<int> y4{x};
+    Span<int> y5 = x2;
+    Span<int> y6{x2};
+}
