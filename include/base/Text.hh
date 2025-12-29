@@ -56,6 +56,9 @@ struct c32 {
     char32_t value;
 
     constexpr c32() = default;
+    constexpr c32(std::same_as<char> auto value) noexcept : value(char32_t(value)) {}
+    constexpr c32(std::same_as<char8_t> auto value) noexcept : value(char32_t(value)) {}
+    constexpr c32(std::same_as<char16_t> auto value) noexcept : value(char32_t(value)) {}
     constexpr c32(char32_t value) noexcept : value(value) {}
     explicit constexpr c32(std::integral auto value) noexcept : value(char32_t(value)) {}
 

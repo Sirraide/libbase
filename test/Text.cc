@@ -36,15 +36,15 @@ struct Catch::StringMaker<std::u32string_view> {
 constexpr c32 Invalid = c32(c32::max().value + 1);
 constexpr c32 Chars[] {
     0,
-    u'\n',
-    u' ',
-    u'q',
-    u'3',
-    u'#',
-    u'Ǘ',
-    u'ȝ',
-    u'Þ',
-    u'X',
+    U'\n',
+    U' ',
+    U'q',
+    U'3',
+    U'#',
+    U'Ǘ',
+    U'ȝ',
+    U'Þ',
+    U'X',
     Invalid,
 };
 
@@ -79,43 +79,43 @@ TEST_CASE("c32::name") {
 
 TEST_CASE("c32::swap_case") {
     CHECK(Chars[0].swap_case().value == 0);
-    CHECK(Chars[1].swap_case().value == u'\n');
-    CHECK(Chars[2].swap_case().value == u' ');
-    CHECK(Chars[3].swap_case().value == u'Q');
-    CHECK(Chars[4].swap_case().value == u'3');
-    CHECK(Chars[5].swap_case().value == u'#');
-    CHECK(Chars[6].swap_case().value == u'ǘ');
-    CHECK(Chars[7].swap_case().value == u'Ȝ');
-    CHECK(Chars[8].swap_case().value == u'þ');
-    CHECK(Chars[9].swap_case().value == u'x');
+    CHECK(Chars[1].swap_case().value == U'\n');
+    CHECK(Chars[2].swap_case().value == U' ');
+    CHECK(Chars[3].swap_case().value == U'Q');
+    CHECK(Chars[4].swap_case().value == U'3');
+    CHECK(Chars[5].swap_case().value == U'#');
+    CHECK(Chars[6].swap_case().value == U'ǘ');
+    CHECK(Chars[7].swap_case().value == U'Ȝ');
+    CHECK(Chars[8].swap_case().value == U'þ');
+    CHECK(Chars[9].swap_case().value == U'x');
     CHECK(Chars[10].swap_case().value == Invalid);
 }
 
 TEST_CASE("c32::to_lower") {
     CHECK(Chars[0].to_lower().value == 0);
-    CHECK(Chars[1].to_lower().value == u'\n');
-    CHECK(Chars[2].to_lower().value == u' ');
-    CHECK(Chars[3].to_lower().value == u'q');
-    CHECK(Chars[4].to_lower().value == u'3');
-    CHECK(Chars[5].to_lower().value == u'#');
-    CHECK(Chars[6].to_lower().value == u'ǘ');
-    CHECK(Chars[7].to_lower().value == u'ȝ');
-    CHECK(Chars[8].to_lower().value == u'þ');
-    CHECK(Chars[9].to_lower().value == u'x');
+    CHECK(Chars[1].to_lower().value == U'\n');
+    CHECK(Chars[2].to_lower().value == U' ');
+    CHECK(Chars[3].to_lower().value == U'q');
+    CHECK(Chars[4].to_lower().value == U'3');
+    CHECK(Chars[5].to_lower().value == U'#');
+    CHECK(Chars[6].to_lower().value == U'ǘ');
+    CHECK(Chars[7].to_lower().value == U'ȝ');
+    CHECK(Chars[8].to_lower().value == U'þ');
+    CHECK(Chars[9].to_lower().value == U'x');
     CHECK(Chars[10].to_lower().value == Invalid);
 }
 
 TEST_CASE("c32::to_upper") {
     CHECK(Chars[0].to_upper().value == 0);
-    CHECK(Chars[1].to_upper().value == u'\n');
-    CHECK(Chars[2].to_upper().value == u' ');
-    CHECK(Chars[3].to_upper().value == u'Q');
-    CHECK(Chars[4].to_upper().value == u'3');
-    CHECK(Chars[5].to_upper().value == u'#');
-    CHECK(Chars[6].to_upper().value == u'Ǘ');
-    CHECK(Chars[7].to_upper().value == u'Ȝ');
-    CHECK(Chars[8].to_upper().value == u'Þ');
-    CHECK(Chars[9].to_upper().value == u'X');
+    CHECK(Chars[1].to_upper().value == U'\n');
+    CHECK(Chars[2].to_upper().value == U' ');
+    CHECK(Chars[3].to_upper().value == U'Q');
+    CHECK(Chars[4].to_upper().value == U'3');
+    CHECK(Chars[5].to_upper().value == U'#');
+    CHECK(Chars[6].to_upper().value == U'Ǘ');
+    CHECK(Chars[7].to_upper().value == U'Ȝ');
+    CHECK(Chars[8].to_upper().value == U'Þ');
+    CHECK(Chars[9].to_upper().value == U'X');
     CHECK(Chars[10].to_upper().value == Invalid);
 }
 
@@ -132,12 +132,12 @@ TEST_CASE("FindCharsByName") {
     });
 
     CHECK(res == std::vector<c32> {
-        u' ', u'#', u'3',
-        u'A', u'B', u'C', u'D', u'E', u'F', u'G', u'H', u'I', u'J', u'K', u'L', u'M',
-        u'N', u'O', u'P', u'Q', u'R', u'S', u'T', u'U', u'V', u'W', u'X', u'Y', u'Z',
-        u'a', u'b', u'c', u'd', u'e', u'f', u'g', u'h', u'i', u'j', u'k', u'l', u'm',
-        u'n', u'o', u'p', u'q', u'r', u's', u't', u'u', u'v', u'w', u'x', u'y', u'z',
-        u'Þ', u'Ǘ', u'ȝ',
+        U' ', U'#', U'3',
+        U'A', U'B', U'C', U'D', U'E', U'F', U'G', U'H', U'I', U'J', U'K', U'L', U'M',
+        U'N', U'O', U'P', U'Q', U'R', U'S', U'T', U'U', U'V', U'W', U'X', U'Y', U'Z',
+        U'a', U'b', U'c', U'd', U'e', U'f', U'g', U'h', U'i', U'j', U'k', U'l', U'm',
+        U'n', U'o', U'p', U'q', U'r', U's', U't', U'u', U'v', U'w', U'x', U'y', U'z',
+        U'Þ', U'Ǘ', U'ȝ',
     });
 }
 
