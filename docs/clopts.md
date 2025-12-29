@@ -58,7 +58,7 @@ Here’s another, more complicated example if you want to see more of the featur
 #include <print>
 
 static void print_number_and_exit(void* arg, std::string_view) {
-    int* i = reinterpret_cast<int*>(arg);
+    int* i = static_cast<int*>(arg);
     std::println("{}", *i);
     std::exit(0);
 }
@@ -426,7 +426,7 @@ A `func` option can always occur multiple times, which is why `multiple<func<>>`
 The following is an example of how to use the `func` option type:
 ```c++
 static void print_number_and_exit(void* arg) {
-    int* i = reinterpret_cast<int*>(arg);
+    int* i = static_cast<int*>(arg);
     std::println("{}", *i);
     std::exit(0);
 }

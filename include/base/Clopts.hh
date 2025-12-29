@@ -1,55 +1,33 @@
 #ifndef LIBBASE_CLOPTS_HH
 #define LIBBASE_CLOPTS_HH
 
+#include <base/FS.hh>
+#include <base/Types.hh>
+#include <base/Utils.hh>
+
 #include <algorithm>
 #include <array>
 #include <bitset>
-#include <cerrno>
-#include <cstring>
-#include <filesystem>
 #include <functional>
-#include <iostream>
 #include <optional>
+#include <print>
 #include <span>
 #include <string>
 #include <tuple>
 #include <type_traits>
 #include <vector>
 
-#ifndef CLOPTS_USE_MMAP
-#    ifdef __linux__
-#        define CLOPTS_USE_MMAP 1
-#    else
-#        define CLOPTS_USE_MMAP 0
-#    endif
-#endif
-
-#if CLOPTS_USE_MMAP
-#    include <fcntl.h>
-#    include <sys/mman.h>
-#    include <sys/stat.h>
-#    include <unistd.h>
-#else
-#    include <fstream>
-#endif
-
 // ===========================================================================
 //  Internals.
 // ===========================================================================
 namespace base::detail {
 using namespace std::literals;
+using utils::static_string;
+using utils::list;
 
 // ===========================================================================
 //  Metaprogramming Helpers.
 // ===========================================================================
-/// List of types.
-template <typename ...pack> struct list {
-    /// Apply a function to each element of the list.
-    static constexpr void each(auto&& lambda) {
-        (lambda.template operator()<pack>(), ...);
-    }
-};
-
 /// Concatenate two type lists.
 template <typename, typename> struct concat_impl;
 template <typename ...Ts, typename ...Us>
@@ -59,11 +37,6 @@ struct concat_impl<list<Ts...>, list<Us...>> {
 
 template <typename T, typename U>
 using concat = typename concat_impl<T, U>::type;
-
-// TODO: Use pack indexing once the syntax is fixed and compilers
-// have actually started defining __cpp_pack_indexing.
-template <std::size_t i, typename... pack>
-using nth_type = std::tuple_element_t<i, std::tuple<pack...>>;
 
 /// Filter a pack of types.
 template <template <typename> typename, typename...>
@@ -93,16 +66,16 @@ using filter = typename filter_impl<cond, list<>, types...>::type;
 template <template <typename> typename get_key, typename... types>
 struct sort_impl {
 private:
-    static constexpr auto sorter = []<std::size_t ...i>(std::index_sequence<i...>) {
+    static constexpr auto sorter = []<usz ...i>(std::index_sequence<i...>) {
         static constexpr auto sorted = [] {
             std::array indices{i...};
             std::array lookup_table{get_key<types>::value...};
-            std::sort(indices.begin(), indices.end(), [&](std::size_t a, std::size_t b) {
+            std::sort(indices.begin(), indices.end(), [&](usz a, usz b) {
                 return lookup_table[a] < lookup_table[b];
             });
             return indices;
         }();
-        return list<nth_type<sorted[i], types...>...>{};
+        return list<types...[sorted[i]]...>{};
     };
 
 public:
@@ -146,14 +119,6 @@ constexpr void While(bool& cond, auto&& lambda) {
 /// Empty type.
 struct empty {};
 
-/// Check if two types are the same.
-template <typename a, typename ...bs>
-concept is = (std::is_same_v<std::remove_cvref_t<a>, std::remove_cvref_t<bs>> or ...);
-
-/// Check if two types are exactly the same.
-template <typename a, typename ...bs>
-concept is_same = (std::is_same_v<a, bs> or ...);
-
 /// Check if an operand type is a vector.
 template <typename t> struct test_vector;
 template <typename t> struct test_vector<std::vector<t>> {
@@ -193,7 +158,7 @@ using callback_noarg_type = void (*)(void*, std::string_view);
 
 /// Check whether a type is a callback.
 template <typename T>
-concept is_callback = is<T,
+concept is_callback = utils::is<T,
     callback_arg_type,
     callback_noarg_type,
     std::vector<callback_arg_type>,
@@ -202,7 +167,7 @@ concept is_callback = is<T,
 
 /// Check if an option type takes an argument.
 template <typename type>
-concept has_argument = not is<type, bool, callback_noarg_type>;
+concept has_argument = not utils::is<type, bool, callback_noarg_type>;
 
 /// Whether we should include the argument type of an option in the
 /// help text. This is true for all options that take arguments, except
@@ -286,122 +251,31 @@ struct at_scope_exit {
 /// do not constitute actual options in an of themselves.
 struct special_tag;
 
-// ===========================================================================
-//  Compile-Time String.
-// ===========================================================================
-// Some compilers do not have __builtin_strlen().
-#if defined __GNUC__ || defined __clang__
-#    define CLOPTS_STRLEN(str)  __builtin_strlen(str)
-#    define CLOPTS_STRCMP(a, b) __builtin_strcmp(a, b)
-#else
-constexpr inline std::size_t CLOPTS_STRLEN(const char* str) {
-    std::size_t len = 0;
-    while (*str++) ++len;
-    return len;
-}
-
-constexpr inline int CLOPTS_STRCMP(const char* a, const char* b) {
-    while (*a && *b && *a == *b) {
-        ++a;
-        ++b;
-    }
-    return *a - *b;
-}
-
-#    define CLOPTS_STRLEN(str)  ::command_line_options::detail::CLOPTS_STRLEN(str)
-#    define CLOPTS_STRCMP(a, b) ::command_line_options::detail::CLOPTS_STRCMP(a, b)
-#endif
-
-/// Raise a compile-time error.
-#ifndef CLOPTS_ERR
-#    define CLOPTS_ERR(msg) [] <bool _x = false> { static_assert(_x, msg); } ()
-#endif
-
 /// Constexpr to_string for integers. Returns the number of bytes written.
-constexpr std::size_t constexpr_to_string(char* out, std::int64_t i) {
-    // Special handling for 0.
-    if (i == 0) {
-        *out = '0';
-        return 1;
-    }
+constexpr std::string constexpr_to_string(i64 i) {
+    if (i == 0) return "0"; // Special handling for 0.
 
-    const auto start = out;
+    std::string out;
+    bool negative = false;
     if (i < 0) {
-        *out++ = '-';
+        out += '-';
+        negative = true;
         i = -i;
     }
 
     while (i) {
-        *out++ = char('0' + char(i % 10));
+        out += char('0' + char(i % 10));
         i /= 10;
     }
 
-    std::reverse(start, out);
-    return std::size_t(out - start);
+    std::reverse(out.data() + negative, out.data() + out.size());
+    return out;
 }
 
-/// Compile-time string.
-template <size_t sz>
-struct static_string {
-    char arr[sz]{};
-    size_t len{};
-
-    /// Construct an empty string.
-    constexpr static_string() {}
-
-    /// Construct from a string literal.
-    constexpr static_string(const char (&_data)[sz]) {
-        std::copy_n(_data, sz, arr);
-        len = sz - 1;
-    }
-
-    /// Check if two strings are equal.
-    template <typename str>
-    requires requires { std::declval<str>().len; }
-    [[nodiscard]] constexpr bool operator==(const str& s) const {
-        return len == s.len && CLOPTS_STRCMP(arr, s.arr) == 0;
-    }
-
-    /// Check if this is equal to a string.
-    [[nodiscard]] constexpr bool operator==(std::string_view s) const {
-        return sv() == s;
-    }
-
-    /// Append to this string.
-    template <size_t n>
-    constexpr void operator+=(const static_string<n>& str) {
-        static_assert(len + str.len < sz, "Cannot append string because it is too long");
-        std::copy_n(str.arr, str.len, arr + len);
-        len += str.len;
-    }
-
-    /// Append a string literal to this string.
-    constexpr void append(const char* str) { append(str, CLOPTS_STRLEN(str)); }
-
-    /// Append a string literal with a known length to this string.
-    constexpr void append(const char* str, size_t length) {
-        std::copy_n(str, length, arr + len);
-        len += length;
-    }
-
-    /// Get the string as a \c std::string_view.
-    [[nodiscard]] constexpr auto sv() const -> std::string_view { return {arr, len}; }
-
-    /// API for static_assert.
-    [[nodiscard]] constexpr auto data() const -> const char* { return arr; }
-    [[nodiscard]] constexpr auto size() const -> std::size_t { return len; }
-
-    static constexpr bool is_static_string = true;
-};
-
-/// Deduction guide to shut up nonsense CTAD warnings.
-template <size_t sz>
-static_string(const char (&)[sz]) -> static_string<sz>;
-
-template <std::size_t size>
+template <usz size>
 struct string_or_int {
     static_string<size> s{};
-    std::int64_t integer{};
+    i64 integer{};
     bool is_integer{};
 
     constexpr string_or_int(const char (&data)[size]) {
@@ -410,12 +284,12 @@ struct string_or_int {
         is_integer = false;
     }
 
-    constexpr string_or_int(std::int64_t integer)
+    constexpr string_or_int(i64 integer)
         : integer{integer}
         , is_integer{true} {}
 };
 
-string_or_int(std::int64_t) -> string_or_int<1>;
+string_or_int(i64) -> string_or_int<1>;
 
 // ===========================================================================
 //  Types.
@@ -435,28 +309,15 @@ struct values_impl {
         return (test.template operator()<data>() or ...);
     }
 
-    static constexpr auto print_values(char* out) -> std::size_t {
-        // TODO: Wrap and indent every 10 or so values?
+    static constexpr void print_values(std::string& out) {
         bool first = true;
-        auto append = [&]<auto value>() -> std::size_t {
+        auto append = [&]<auto value> {
             if (first) first = false;
-            else {
-                std::copy_n(", ", 2, out);
-                out += 2;
-            }
-            if constexpr (value.is_integer) {
-                char s[32]{};
-                auto len = constexpr_to_string(s, value.integer);
-                std::copy_n(s, len, out);
-                out += len;
-                return len;
-            } else {
-                std::copy_n(value.s.arr, value.s.len, out);
-                out += value.s.len;
-                return value.s.len;
-            }
+            else out += ", ";
+            if constexpr (value.is_integer) out += constexpr_to_string(value.integer);
+            else out += value.s.sv();
         };
-        return (append.template operator()<data>() + ...) + (sizeof...(data) - 1) * 2;
+        (append.template operator()<data>(), ...);
     }
 };
 
@@ -466,7 +327,7 @@ concept values_must_be_all_strings_or_all_ints = (data.is_integer and ...) or (n
 /// Values type.
 template <string_or_int... data>
 requires values_must_be_all_strings_or_all_ints<data...>
-struct values : values_impl<std::conditional_t<(data.is_integer and ...), std::int64_t, std::string>, data...> {};
+struct values : values_impl<std::conditional_t<(data.is_integer and ...), i64, std::string>, data...> {};
 
 template <typename _type, static_string...>
 struct ref {
@@ -475,10 +336,10 @@ struct ref {
 
 /// Check that an option type is valid.
 template <typename type>
-concept is_valid_option_type = is_same<type, std::string, // clang-format off
+concept is_valid_option_type = utils::is_same<type, std::string, // clang-format off
     bool,
     double,
-    int64_t,
+    i64,
     special_tag,
     callback_arg_type,
     callback_noarg_type
@@ -525,8 +386,8 @@ template <
     bool overridable>
 struct opt_impl {
     // There are four possible cases we need to handle here:
-    //   - Simple type: std::string, int64_t, ...
-    //   - Vector of simple type: std::vector<std::string>, std::vector<int64_t>, ...
+    //   - Simple type: std::string, i64, ...
+    //   - Vector of simple type: std::vector<std::string>, std::vector<i64>, ...
     //   - Values or ref type: values<...>, ref<...>
     //   - Vector of values or ref type: std::vector<values<...>>
 
@@ -549,7 +410,7 @@ struct opt_impl {
     static_assert(not std::is_void_v<canonical_type>, "Option type may not be void. Use bool instead");
     static_assert(
         is_valid_option_type<canonical_type>,
-        "Option type must be std::string, bool, int64_t, double, file_data, values<>, or callback"
+        "Option type must be std::string, bool, i64, double, file_data, values<>, or callback"
     );
 
     static constexpr decltype(_name) name = _name;
@@ -569,9 +430,8 @@ struct opt_impl {
         else return true;
     }
 
-    static constexpr auto print_values(char* out) -> std::size_t {
+    static constexpr void print_values(std::string& out) {
         if constexpr (is_values) return declared_type_base::print_values(out);
-        else return 0;
     }
 
     constexpr opt_impl() = delete;
@@ -582,90 +442,24 @@ struct opt_impl {
 // ===========================================================================
 /// Default help handler.
 [[noreturn]] inline void default_help_handler(std::string_view program_name, std::string_view msg) {
-    std::cerr << "Usage: " << program_name << " " << msg;
+    std::print(stderr, "Usage: {} {}", program_name, msg);
     std::exit(1);
-}
-
-template <typename file_data_type>
-static file_data_type map_file(
-    std::string_view path,
-    auto error_handler = [](std::string&& msg) { std::cerr << msg << "\n"; std::exit(1); }
-) {
-    const auto err = [&](std::string_view p) -> file_data_type {
-        std::string msg = "Could not read file \"";
-        msg += p;
-        msg += "\": ";
-        msg += ::strerror(errno);
-        error_handler(std::move(msg));
-        return {};
-    };
-
-#if CLOPTS_USE_MMAP
-    int fd = ::open(path.data(), O_RDONLY);
-    if (fd < 0) return err(path);
-
-    struct stat s {};
-    if (::fstat(fd, &s)) return err(path);
-    auto sz = size_t(s.st_size);
-    if (sz == 0) return {};
-
-    auto* mem = (char*) ::mmap(nullptr, sz, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-    if (mem == MAP_FAILED) return err(path);
-    ::close(fd);
-
-    // Construct the file contents.
-    typename file_data_type::contents_type ret;
-    auto pointer = reinterpret_cast<typename file_data_type::element_pointer>(mem);
-    if constexpr (requires { ret.assign(pointer, sz); }) ret.assign(pointer, sz);
-    else if constexpr (requires { ret.assign(pointer, pointer + sz); }) ret.assign(pointer, pointer + sz);
-    else CLOPTS_ERR("file_data_type::contents_type must have a callable assign member that takes a pointer and a size_t (or a begin and end iterator) as arguments.");
-    ::munmap(mem, sz);
-
-#else
-    using contents_type = typename file_data_type::contents_type;
-
-    // Read the file manually.
-    std::unique_ptr<FILE, decltype(&std::fclose)> f{std::fopen(path.data(), "rb"), std::fclose};
-    if (not f) return err(path);
-
-    // Get the file size.
-    std::fseek(f.get(), 0, SEEK_END);
-    auto sz = std::size_t(std::ftell(f.get()));
-    std::fseek(f.get(), 0, SEEK_SET);
-
-    // Read the file.
-    contents_type ret;
-    ret.resize(sz);
-    std::size_t n_read = 0;
-    while (n_read < sz) {
-        auto n = std::fread(ret.data() + n_read, 1, sz - n_read, f.get());
-        if (n < 0) return err(path);
-        if (n == 0) break;
-        n_read += n;
-    }
-#endif
-
-    // Construct the file data.
-    file_data_type dat;
-    dat.path = typename file_data_type::path_type{path.begin(), path.end()};
-    dat.contents = std::move(ret);
-    return dat;
 }
 
 /// Get the name of an option type.
 template <typename t>
 static consteval auto type_name() -> static_string<25> {
     static_string<25> buffer;
-    if constexpr (detail::is<t, std::string>) buffer.append("string");
-    else if constexpr (detail::is<t, bool>) buffer.append("bool");
-    else if constexpr (detail::is<t, std::int64_t, double>) buffer.append("number");
+    if constexpr (utils::is<t, std::string>) buffer.append("string");
+    else if constexpr (utils::is<t, bool>) buffer.append("bool");
+    else if constexpr (utils::is<t, i64, double>) buffer.append("number");
     else if constexpr (requires { t::is_file_data; }) buffer.append("file");
     else if constexpr (detail::is_callback<t>) buffer.append("arg");
     else if constexpr (detail::is_vector_v<t>) {
-        buffer.append(type_name<typename t::value_type>().arr, type_name<typename t::value_type>().len);
+        buffer.append(type_name<typename t::value_type>());
         buffer.append("s");
     } else {
-        CLOPTS_ERR("Option type must be std::string, bool, integer, double, or void(*)(), or a vector thereof");
+        static_assert(false, "Option type must be std::string, bool, integer, double, or void(*)(), or a vector thereof");
     }
     return buffer;
 }
@@ -686,7 +480,7 @@ struct is_values_option {
 /// Check if an option is a regular option.
 template <typename opt>
 struct regular_option {
-    static constexpr bool value = not is<typename opt::canonical_type, special_tag>;
+    static constexpr bool value = not utils::is<typename opt::canonical_type, special_tag>;
 };
 
 /// Check if an option is a special option.
@@ -703,68 +497,48 @@ class clopts_impl;
 
 template <typename... opts, typename... special>
 class clopts_impl<list<opts...>, list<special...>> {
-    // This should never be instantiated by the user.
+    LIBBASE_IMMOVABLE(clopts_impl);
+
+    // This should never be instantiated by or returned to the user.
     explicit clopts_impl() = default;
     ~clopts_impl() = default;
-    clopts_impl(const clopts_impl& o) = delete;
-    clopts_impl(clopts_impl&& o) = delete;
-    clopts_impl& operator=(const clopts_impl& o) = delete;
-    clopts_impl& operator=(clopts_impl&& o) = delete;
 
     // =======================================================================
     //  Option Access by Name.
     // =======================================================================
-    /// Option names.
-    static constexpr std::array<const char*, sizeof...(opts)> opt_names{opts::name.arr...};
-
     /// Get the index of an option.
-    template <size_t index, static_string option>
-    static constexpr size_t optindex_impl() {
+    template <usz index, static_string option>
+    static constexpr usz optindex_impl() {
         if constexpr (index >= sizeof...(opts)) return index;
-        else if constexpr (CLOPTS_STRCMP(opt_names[index], option.arr) == 0) return index;
+        else if constexpr (opts...[index]::name.sv() == option) return index;
         else return optindex_impl<index + 1, option>();
     }
 
-#if __cpp_static_assert >= 202306L
     template <static_string option>
     static consteval auto format_invalid_option_name() -> static_string<option.size() + 45> {
         static_string<option.size() + 45> ret;
-        ret.append("There is no option with the name '");
-        ret.append(option.data(), option.size());
-        ret.append("'");
+        ret.append("There is no option with the name '"sv);
+        ret.append(option.sv());
+        ret.append("'"sv);
         return ret;
     }
-#endif
 
     template <bool ok, static_string option>
     static consteval void assert_valid_option_name() {
-#if __cpp_static_assert >= 202306L
         static_assert(ok, format_invalid_option_name<option>());
-#else
-        static_assert(ok, "Invalid option name. You've probably misspelt an option.");
-#endif
     }
 
     /// Get the index of an option and raise an error if the option is not found.
     template <static_string option>
-    static constexpr size_t optindex() {
-        constexpr size_t sz = optindex_impl<0, option>();
+    static constexpr usz optindex() {
+        constexpr usz sz = optindex_impl<0, option>();
         assert_valid_option_name<(sz < sizeof...(opts)), option>();
         return sz;
     }
 
     /// Get an option by name.
-    // TODO: Use pack indexing once the syntax is fixed and compilers
-    // have actually started defining __cpp_pack_indexing.
     template <static_string name>
-    using opt_by_name = nth_type<optindex<name>(), opts...>;
-
-    // I hate not having pack indexing.
-    template <std::size_t i, static_string str, static_string... strs>
-    static constexpr auto nth_str() {
-        if constexpr (i == 0) return str;
-        else return nth_str<i - 1, strs...>();
-    }
+    using opt_by_name = opts...[optindex<name>()];
 
     // =======================================================================
     //  Validation.
@@ -775,11 +549,11 @@ class clopts_impl<list<opts...>, list<special...>> {
     static consteval bool check_duplicate_options() {
         // State is ok initially.
         bool ok = true;
-        std::size_t i = 0;
+        usz i = 0;
 
         // Iterate over each option for each option.
         While<opts...>(ok, [&]<typename opt>() {
-            std::size_t j = 0;
+            usz j = 0;
             While<opts...>(ok, [&]<typename opt2>() {
                 // If the options are not the same, but their names are the same
                 // then this is an error. Iteration will stop at this point because
@@ -800,11 +574,11 @@ class clopts_impl<list<opts...>, list<special...>> {
     static consteval bool check_short_opts() {
         // State is ok initially.
         bool ok = true;
-        std::size_t i = 0;
+        usz i = 0;
 
         // Iterate over each option for each option.
         While<opts...>(ok, [&]<typename opt>() {
-            std::size_t j = 0;
+            usz j = 0;
             While<opts...>(ok, [&]<typename opt2>() {
                 // Check the condition.
                 ok = i == j or not requires { opt::is_short; } or not opt2::name.sv().starts_with(opt::name.sv());
@@ -821,7 +595,7 @@ class clopts_impl<list<opts...>, list<special...>> {
 #endif
 
     /// Make sure there is at most one multiple<positional<>> option.
-    static consteval size_t validate_multiple() {
+    static consteval usz validate_multiple() {
         auto is_mul = []<typename opt>() { return requires { opt::is_multiple; }; };
         return (... + (is_mul.template operator()<opts>() and detail::is_positional_v<opts>) );
     }
@@ -879,7 +653,7 @@ class clopts_impl<list<opts...>, list<special...>> {
     template <typename opt>
     using ref_storage_type_t = // clang-format off
         // For flags, just store a bool.
-        std::conditional_t<is_same<storage_type_t<opt>, bool>, bool,
+        std::conditional_t<utils::is_same<storage_type_t<opt>, bool>, bool,
         // For multiple<> options, store a vector, because we need to deep-copy the state.
         std::conditional_t<is_vector_v<storage_type_t<opt>>, storage_type_t<opt>,
         // Otherwise, store an optional, since the value may be empty.
@@ -914,7 +688,7 @@ class clopts_impl<list<opts...>, list<special...>> {
     template <typename opt>
     using get_return_type = // clang-format off
         // For flags, just return a bool.
-        std::conditional_t<is_same<typename opt::canonical_type, bool>, bool,
+        std::conditional_t<utils::is_same<typename opt::canonical_type, bool>, bool,
         // For multiple<> options, return a span.
         std::conditional_t<is_vector_v<storage_type_t<opt>>, std::span<single_element_storage_type_t<opt>>,
         // Otherwise, return a pointer.
@@ -925,12 +699,12 @@ class clopts_impl<list<opts...>, list<special...>> {
     using help_string_t = static_string<1024 + 1024 * sizeof...(opts)>; // Size should be ‘big enough’™.
     using optvals_tuple_t = std::tuple<storage_type_t<opts>...>;
     using string = std::string;
-    using integer = int64_t;
+    using integer = i64;
 
     static constexpr bool has_stop_parsing = (requires { special::is_stop_parsing; } or ...);
 
 public:
-    using error_handler_t = std::function<bool(std::string&&)>;
+    using error_handler_t = std::move_only_function<bool(std::string&&)>;
 
     // =======================================================================
     //  Option Access.
@@ -940,7 +714,7 @@ public:
         friend clopts_impl;
         optvals_tuple_t optvals{};
         std::bitset<sizeof...(opts)> opts_found{};
-        std::conditional_t<has_stop_parsing, std::span<const char*>, empty> unprocessed_args{};
+        [[no_unique_address]] std::conditional_t<has_stop_parsing, Span<const char*>, empty> unprocessed_args{};
 
         // This implements get<>() and get_or<>().
         template <static_string s>
@@ -954,7 +728,7 @@ public:
             else if constexpr (detail::is_vector_v<canonical>) return std::get<optindex<s>()>(optvals);
 
             // Function options don’t have a value.
-            else if constexpr (detail::is_callback<canonical>) CLOPTS_ERR("Cannot call get<>() on an option with function type.");
+            else if constexpr (detail::is_callback<canonical>) static_assert(false, "Cannot call get<>() on an option with function type.");
 
             // Otherwise, return nullptr if the option wasn’t found, and a pointer to the value otherwise.
             else return not opts_found[optindex<s>()] ? nullptr : std::addressof(std::get<optindex<s>()>(optvals));
@@ -1014,7 +788,7 @@ public:
         ///
         /// If there was an error during parsing, the return value of this function
         /// is unspecified.
-        [[nodiscard]] auto unprocessed() const -> std::span<const char*> {
+        [[nodiscard]] auto unprocessed() const -> Span<const char*> {
             if constexpr (has_stop_parsing) return unprocessed_args;
             else return {};
         }
@@ -1039,8 +813,8 @@ private:
     /// Error handler that is used if the user doesn’t provide one.
     bool default_error_handler(std::string&& errmsg) {
         auto name = program_name();
-        if (not name.empty()) std::cerr << name << ": ";
-        std::cerr << errmsg << "\n";
+        if (not name.empty()) std::print(stderr, "{}: ", name);
+        std::println(stderr, "{}", errmsg);
 
         // Invoke the help option.
         bool invoked = false;
@@ -1056,22 +830,18 @@ private:
 
         // If no help option was found, print the help message.
         if (not invoked) {
-            std::cerr << "Usage: ";
-            if (not name.empty()) std::cerr << name << " ";
-            std::cerr << help();
+            std::print(stderr, "Usage: ");
+            if (not name.empty()) std::print(stderr, "{} ", name);
+            std::print(stderr, "{}", help());
         }
 
         std::exit(1);
     }
 
     /// Invoke the error handler and set the error flag.
-    void handle_error(auto first, auto&&... msg_parts) {
-        // Append the message parts.
-        std::string msg = std::string{std::move(first)};
-        ((msg += std::forward<decltype(msg_parts)>(msg_parts)), ...);
-
-        // Dispatch the error.
-        has_error = not error_handler(std::move(msg));
+    template <typename ...Args>
+    void handle_error(std::format_string<Args...> fmt, Args&& ...args) {
+        has_error = not error_handler(std::format(fmt, std::forward<Args>(args)...));
     }
 
     /// Invoke the help callback of the help option.
@@ -1098,23 +868,20 @@ private:
     }
 
     /// Helper to parse an integer or double.
-    template <typename number_type, static_string name>
-    auto parse_number(std::string_view s, auto parse_func) -> number_type {
-        number_type i{};
-
-        // The empty string is a valid integer *and* float, apparently.
+    template <typename Number>
+    auto parse_number(std::string_view s, std::string_view name) -> Number {
         if (s.empty()) {
-            handle_error("Expected ", name.sv(), ", got empty string");
-            return i;
+            handle_error("Expected {}, got empty string", name);
+            return {};
         }
 
-        // Parse the number.
-        errno = 0;
-        char* pos{};
-        if constexpr (requires { parse_func(s.data(), &pos, 10); }) i = number_type(parse_func(s.data(), &pos, 10));
-        else i = number_type(parse_func(s.data(), &pos));
-        if (errno != 0 or *pos) handle_error(s, " does not appear to be a valid ", name.sv());
-        return i;
+        auto res = Parse<Number>(s);
+        if (not res) {
+            handle_error("'{}' does not appear to be a valid {}", s, name);
+            return {};
+        }
+
+        return res.value();
     }
 
     /// Get the program name, if available.
@@ -1136,10 +903,10 @@ private:
         using value_type = decltype(std::get<optindex<s>()>(optvals.optvals));
 
         // Bool options don’t have a value.
-        if constexpr (std::is_same_v<value_type, bool>) CLOPTS_ERR("Cannot call ref() on an option<bool>");
+        if constexpr (std::is_same_v<value_type, bool>) static_assert(false, "Cannot call ref() on an option<bool>");
 
         // Function options don’t have a value.
-        else if constexpr (detail::is_callback<value_type>) CLOPTS_ERR("Cannot call ref<>() on an option with function type.");
+        else if constexpr (detail::is_callback<value_type>) static_assert(false, "Cannot call ref<>() on an option with function type.");
 
         // Get the option value.
         else return std::get<optindex<s>()>(optvals.optvals);
@@ -1151,15 +918,10 @@ private:
         // Check if this option accepts multiple values.
         if constexpr (
             not requires { opt::is_multiple; } and
-            not detail::is_callback<typename opt::single_element_type>
+            not detail::is_callback<typename opt::single_element_type> and
+            not opt::is_overridable
         ) {
-            if (not opt::is_overridable and found<opt::name>()) {
-                std::string errmsg;
-                errmsg += "Duplicate option: \"";
-                errmsg += opt::name.sv();
-                errmsg += "\"";
-                handle_error(std::move(errmsg));
-            }
+            if (found<opt::name>()) handle_error("Duplicate option: '{}'", opt::name);
         }
 
         optvals.opts_found[optindex<opt::name>()] = true;
@@ -1182,7 +944,7 @@ private:
         using positional = sort<get_option_name, positional_unsorted>;
         using non_positional = sort<get_option_name, filter<is_not_positional, opts...>>;
         using values_opts = sort<get_option_name, filter<is_values_option, opts...>>;
-        help_string_t msg{};
+        std::string msg{};
 
         // Append the positional options.
         //
@@ -1192,23 +954,23 @@ private:
         bool have_positional_opts = false;
         positional_unsorted::each([&]<typename opt> {
             have_positional_opts = true;
-            if (not opt::is_required) msg.append("[");
-            msg.append("<");
-            msg.append(opt::name.arr, opt::name.len);
-            msg.append(">");
-            if (not opt::is_required) msg.append("]");
-            msg.append(" ");
+            if (not opt::is_required) msg += "[";
+            msg += "<";
+            msg += str(opt::name.arr, opt::name.len);
+            msg += ">";
+            if (not opt::is_required) msg += "]";
+            msg += " ";
         });
 
         // End of first line.
-        msg.append("[options]\n");
+        msg += "[options]\n";
 
         // Determine the length of the longest name + typename so that
         // we know how much padding to insert before actually printing
         // the description. Also factor in the <> signs around and the
         // space after the option name, as well as the type name.
-        size_t max_vals_opt_name_len{};
-        size_t max_len{};
+        usz max_vals_opt_name_len{};
+        usz max_len{};
         Foreach<opts...>([&]<typename opt> {
             if constexpr (opt::is_values)
                 max_vals_opt_name_len = std::max(max_vals_opt_name_len, opt::name.len);
@@ -1239,64 +1001,66 @@ private:
 
         // Append an argument.
         auto append = [&]<typename opt> {
-            msg.append("    ");
+            msg += "    ";
             auto old_len = msg.size();
 
             // Append name.
-            if constexpr (is_positional_v<opt>) msg.append("<");
-            msg.append(opt::name.arr, opt::name.len);
-            if constexpr (is_positional_v<opt>) msg.append(">");
+            if constexpr (is_positional_v<opt>) msg += "<";
+            msg += str(opt::name.arr, opt::name.len);
+            if constexpr (is_positional_v<opt>) msg += ">";
 
             // Append type.
             if constexpr (should_print_argument_type<opt>) {
                 auto tname = type_name<typename opt::canonical_type>();
-                msg.append(" : ");
-                msg.append(tname.arr, tname.len);
+                msg += " : ";
+                msg += str(tname.arr, tname.len);
             }
 
             // Align to right margin.
             auto len = msg.size() - old_len;
-            for (size_t i = 0; i < max_len - len; i++) msg.append(" ");
+            for (usz i = 0; i < max_len - len; i++) msg += " ";
 
             // Two extra spaces between this and the description.
-            msg.append("  ");
-            msg.append(opt::description.arr, opt::description.len);
-            msg.append("\n");
+            msg += "  ";
+            msg += str(opt::description.arr, opt::description.len);
+            msg += "\n";
         };
 
         // Append the descriptions of positional options.
         if (have_positional_opts) {
-            msg.append("\nArguments:\n");
+            msg += "\nArguments:\n";
             positional::each(append);
-            msg.append("\n");
+            msg += "\n";
         }
 
         // Append non-positional options.
-        msg.append("Options:\n");
+        msg += "Options:\n";
         non_positional::each(append);
 
         // If we have any values<> types, print their supported values.
         if constexpr ((opts::is_values or ...)) {
-            msg.append("\nSupported option values:\n");
+            msg += "\nSupported option values:\n";
             values_opts::each([&] <typename opt> {
                 if constexpr (opt::is_values) {
-                    msg.append("    ");
-                    msg.append(opt::name.arr, opt::name.len);
-                    msg.append(":");
+                    msg += "    ";
+                    msg += str(opt::name.arr, opt::name.len);
+                    msg += ":";
 
                     // Padding after the name.
-                    for (size_t i = 0; i < max_vals_opt_name_len - opt::name.len + 1; i++)
-                        msg.append(" ");
+                    for (usz i = 0; i < max_vals_opt_name_len - opt::name.len + 1; i++)
+                        msg += " ";
 
                     // Option values.
-                    msg.len += opt::print_values(msg.arr + msg.len);
-                    msg.append("\n");
+                    opt::print_values(msg);
+                    msg += "\n";
                 }
             });
         }
 
         // Return the combined help message.
-        return msg;
+        help_string_t s;
+        s.append(msg);
+        return s;
     } // clang-format on
 
     /// Help message is created at compile time.
@@ -1304,8 +1068,8 @@ private:
 
 public:
     /// Get the help message.
-    static auto help() -> std::string {
-        return {help_message_raw.arr, help_message_raw.len};
+    static consteval auto help() -> std::string_view {
+        return help_message_raw.sv();
     }
 
 private:
@@ -1313,7 +1077,7 @@ private:
     //  References.
     // =======================================================================
     /// Add a referenced option to a tuple.
-    template <std::size_t index, static_string name>
+    template <usz index, static_string name>
     void add_referenced_option(auto& tuple) {
         // +1 here because the first index is the actual option value.
         auto& storage = std::get<index + 1>(tuple);
@@ -1328,12 +1092,12 @@ private:
     /// Add all referenced options to a tuple.
     template <typename type, static_string... args>
     auto add_referenced_options(auto& tuple, ref<type, args...>) {
-        [&]<std::size_t... i>(std::index_sequence<i...>) {
-            (add_referenced_option<i, nth_str<i, args...>()>(tuple), ...);
+        [&]<usz... i>(std::index_sequence<i...>) {
+            (add_referenced_option<i, args...[i]>(tuple), ...);
         }(std::make_index_sequence<sizeof...(args)>());
     }
 
-    /// Collect all references referenced by an optio.
+    /// Collect all references referenced by an option.
     template <typename opt>
     auto collect_references(auto value) {
         using tuple_ty = single_element_storage_type_t<opt>;
@@ -1356,7 +1120,7 @@ private:
 
         // If this is a function option, simply call the callback and we're done.
         if constexpr (detail::is_callback<canonical>) {
-            if constexpr (detail::is<canonical, callback_noarg_type>) opt::callback(user_data, opt_str);
+            if constexpr (utils::is<canonical, callback_noarg_type>) opt::callback(user_data, opt_str);
             else opt::callback(user_data, opt_str, opt_val);
         }
 
@@ -1370,11 +1134,9 @@ private:
             if constexpr (opt::is_values) {
                 if (not opt::is_valid_option_value(value)) {
                     handle_error(
-                        "Invalid value for option '",
-                        std::string(opt_str),
-                        "': '",
-                        std::string(opt_val),
-                        "'"
+                        "Invalid value for option '{}': '{}'",
+                        opt_str,
+                        opt_val
                     );
                 }
             }
@@ -1402,11 +1164,11 @@ private:
         if (not opt_str.starts_with(opt::name.sv())) return false;
 
         // --option=value or short opt.
-        if (opt_str.size() > opt::name.len) {
+        if (opt_str.size() > opt::name.size()) {
             // Parse the rest of the option as the value if we have a '=' or if this is a short option.
-            if (opt_str[opt::name.len] == '=' or requires { opt::is_short; }) {
+            if (opt_str[opt::name.size()] == '=' or requires { opt::is_short; }) {
                 // Otherwise, parse the value.
-                auto opt_start_offs = opt::name.len + (opt_str[opt::name.len] == '=');
+                auto opt_start_offs = opt::name.size() + (opt_str[opt::name.size()] == '=');
                 const auto opt_name = opt_str.substr(0, opt_start_offs);
                 const auto opt_val = opt_str.substr(opt_start_offs);
                 dispatch_option_with_arg<opt, is_multiple>(opt_name, opt_val);
@@ -1421,7 +1183,7 @@ private:
         // encountered matches the option name exactly. If this is a func option that
         // doesn’t take arguments, just call the callback and we’re done.
         using canonical = typename opt::canonical_type;
-        if constexpr (detail::is<canonical, callback_noarg_type>) {
+        if constexpr (utils::is<canonical, callback_noarg_type>) {
             opt::callback(user_data, opt_str);
             return true;
         }
@@ -1430,7 +1192,7 @@ private:
         else {
             // No more command line arguments left.
             if (++argi == argc) {
-                handle_error("Missing argument for option \"", opt_str, "\"");
+                handle_error("Missing argument for option '{}'", opt_str);
                 return false;
             }
 
@@ -1510,20 +1272,31 @@ private:
         using element = typename opt::single_element_type;
 
         // Make sure this option takes an argument.
-        if constexpr (not detail::has_argument<element>) CLOPTS_ERR("This option type does not take an argument");
+        if constexpr (not detail::has_argument<element>) static_assert(false, "This option type does not take an argument");
 
         // Strings do not require parsing.
         else if constexpr (std::is_same_v<element, std::string>) return std::string{opt_val};
 
         // If it’s a file, read its contents.
-        else if constexpr (requires { element::is_file_data; }) return detail::map_file<element>(opt_val, error_handler);
+        else if constexpr (requires { element::is_file_data; }) {
+            using Contents = typename element::contents_type;
+            Contents contents;
+            auto res = File::ReadInto(opt_val, contents);
+            if (not res) handle_error("Error reading file '{}': {}", opt_val, res.error());
+
+            // Construct the file data.
+            element dat;
+            dat.path = typename element::path_type{opt_val.begin(), opt_val.end()};
+            dat.contents = std::move(contents);
+            return dat;
+        }
 
         // Parse an integer or double.
-        else if constexpr (std::is_same_v<element, integer>) return parse_number<integer, "integer">(opt_val, std::strtoull);
-        else if constexpr (std::is_same_v<element, double>) return parse_number<double, "floating-point number">(opt_val, std::strtod);
+        else if constexpr (std::is_same_v<element, integer>) return parse_number<integer>(opt_val, "integer");
+        else if constexpr (std::is_same_v<element, double>) return parse_number<double>(opt_val, "floating-point number");
 
         // Should never get here.
-        else CLOPTS_ERR("Unreachable");
+        else static_assert(false, "Unreachable");
     }
 
     /// Check if we should stop parsing.
@@ -1545,13 +1318,8 @@ private:
             }
 
             // Attempt to handle the option.
-            if (not handle_non_positional(opt_str) and not handle_positional(opt_str)) {
-                std::string errmsg;
-                errmsg += "Unrecognized option: \"";
-                errmsg += opt_str;
-                errmsg += "\"";
-                handle_error(std::move(errmsg));
-            }
+            if (not handle_non_positional(opt_str) and not handle_positional(opt_str))
+                handle_error("Unrecognized option: '{}'", opt_str);
 
             // Stop parsing if there was an error.
             if (has_error) return;
@@ -1559,20 +1327,18 @@ private:
 
         // Make sure all required options were found.
         Foreach<opts...>([&]<typename opt>() {
-            if (not found<opt::name>() and opt::is_required) {
-                std::string errmsg;
-                errmsg += "Option \"";
-                errmsg += opt::name.sv();
-                errmsg += "\" is required";
-                handle_error(std::move(errmsg));
+            if constexpr (opt::is_required) {
+                if (not found<opt::name>()) {
+                    handle_error("Option '{}' is required", opt::name);
+                }
             }
         });
 
         // Save unprocessed options.
         if constexpr (has_stop_parsing) {
-            optvals.unprocessed_args = std::span<const char*>{
+            optvals.unprocessed_args = Span<const char*>{
                 argv + argi,
-                static_cast<std::size_t>(argc - argi),
+                static_cast<usz>(argc - argi),
             };
         }
     }
@@ -1590,12 +1356,12 @@ public:
     static auto parse(
         int argc,
         const char* const* const argv,
-        std::function<bool(std::string&&)> error_handler = nullptr,
+        error_handler_t error_handler = nullptr,
         void* user_data = nullptr
     ) -> optvals_type {
         // Initialise state.
         clopts_impl self;
-        if (error_handler) self.error_handler = error_handler;
+        if (error_handler) self.error_handler = std::move(error_handler);
         else self.error_handler = [&](auto&& e) { return self.default_error_handler(std::forward<decltype(e)>(e)); };
         self.argc = argc;
         self.user_data = user_data;
@@ -1667,12 +1433,10 @@ struct short_option : detail::opt_impl<_name, _description, _type, required, ove
 } // namespace experimental
 
 /// A file.
-template <typename contents_type_t = std::string, typename path_type_t = std::filesystem::path>
+template <typename contents_type_t = fs::FileContents, typename path_type_t = fs::Path>
 struct file {
     using contents_type = contents_type_t;
     using path_type = path_type_t;
-    using element_type = typename contents_type::value_type;
-    using element_pointer = std::add_pointer_t<element_type>;
     static constexpr bool is_file_data = true;
 
     /// The file path.
@@ -1736,9 +1500,9 @@ template <typename opt>
 struct multiple : option<opt::name, opt::description, std::vector<typename opt::declared_type>, opt::is_required> {
     using base_type = typename opt::canonical_type;
     using type = std::vector<typename opt::canonical_type>;
-    static_assert(not detail::is<base_type, bool>, "Type of multiple<> cannot be bool");
-    static_assert(not detail::is<base_type, detail::callback_arg_type>, "Type of multiple<> cannot be a callback");
-    static_assert(not detail::is<base_type, detail::callback_noarg_type>, "Type of multiple<> cannot be a callback");
+    static_assert(not utils::is<base_type, bool>, "Type of multiple<> cannot be bool");
+    static_assert(not utils::is<base_type, detail::callback_arg_type>, "Type of multiple<> cannot be a callback");
+    static_assert(not utils::is<base_type, detail::callback_noarg_type>, "Type of multiple<> cannot be a callback");
     static_assert(not requires { opt::is_multiple; }, "multiple<multiple<>> is invalid");
     static_assert(not requires { opt::is_stop_parsing; }, "multiple<stop_parsing<>> is invalid");
     static_assert(not opt::is_overridable, "multiple<> cannot be overridable");
@@ -1755,13 +1519,4 @@ struct stop_parsing : option<stop_at, "Stop parsing command-line arguments", det
 };
 } // namespace base::cmd
 
-#undef CLOPTS_STRLEN
-#undef CLOPTS_STRCMP
-#undef CLOPTS_ERR
-
 #endif // LIBBASE_CLOPTS_HH
-
-
-
-// TODO: Use FileContents
-// TODO: Add tests

@@ -82,6 +82,11 @@ public:
     constexpr basic_str(const char_type (&chars)[n]) noexcept
         : _m_text(chars, n - 1) {}
 
+    /// Construct a new string from a static string.
+    template <usz n>
+    constexpr basic_str(const utils::static_string<n>& s) noexcept
+        : _m_text(s.data(), s.size()) {}
+
     /// Construct a str from a string ref.
 #ifdef LIBBASE_ENABLE_LLVM_BINDINGS_STR
     constexpr basic_str(::llvm::StringRef ref) noexcept requires std::is_same_v<char_type, char>
@@ -1397,7 +1402,7 @@ public:
     }
 
     /// Implicit conversion to a string view.
-    /* implicit */ operator text_type() const noexcept { return _m_text; }
+    /* implicit */ constexpr operator text_type() const noexcept { return _m_text; }
 
 private:
     // Return characters until position `n` (exclusive)

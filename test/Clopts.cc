@@ -16,18 +16,33 @@ static bool error_handler(std::string&& s) {
     throw std::runtime_error(s);
 }
 
-template <typename path_type = std::filesystem::path, typename contents_type = std::string>
-static auto this_file() -> std::pair<path_type, contents_type> {
+#ifdef __clang__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wc23-extensions"
+static constexpr char this_file_data[]{
+#embed __FILE__
+};
+#pragma GCC diagnostic pop
+#endif // __clang__
+
+template <typename path_type = std::filesystem::path>
+static auto this_file() -> std::pair<path_type, std::string> {
     std::string_view _file_ = __FILE__;
+
+#ifdef __clang__
+    std::string contents{this_file_data, sizeof this_file_data};
+#else
     std::ifstream f{__FILE__};
-    contents_type contents{std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>()};
+    std::string contents{std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>()};
+#endif // __clang__
+
     path_type path{_file_.begin(), _file_.end()};
     return std::pair{path, contents};
 }
 
 static void print_number_and_exit(void* arg, std::string_view) {
-    int* i = reinterpret_cast<int*>(arg);
-    std::cout << *i;
+    int* i = static_cast<int*>(arg);
+    std::println("{}", *i);
     std::exit(0);
 }
 
@@ -449,11 +464,11 @@ TEST_CASE("File option can map a file properly") {
             __FILE__,
         };
 
-        auto [path, contents] = this_file<typename file::path_type, typename file::contents_type>();
+        auto [path, contents] = this_file<typename file::path_type>();
         auto opts = options::parse(args.size(), args.data(), error_handler);
         REQUIRE(opts.template get<"file">());
         CHECK(opts.template get<"file">()->path == path);
-        CHECK(opts.template get<"file">()->contents == contents);
+        CHECK(ByteSpan(opts.template get<"file">()->contents) == ByteSpan(contents));
     };
 
     run.template operator()<file<>>();
@@ -803,7 +818,7 @@ TEST_CASE("Documentation compiles (example 1)") {
     auto repeat_count = opts.get<"--repeat">(1);
     std::string actual;
     for (std::int64_t i = 0; i < repeat_count; i++)
-        actual += file_contents;
+        actual += std::format("{}", file_contents);
 
     auto [path, contents] = this_file();
     CHECK(actual == contents + contents + contents);
@@ -877,8 +892,8 @@ Supported option values:
 }
 
 static_assert(std::is_same_v<
-    detail::concat<detail::list<int, double>, detail::list<char, short>>,
-    detail::list<int, double, char, short>
+    detail::concat<utils::list<int, double>, utils::list<char, short>>,
+    utils::list<int, double, char, short>
 >);
 
 // The filter<> implementation used to be exponential, so er,

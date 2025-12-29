@@ -39,13 +39,6 @@ using InputVector = Span<ByteSpan>;
 using Path = stdfs::path;
 using PathRef = const stdfs::path&;
 
-template <typename Ty>
-concept CharBuffer = requires (Ty t, usz sz) {
-    { t.data() } -> std::same_as<char*>;
-    { t.size() } -> std::integral;
-    { t.resize(sz) };
-};
-
 /// Change the current working directory.
 auto ChangeDirectory(PathRef path) -> Result<>;
 
@@ -126,6 +119,15 @@ public:
     [[nodiscard]] auto view() const -> std::string_view {
         return {data(), size()};
     }
+
+    /// Compare the contents of two files.
+    [[nodiscard]] bool operator==(const FileContents& other) const {
+        return span() == other.span();
+    }
+
+    [[nodiscard]] auto operator<=>(const FileContents& other) const {
+        return span() <=> other.span();
+    }
 };
 
 /// A handle to a file on disk.
@@ -188,8 +190,8 @@ public:
     static auto Open(PathRef path, OpenMode mode = OpenMode::Read) noexcept -> Result<File>;
 
     /// Read an entire file into a container.
-    template <CharBuffer Buffer>
-    static auto ReadInto(PathRef path, Buffer& buffer) noexcept -> Result<> {
+    template <utils::ResizableByteRange Buffer>
+    static auto ReadInto(PathRef path, Buffer& buffer) -> Result<> {
         auto sz = buffer.size();
         auto f = Try(Open(path, OpenMode::Read));
         buffer.resize(sz + f.size());
@@ -198,6 +200,12 @@ public:
         // someone else; there is nothing we can really do about that, so
         // don’t bother checking the size here.
         Try(f.read(MutableByteSpan(buffer.data() + sz, f.size())));
+        return {};
+    }
+
+    /// Overload of ReadInto() that behaves like Read() for generic programming.
+    static auto ReadInto(PathRef path, FileContents& contents) -> Result<> {
+        contents = Try(Read(path));
         return {};
     }
 
@@ -217,6 +225,14 @@ public:
     /// This automatically creates any intermediate
     /// directories that do not exist.
     static auto Write(PathRef path, ByteSpan data) noexcept -> Result<>;
+};
+
+template <>
+struct std::formatter<base::fs::FileContents> : std::formatter<std::string_view> {
+    template <typename FormatContext>
+    auto format(const base::fs::FileContents& contents, FormatContext& ctx) const {
+        return std::formatter<std::string_view>::format(contents.view(), ctx);
+    }
 };
 
 #endif

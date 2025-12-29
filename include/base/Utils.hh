@@ -1,8 +1,10 @@
 #ifndef LIBBASE_UTILS_HH
 #define LIBBASE_UTILS_HH
 
-#include <algorithm>
 #include <base/Types.hh>
+#include <base/Assert.hh>
+
+#include <algorithm>
 #include <format>
 #include <functional>
 #include <ranges>
@@ -32,7 +34,7 @@ concept ConvertibleRange = rgs::range<T> and (std::convertible_to<rgs::range_val
 template <typename... Types>
 struct list {
     template <typename Callable>
-    static void each(Callable&& callable) {
+    static constexpr void each(Callable&& callable) {
         (callable.template operator()<Types>(), ...);
     }
 };
@@ -149,7 +151,6 @@ constexpr decltype(auto) Visit(Visitor&& visitor, Variant&& variant) {
     return std::visit(std::forward<Variant>(variant), std::forward<Visitor>(visitor));
 }
 
-
 /// Non-owning zero-terminated string.
 ///
 /// This is meant to be used in function parameters only to avoid allocations if
@@ -166,7 +167,7 @@ class basic_zstring {
 
 public:
     /// Create an empty string.
-    basic_zstring() {
+    constexpr basic_zstring() {
         if constexpr (std::is_same_v<char_type, char>) {
             value = "";
         } else if constexpr (std::is_same_v<char_type, char8_t>) {
@@ -184,23 +185,27 @@ public:
 
     /// Create a zstring from a string literal.
     template <usz n>
-    basic_zstring(const char_type (&data)[n]) : value{text_type{data, n - 1}} {}
+    consteval basic_zstring(const char_type (&data)[n]) : value{text_type{data, n - 1}} {
+        Assert(data[n - 1] == 0, "String must be null-terminated");
+    }
 
     /// Create a zstring from a std::string.
-    basic_zstring(const string_type& str) : value{text_type{str}} {}
+    constexpr basic_zstring(const string_type& str) : value{text_type{str}} {}
 
     /// Create a zstring from a pointer and size.
-    basic_zstring(const char_type* data, usz size) : value{text_type{data, size}} {}
+    constexpr basic_zstring(const char_type* data, usz size) : value{text_type{data, size}} {
+        Assert(data[size] == 0, "String must be null-terminated");
+    }
 
     /// Get the data pointer.
-    [[nodiscard]] auto c_str() const -> const char_type* { return data(); }
-    [[nodiscard]] auto data() const -> const char_type* { return str().data(); }
+    [[nodiscard]] constexpr auto c_str() const -> const char_type* { return data(); }
+    [[nodiscard]] constexpr auto data() const -> const char_type* { return str().data(); }
 
     /// Get the size of the string.
-    [[nodiscard]] auto size() const -> usz { return str().size(); }
+    [[nodiscard]] constexpr auto size() const -> usz { return str().size(); }
 
     /// Get the string.
-    [[nodiscard]] auto str() const -> text_type {
+    [[nodiscard]] constexpr auto str() const -> text_type {
         return value;
     }
 };
@@ -209,6 +214,63 @@ using zstring = basic_zstring<char>;
 using u8zstring = basic_zstring<char8_t>;
 using u16zstring = basic_zstring<char16_t>;
 using u32zstring = basic_zstring<char32_t>;
+
+/// Compile-time string.
+template <usz sz>
+struct static_string {
+    char arr[sz]{};
+    usz len{};
+
+    /// Construct an empty string.
+    constexpr static_string() {}
+
+    /// Construct from a string literal.
+    consteval static_string(const char (&_data)[sz]) {
+        Assert(_data[sz - 1] == 0, "Expected null-terminated string");
+        std::copy_n(_data, sz, arr);
+        len = sz - 1;
+    }
+
+    /// Check if two strings are equal.
+    template <usz n>
+    [[nodiscard]] constexpr bool operator==(const static_string<n>& s) const {
+        return sv() == s.sv();
+    }
+
+    /// Check if this is equal to a string.
+    [[nodiscard]] constexpr bool operator==(std::string_view s) const {
+        return sv() == s;
+    }
+
+    /// Append to this string.
+    template <usz n>
+    constexpr void append(const static_string<n>& str) {
+        Assert(len + str.len < sz, "Cannot append string because it is too long");
+        std::copy_n(str.arr, str.len, arr + len);
+        len += str.len;
+    }
+
+    /// Append a string literal with a known length to this string.
+    consteval void append(std::string_view s) {
+        std::copy_n(s.data(), s.size(), arr + len);
+        len += s.size();
+    }
+
+    /// Get the string as a \c std::string_view.
+    [[nodiscard]] constexpr auto sv() const -> std::string_view { return {arr, len}; }
+
+    /// API for static_assert.
+    [[nodiscard]] constexpr auto data() -> char* { return arr; }
+    [[nodiscard]] constexpr auto data() const -> const char* { return arr; }
+    [[nodiscard]] constexpr auto size() const -> usz { return len; }
+
+    static constexpr bool is_static_string = true;
+};
+
+/// Deduction guide to shut up nonsense CTAD warnings.
+template <usz sz>
+static_string(const char (&)[sz]) -> static_string<sz>;
+
 
 /// A byte-sized type or 'void'.
 ///
@@ -233,6 +295,14 @@ concept SizedByteRange = requires (Range r) {
     { r.data() } -> BytePointer;
     { r.size() } -> std::convertible_to<usz>;
 };
+
+/// A range of bytes that can be resized.
+template <typename Range>
+concept ResizableByteRange = requires (Range r, usz i) {
+    { r.data() } -> BytePointer;
+    { r.size() } -> std::convertible_to<usz>;
+    { r.resize(i) };
+};
 } // namespace base::utils
 
 namespace base {
@@ -244,6 +314,14 @@ struct std::formatter<base::utils::basic_zstring<CharType>> : std::formatter<std
     template <typename FormatContext>
     auto format(base::utils::basic_zstring<CharType> str, FormatContext& ctx) const {
         return std::formatter<std::basic_string_view<CharType>>::format(str.str(), ctx);
+    }
+};
+
+template <std::size_t N>
+struct std::formatter<base::utils::static_string<N>> : std::formatter<std::string_view> {
+    template <typename FormatContext>
+    auto format(const base::utils::static_string<N>& str, FormatContext& ctx) const {
+        return std::formatter<std::string_view>::format(str.sv(), ctx);
     }
 };
 
