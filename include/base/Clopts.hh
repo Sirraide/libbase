@@ -704,7 +704,12 @@ class clopts_impl<list<opts...>, list<special...>> {
     static constexpr bool has_stop_parsing = (requires { special::is_stop_parsing; } or ...);
 
 public:
+
+#ifdef __cpp_lib_move_only_function
     using error_handler_t = std::move_only_function<bool(std::string&&)>;
+#else
+    using error_handler_t = std::function<bool(std::string&&)>;
+#endif
 
     // =======================================================================
     //  Option Access.
