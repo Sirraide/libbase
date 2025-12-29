@@ -128,6 +128,9 @@ public:
     [[nodiscard]] auto operator<=>(const FileContents& other) const {
         return span() <=> other.span();
     }
+
+    [[nodiscard]] operator std::string_view() const { return view(); }
+    [[nodiscard]] operator str() const { return view(); }
 };
 
 /// A handle to a file on disk.

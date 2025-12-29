@@ -286,3 +286,13 @@ TEST_CASE("Opening in Write mode should truncate") {
     File::Write(TPath, "foo").value();
     CHECK(File::Open(TPath, OpenMode::ReadWrite).value().size() == 0);
 }
+
+TEST_CASE("Implicit conversion from FileContents to std::string_view/str") {
+    FileContents fs = File::Read(__FILE__).value();
+    std::string_view x;
+    str y;
+    x = fs;
+    y = fs;
+    CHECK(x == fs.view());
+    CHECK(y == fs.view());
+}
