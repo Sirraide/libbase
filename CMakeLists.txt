@@ -248,17 +248,6 @@ if (LIBBASE_ENABLE_PCRE2)
     target_link_libraries(libbase PRIVATE pcre2-8 pcre2-16 pcre2-32)
 endif ()
 
-## Add the command-line options library in any case.
-FetchContent_Declare(
-    clopts
-    GIT_REPOSITORY https://github.com/Sirraide/clopts.git
-    GIT_TAG        master
-    SOURCE_DIR     "${CMAKE_CURRENT_BINARY_DIR}/clopts"
-)
-
-FetchContent_MakeAvailable(clopts)
-target_include_directories(libbase PUBLIC "${clopts_SOURCE_DIR}/include")
-
 ## ============================================================================
 ##  Testing
 ## ============================================================================
