@@ -110,7 +110,7 @@ constexpr void While(bool& cond, auto&& lambda) {
         return true;
     };
 
-    (impl.template operator()<pack>() and ...);
+    (void) (impl.template operator()<pack>() and ...);
 }
 
 // ===========================================================================
@@ -437,6 +437,17 @@ struct opt_impl {
     constexpr opt_impl() = delete;
 };
 
+/// A directive modifies the parsing process, but doesn’t correspond to
+/// any option on the command-line.
+struct directive {
+    // This is a hack to prevent follow-up errors if 'regular_option' is
+    // instantiated with a directive as an argument. There is a constraint
+    // that is supposed to prevent that, but it seems that Clang just ignores
+    // that specialisation if instantiating the constraint fails (e.g. due
+    // to a static_assert in the directive)...
+    using canonical_type = void;
+};
+
 // ===========================================================================
 //  Parser Helpers.
 // ===========================================================================
@@ -477,10 +488,22 @@ struct is_values_option {
     static constexpr bool value = opt::is_values;
 };
 
+/// Check if an option is a directive.
+template <typename opt>
+struct is_directive {
+    static constexpr bool value = std::derived_from<opt, directive>;
+};
+
 /// Check if an option is a regular option.
 template <typename opt>
 struct regular_option {
     static constexpr bool value = not utils::is<typename opt::canonical_type, special_tag>;
+};
+
+template <typename opt>
+requires std::derived_from<opt, directive>
+struct regular_option<opt> {
+    static constexpr bool value = false;
 };
 
 /// Check if an option is a special option.
@@ -489,14 +512,20 @@ struct special_option {
     static constexpr bool value = not regular_option<opt>::value;
 };
 
+template <typename opt>
+requires std::derived_from<opt, directive>
+struct special_option<opt> {
+    static constexpr bool value = false;
+};
+
 // ===========================================================================
 //  Main Implementation.
 // ===========================================================================
 template <typename... opts>
 class clopts_impl;
 
-template <typename... opts, typename... special>
-class clopts_impl<list<opts...>, list<special...>> {
+template <typename... opts, typename... special, typename ...directives>
+class clopts_impl<list<opts...>, list<special...>, list<directives...>> {
     LIBBASE_IMMOVABLE(clopts_impl);
 
     // This should never be instantiated by or returned to the user.
@@ -624,10 +653,49 @@ class clopts_impl<list<opts...>, list<special...>> {
         return ok;
     }
 
+    /// Validate that mutually_exclusive options exist.
+    static consteval bool check_mutually_exclusive_exist() {
+        bool ok = true;
+        While<directives...>(ok, [&]<typename dir> {
+            if constexpr (requires { dir::is_mutually_exclusive; }) {
+                for (auto name : dir::options) {
+                    if (not ((opts::name == name) or ...)) {
+                        ok = false;
+                        return;
+                    }
+                }
+            }
+        });
+        return ok;
+    }
+
+    /// Validate that we don’t require two required options to be mutually
+    /// exclusive since that can’t possibly work.
+    static consteval bool check_mutually_exclusive_required() {
+        bool ok = true;
+        list<directives...>::each([&]<typename dir> {
+            if constexpr (requires { dir::is_mutually_exclusive; }) {
+                [[maybe_unused]] bool found = false;
+                list<opts...>::each([&]<typename opt> {
+                    if (opt::is_required and rgs::contains(dir::options, str(opt::name))) {
+                        if (not found) found = true;
+                        else ok = false;
+                    }
+                });
+            }
+        });
+        return ok;
+    }
+
     /// Make sure we don’t have invalid option combinations.
+    ///
+    /// TODO: Can we use a 'consteval {}' block for these (once compiler support those) and print
+    /// the option that causes the problem in a static assertion inside these validation functions?
     static_assert(check_duplicate_options(), "Two different options may not have the same name");
     static_assert(validate_multiple() <= 1, "Cannot have more than one multiple<positional<>> option");
     static_assert(validate_references(), "All options with a ref<> type must reference an existing non-ref option");
+    static_assert(check_mutually_exclusive_exist(), "mutually_exclusive<> must reference existing options");
+    static_assert(check_mutually_exclusive_required(), "Cannot mark two required options as mutually_exclusive<>");
 
     // =======================================================================
     //  Option Storage.
@@ -1331,11 +1399,24 @@ private:
         }
 
         // Make sure all required options were found.
-        Foreach<opts...>([&]<typename opt>() {
+        list<opts...>::each([&]<typename opt> {
             if constexpr (opt::is_required) {
                 if (not found<opt::name>()) {
                     handle_error("Option '{}' is required", opt::name);
                 }
+            }
+        });
+
+        // Make sure that mutually_exclusive is respected.
+        list<directives...>::each([&]<typename dir> {
+            if constexpr (requires { dir::is_mutually_exclusive; }) {
+                std::optional<str> prev;
+                list<opts...>::each([&]<typename opt> {
+                    if (found<opt::name>() and rgs::contains(dir::options, str(opt::name))) {
+                        if (not prev) prev = opt::name;
+                        else handle_error("Options '{}' and '{}' are mutually exclusive", *prev, opt::name);
+                    }
+                });
             }
         });
 
@@ -1393,7 +1474,8 @@ namespace base::cmd {
 template <typename... opts>
 using clopts = detail::clopts_impl< // clang-format off
     detail::filter<detail::regular_option, opts...>,
-    detail::filter<detail::special_option, opts...>
+    detail::filter<detail::special_option, opts...>,
+    detail::filter<detail::is_directive, opts...>
 >; // clang-format on
 
 /// Types.
@@ -1530,6 +1612,25 @@ struct multiple : option<opt::name, opt::description, std::vector<typename opt::
 template <detail::static_string stop_at = "--">
 struct stop_parsing : option<stop_at, "Stop parsing command-line arguments", detail::special_tag> {
     static constexpr bool is_stop_parsing = true;
+};
+
+/// Mark that of a set of options, only one can be specified.
+template <detail::static_string ...opts>
+struct mutually_exclusive : detail::directive {
+    static_assert(sizeof...(opts) > 1, "mutually_exclusive<> must have at least 2 arguments");
+    static constexpr std::array<str, sizeof...(opts)> options{str(opts.sv())...};
+    static constexpr bool is_mutually_exclusive = true;
+
+private:
+    static consteval bool validate() {
+        for (auto [i, o1] : vws::enumerate(options))
+            for (auto [j, o2] : vws::enumerate(options))
+                if (i != j and o1 == o2)
+                    return false;
+        return true;
+    }
+
+    static_assert(validate(), "mutually_exclusive<>: an option cannot be exclusive with itself");
 };
 } // namespace base::cmd
 

@@ -1058,6 +1058,90 @@ TEST_CASE("get() with default") {
 #pragma clang diagnostic pop
 }
 
+TEST_CASE("Clopts: mutually_exclusive") {
+    using options = clopts<
+        help<>,
+        option<"--a", "">,
+        option<"--b", "">,
+        mutually_exclusive<"--a", "--b">
+    >;
+
+    std::array a1 = {
+        "test",
+        "--a", "a",
+        "--b", "b",
+    };
+
+    CHECK_THROWS_WITH(
+        options::parse(a1.size(), a1.data(), error_handler),
+        ContainsSubstring("Options '--a' and '--b' are mutually exclusive")
+    );
+
+    std::array a2 = { "test" };
+    std::array a3 = { "test", "--a", "" };
+    std::array a4 = { "test", "--b", "" };
+    CHECK_NOTHROW(options::parse(a2.size(), a2.data(), error_handler));
+    CHECK_NOTHROW(options::parse(a3.size(), a3.data(), error_handler));
+    CHECK_NOTHROW(options::parse(a4.size(), a4.data(), error_handler));
+
+    using options2 = clopts<
+        help<>,
+        flag<"--a", "">,
+        flag<"--b", "">,
+        flag<"--c", "">,
+        flag<"--d", "">,
+        mutually_exclusive<"--a", "--b", "--c", "--d">
+    >;
+
+    std::array a5 = { "test", "--a", "--b" };
+    CHECK_THROWS_WITH(
+        options2::parse(a5.size(), a5.data(), error_handler),
+        ContainsSubstring("Options '--a' and '--b' are mutually exclusive")
+    );
+
+    std::array a6 = { "test", "--a", "--c" };
+    CHECK_THROWS_WITH(
+        options2::parse(a6.size(), a6.data(), error_handler),
+        ContainsSubstring("Options '--a' and '--c' are mutually exclusive")
+    );
+
+    std::array a7 = { "test", "--b", "--c" };
+    CHECK_THROWS_WITH(
+        options2::parse(a7.size(), a7.data(), error_handler),
+        ContainsSubstring("Options '--b' and '--c' are mutually exclusive")
+    );
+
+    std::array a8 = { "test", "--b", "--d" };
+    CHECK_THROWS_WITH(
+        options2::parse(a8.size(), a8.data(), error_handler),
+        ContainsSubstring("Options '--b' and '--d' are mutually exclusive")
+    );
+
+    std::array a9 = { "test", "--d", "--c" };
+    CHECK_THROWS_WITH(
+        options2::parse(a9.size(), a9.data(), error_handler),
+        ContainsSubstring("Options '--c' and '--d' are mutually exclusive")
+    );
+
+    std::array a10 = { "test", "--a", "--c", "--b" };
+    CHECK_THROWS_WITH(
+        options2::parse(a10.size(), a10.data(), error_handler),
+        ContainsSubstring("Options '--a' and '--b' are mutually exclusive")
+    );
+
+    std::array a11 = { "test", "--d", "--a", "--c" };
+    CHECK_THROWS_WITH(
+        options2::parse(a11.size(), a11.data(), error_handler),
+        ContainsSubstring("Options '--a' and '--c' are mutually exclusive")
+    );
+
+    std::array a12 = { "test", "--d", "--a" };
+    CHECK_THROWS_WITH(
+        options2::parse(a12.size(), a12.data(), error_handler),
+        ContainsSubstring("Options '--a' and '--d' are mutually exclusive")
+    );
+}
+
 /*TEST_CASE("Aliased options are equivalent") {
     using options = clopts<
         multiple<option<"--string", "A string", std::string>>,

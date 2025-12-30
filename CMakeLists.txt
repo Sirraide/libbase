@@ -279,4 +279,17 @@ if (LIBBASE_BUILD_TESTS)
     )
 
     catch_discover_tests(tests)
+
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        add_test(
+            NAME compile-time-tests
+            COMMAND "${CMAKE_CXX_COMPILER}"
+                -Xclang -verify
+                -std=c++26
+                -fsyntax-only
+                -ferror-limit=0
+                "${PROJECT_SOURCE_DIR}/test-compile/Clopts.cc"
+                -I "${PROJECT_SOURCE_DIR}/include"
+        )
+    endif()
 endif()

@@ -405,6 +405,7 @@ stop_parsing<> // Equivalent to 'stop_parsing<"--">'.
 * Any unprocessed options *after* the stop parsing option can be retrieved using the `unprocessed()` function of the
   type returned by `parse()`.
 * The parser will still error if there are any required options that were not seen before parsing was stopped.
+
 ### Option Type: `func`
 A `func` defines a callback that is called by the parser when the
 option is encountered. You can specify additional data to be passed
@@ -442,6 +443,26 @@ int main(int argc, char** argv) {
 ```
 
 It is a compile-time error to call `get<>()` on a `func` option.
+
+### Option Type: `mutually_exclusive<>`
+This is a directive that takes a set of option names and specifies that at most one of them may occur
+in any command line:
+```c++
+using options = clopts<
+    help<>,
+    option<"--a", "foo">,
+    option<"--b", "bar">,
+    // If the user passes '--a' and '--b', the parser raises an error.
+    mutually_exclusive<"--a", "--b">
+>;
+```
+
+#### **Properties**
+The following properties are checked at compile-time:
+* `mutually_exclusive<>` must take at least 2 option names.
+* The same option name cannot be specified twice.
+* Only options that actually exist can be specified.
+* At most one of the options passed to this can be required.
 
 ### Custom Option Types
 You can define your own custom option types by inheriting from `option`. For instance the builtin `flag` type is defined as
