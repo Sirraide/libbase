@@ -13,6 +13,7 @@ using o13 = clopts<option<"a", "">, mutually_exclusive<"a">>; // expected-error@
 using o14 = clopts<option<"a", "">, mutually_exclusive<"a", "a">>; // expected-error@base/Clopts.hh:* {{mutually_exclusive<>: an option cannot be exclusive with itself}}
 using o15 = clopts<option<"a", "">, mutually_exclusive<"a", "b", "a">>; // expected-error@base/Clopts.hh:* {{mutually_exclusive<>: an option cannot be exclusive with itself}}
 using o16 = clopts<option<"a", "", std::string, true, false, true>>; // expected-error@base/Clopts.hh:* {{Required options cannot be hidden}}
+using o19 = clopts<multiple<subcommand<"foo", "bar", flag<"foo", "bar">>>>; // expected-error@base/Clopts.hh:* {{multiple<subcommand<>> is invalid}}
 
 int a(int argc, char** argv) {
     // expected-error@base/Clopts.hh:* {{Cannot have more than one multiple<positional<>> option}}

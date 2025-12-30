@@ -1767,6 +1767,7 @@ struct multiple : option<opt::name, opt::description, std::vector<typename opt::
     static_assert(not utils::is<base_type, detail::callback_noarg_type>, "Type of multiple<> cannot be a callback");
     static_assert(not requires { opt::is_multiple; }, "multiple<multiple<>> is invalid");
     static_assert(not requires { opt::is_stop_parsing; }, "multiple<stop_parsing<>> is invalid");
+    static_assert(not requires { opt::is_subcommand; }, "multiple<subcommand<>> is invalid");
     static_assert(not opt::is_overridable, "multiple<> cannot be overridable");
 
     constexpr multiple() = delete;
