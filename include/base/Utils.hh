@@ -242,6 +242,12 @@ struct static_string {
         return sv() == s;
     }
 
+    /// Overwrite the string data.
+    consteval void assign(std::string_view data) {
+        len = 0;
+        append(data);
+    }
+
     /// Append to this string.
     template <usz n>
     constexpr void append(const static_string<n>& str) {
@@ -258,6 +264,12 @@ struct static_string {
 
     /// Get the string as a \c std::string_view.
     [[nodiscard]] constexpr auto sv() const -> std::string_view { return {arr, len}; }
+
+    /// Iterators.
+    [[nodiscard]] constexpr auto begin() -> char* { return data(); }
+    [[nodiscard]] constexpr auto begin() const -> const char* { return data(); }
+    [[nodiscard]] constexpr auto end() -> char* { return data() + size(); }
+    [[nodiscard]] constexpr auto end() const -> const char* { return data() + size(); }
 
     /// API for static_assert.
     [[nodiscard]] constexpr auto data() -> char* { return arr; }

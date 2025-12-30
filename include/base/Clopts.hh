@@ -482,8 +482,19 @@ static consteval auto type_name() -> static_string<25> {
 //  Sort/filter helpers.
 // ===========================================================================
 template <typename opt>
-struct get_option_name {
-    static constexpr std::string_view value = opt::name.sv();
+struct get_option_name_for_help_msg_sort {
+    static constexpr str value = [] {
+         static constexpr static_string copy = [] {
+            static_string buf = opt::name;
+            buf.assign(str(opt::name).drop_while('-'));
+            rgs::transform(buf, buf.begin(), [](char c) {
+                if (text::IsUpper(c)) return char(c + ('a' - 'A'));
+                return c;
+            });
+            return buf;
+        }();
+        return str(copy);
+    }();
 };
 
 template <typename opt>
@@ -1017,9 +1028,9 @@ private:
     /// Create the help message.
     static constexpr auto make_help_message() -> help_string_t { // clang-format off
         using positional_unsorted = filter<is_positional, opts...>;
-        using positional = sort<get_option_name, positional_unsorted>;
-        using non_positional = sort<get_option_name, filter<is_not_positional, opts...>>;
-        using values_opts = sort<get_option_name, filter<is_values_option, opts...>>;
+        using positional = sort<get_option_name_for_help_msg_sort, positional_unsorted>;
+        using non_positional = sort<get_option_name_for_help_msg_sort, filter<is_not_positional, opts...>>;
+        using values_opts = sort<get_option_name_for_help_msg_sort, filter<is_values_option, opts...>>;
         std::string msg{};
 
         // Append the positional options.

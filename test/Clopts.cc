@@ -1202,6 +1202,68 @@ Options:
     CHECK(options::help() == expected);
 }
 
+TEST_CASE("Clopts: Option name sorting ignores ASCII case and dashes") {
+    using options = clopts<
+        positional<"a", "foobar">,
+        positional<"b", "foobar">,
+        positional<"A", "foobar">,
+        positional<"B", "foobar">,
+        option<"c", "foobar", values<1, 2>>,
+        option<"d", "foobar", values<1, 2>>,
+        option<"C", "foobar", values<1, 2>>,
+        option<"D", "foobar", values<1, 2>>,
+        option<"-c", "foobar", values<1, 2>>,
+        option<"-C", "foobar", values<1, 2>>,
+        option<"-d", "foobar", values<1, 2>>,
+        option<"-D", "foobar", values<1, 2>>,
+        option<"--c", "foobar", values<1, 2>>,
+        option<"--C", "foobar", values<1, 2>>,
+        option<"--D", "foobar", values<1, 2>>,
+        option<"--d", "foobar", values<1, 2>>,
+        help<>
+    >;
+
+    static constexpr auto expected = R"help(<a> <b> <A> <B> [options]
+
+Arguments:
+    <a>     foobar
+    <A>     foobar
+    <b>     foobar
+    <B>     foobar
+
+Options:
+    c       foobar
+    C       foobar
+    -c      foobar
+    -C      foobar
+    --c     foobar
+    --C     foobar
+    d       foobar
+    D       foobar
+    -d      foobar
+    -D      foobar
+    --D     foobar
+    --d     foobar
+    --help  Print this help information
+
+Supported option values:
+    c:   1, 2
+    C:   1, 2
+    -c:  1, 2
+    -C:  1, 2
+    --c: 1, 2
+    --C: 1, 2
+    d:   1, 2
+    D:   1, 2
+    -d:  1, 2
+    -D:  1, 2
+    --D: 1, 2
+    --d: 1, 2
+)help";
+
+    CHECK(options::help() == expected);
+}
+
 /*TEST_CASE("Aliased options are equivalent") {
     using options = clopts<
         multiple<option<"--string", "A string", std::string>>,
