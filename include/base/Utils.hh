@@ -34,6 +34,11 @@ concept ConvertibleRange = rgs::range<T> and (std::convertible_to<rgs::range_val
 template <typename... Types>
 struct list {
     template <typename Callable>
+    static constexpr bool any(Callable&& callable) {
+        return (callable.template operator()<Types>() or ...);
+    }
+
+    template <typename Callable>
     static constexpr void each(Callable&& callable) {
         (callable.template operator()<Types>(), ...);
     }
@@ -275,6 +280,18 @@ struct static_string {
     [[nodiscard]] constexpr auto data() -> char* { return arr; }
     [[nodiscard]] constexpr auto data() const -> const char* { return arr; }
     [[nodiscard]] constexpr auto size() const -> usz { return len; }
+
+    /// Check if this is empty.
+    [[nodiscard]] constexpr bool empty() const { return len == 0; }
+
+    /// Concatenate this with another string.
+    template <usz n>
+    [[nodiscard]] constexpr auto operator+(const static_string<n>& s) const -> static_string<sz + n> {
+        static_string<sz + n> new_string;
+        new_string.append(*this);
+        new_string.append(s);
+        return new_string;
+    }
 
     static constexpr bool is_static_string = true;
 };

@@ -1264,6 +1264,93 @@ Supported option values:
     CHECK(options::help() == expected);
 }
 
+TEST_CASE("Clopts: subcommands") {
+    using options = clopts<
+        help<>,
+        option<"ipa", "Convert [REDACTED] to IPA">,
+        subcommand<"dictionary", "Generate the dictionary",
+            option<"--file", "Dictionary file">,
+            option<"--imports", "Imports file">
+        >
+    >;
+
+    SECTION("1") {
+        std::array args = {
+            "test",
+            "ipa", "foobar"
+        };
+
+        auto opts = options::parse(args.size(), args.data(), error_handler);
+        CHECK(*opts.get<"ipa">() == "foobar");
+    }
+
+    SECTION("2") {
+        std::array args = {
+            "test",
+            "ipa", "foobar",
+            "--file", "1"
+        };
+
+        CHECK_THROWS(options::parse(args.size(), args.data(), error_handler));
+    }
+
+    SECTION("3") {
+        std::array args = {
+            "test",
+            "--file", "1"
+        };
+
+        CHECK_THROWS(options::parse(args.size(), args.data(), error_handler));
+    }
+
+    SECTION("4") {
+        std::array args = {
+            "test",
+            "dictionary",
+            "--file", "1",
+            "--imports", "2",
+        };
+
+        auto opts = options::parse(args.size(), args.data(), error_handler);
+        CHECK(*opts.get<"dictionary">()->get<"--file">() == "1");
+        CHECK(*opts.get<"dictionary">()->get<"--imports">() == "2");
+    }
+
+    SECTION("5") {
+        std::array args = {
+            "test",
+            "dictionary",
+            "--file", "1",
+            "ipa", "2",
+        };
+
+        CHECK_THROWS(options::parse(args.size(), args.data(), error_handler));
+    }
+
+    SECTION("help message") {
+        static constexpr auto root_help = R"help([options]
+
+Subcommands:
+    dictionary  Generate the dictionary
+
+Options:
+    --help      Print this help information
+    ipa         Convert [REDACTED] to IPA
+)help";
+
+        static constexpr auto subcommand_help = R"help([options]
+
+Options:
+    --file     Dictionary file
+    --help     Print this help information
+    --imports  Imports file
+)help";
+
+        CHECK(options::help() == root_help);
+        CHECK(options::command<"dictionary">::help() == subcommand_help);
+    }
+}
+
 /*TEST_CASE("Aliased options are equivalent") {
     using options = clopts<
         multiple<option<"--string", "A string", std::string>>,
@@ -1287,5 +1374,4 @@ Supported option values:
 
 /// TODO:
 ///  - alias<"-f", "--filename">; alternatively: option<names<"-f", "--filename">, "description">
-///  - hidden<...> (don't show in help)
 ///  - Finish short_option

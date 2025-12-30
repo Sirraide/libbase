@@ -18,12 +18,24 @@
 #include <vector>
 
 // ===========================================================================
-//  Internals.
+//  Forward Declarations.
 // ===========================================================================
+namespace base::cmd {
+template <
+    utils::static_string name,
+    utils::static_string description,
+    typename ...options
+> struct subcommand;
+}
+
 namespace base::detail {
 using namespace std::literals;
+using namespace cmd;
 using utils::static_string;
 using utils::list;
+
+template <typename... opts>
+class clopts_impl;
 
 // ===========================================================================
 //  Metaprogramming Helpers.
@@ -141,14 +153,21 @@ struct is_positional {
     using type = std::bool_constant<value>;
 };
 
+template <typename opt> using positional_t = typename is_positional<opt>::type;
+template <typename opt> concept is_positional_v = is_positional<opt>::value;
+template <typename opt> concept is_subcommand = requires { opt::is_subcommand; };
+
 template <typename opt>
-struct is_not_positional {
-    static constexpr bool value = not is_positional<opt>::value;
+struct is_regular_option {
+    static constexpr bool value = not is_positional<opt>::value and not is_subcommand<opt>;
     using type = std::bool_constant<value>;
 };
 
-template <typename opt> using positional_t = typename is_positional<opt>::type;
-template <typename opt> concept is_positional_v = is_positional<opt>::value;
+template <typename opt>
+struct is_subcommand_option {
+    static constexpr bool value = is_subcommand<opt>;
+    using type = std::bool_constant<value>;
+};
 
 /// Callback that takes an argument.
 using callback_arg_type = void (*)(void*, std::string_view, std::string_view);
@@ -167,13 +186,16 @@ concept is_callback = utils::is<T,
 
 /// Check if an option type takes an argument.
 template <typename type>
-concept has_argument = not utils::is<type, bool, callback_noarg_type>;
+concept has_argument = not utils::is<type, bool, callback_noarg_type> and not requires { type::is_options_storage; };
+
+/// Check if this is the help<> option.
+template <typename opt> concept is_help_option = requires { opt::is_help_option; };
 
 /// Whether we should include the argument type of an option in the
 /// help text. This is true for all options that take arguments, except
 /// the builtin help option.
 template <typename opt>
-concept should_print_argument_type = has_argument<typename opt::type> and not requires { opt::is_help_option; };
+concept should_print_argument_type = has_argument<typename opt::type> and not is_help_option<opt>;
 
 /// Helper for static asserts.
 template <typename t>
@@ -343,7 +365,10 @@ concept is_valid_option_type = utils::is_same<type, std::string, // clang-format
     special_tag,
     callback_arg_type,
     callback_noarg_type
-> or is_vector_v<type> or requires { type::is_values; } or requires { type::is_file_data; };
+> or is_vector_v<type> or
+    requires { type::is_values; } or
+    requires { type::is_file_data; } or
+    requires { type::is_options_storage; };
 // clang-format on
 
 template <typename _type>
@@ -351,6 +376,7 @@ struct option_type {
     using type = _type;
     static constexpr bool is_values = false;
     static constexpr bool is_ref = false;
+    static constexpr bool is_subcommand = false;
 };
 
 /// Look through values<> to figure out the option type.
@@ -359,6 +385,7 @@ struct option_type<values<vs...>> {
     using type = values<vs...>::type;
     static constexpr bool is_values = true;
     static constexpr bool is_ref = false;
+    static constexpr bool is_subcommand = false;
 };
 
 /// And ref<> too.
@@ -367,6 +394,16 @@ struct option_type<ref<_type, vs...>> {
     using type = ref<_type, vs...>::type;
     static constexpr bool is_values = false;
     static constexpr bool is_ref = true;
+    static constexpr bool is_subcommand = false;
+};
+
+/// For subcommands, get the nested option storage type.
+template <typename ...options>
+struct option_type<clopts_impl<options...>> {
+    using type = clopts_impl<options...>::optvals_type;
+    static constexpr bool is_values = false;
+    static constexpr bool is_ref = false;
+    static constexpr bool is_subcommand = true;
 };
 
 template <typename _type>
@@ -497,6 +534,62 @@ struct get_option_name_for_help_msg_sort {
     }();
 };
 
+template <typename>
+struct find_help_option {
+    using type = std::false_type;
+};
+
+template <typename opt, typename ...opts>
+struct find_help_option<list<opt, opts...>> {
+    using type = std::conditional_t<
+        is_help_option<opt>,
+        std::type_identity<opt>,
+        find_help_option<list<opts...>>
+    >::type;
+};
+
+template <typename help, typename opt>
+struct apply_to_subcommand;
+
+template <
+    typename help,
+    static_string name,
+    static_string description,
+    typename ...options
+>
+struct apply_to_subcommand<help, subcommand<name, description, options...>> {
+    using type = subcommand<name, description, options..., help>;
+};
+
+template <
+    static_string name,
+    static_string description,
+    typename ...options
+>
+struct apply_to_subcommand<std::false_type, subcommand<name, description, options...>> {
+    using type = subcommand<name, description, options...>;
+};
+
+template <typename help, typename opt>
+struct preprocess_subcommand {
+    using type = std::conditional_t<
+        is_subcommand<opt>,
+        apply_to_subcommand<help, opt>,
+        std::type_identity<opt>
+    >::type;
+};
+
+/// Helper to propagate the parent help<> option as well as the
+/// subcommand path to any subcommands.
+template <typename options>
+struct preprocess_subcommands;
+
+template <typename ...opts>
+struct preprocess_subcommands<list<opts...>> {
+    using help = find_help_option<list<opts...>>::type;
+    using type = list<typename preprocess_subcommand<help, opts>::type...>;
+};
+
 template <typename opt>
 struct is_values_option {
     static constexpr bool value = opt::is_values;
@@ -535,12 +628,12 @@ struct special_option<opt> {
 // ===========================================================================
 //  Main Implementation.
 // ===========================================================================
-template <typename... opts>
-class clopts_impl;
-
 template <typename... opts, typename... special, typename ...directives>
 class clopts_impl<list<opts...>, list<special...>, list<directives...>> {
     LIBBASE_IMMOVABLE(clopts_impl);
+
+    template <typename...>
+    friend class clopts_impl;
 
     // This should never be instantiated by or returned to the user.
     explicit clopts_impl() = default;
@@ -787,8 +880,8 @@ class clopts_impl<list<opts...>, list<special...>, list<directives...>> {
 
 public:
 
-#ifdef __cpp_lib_move_only_function
-    using error_handler_t = std::move_only_function<bool(std::string&&)>;
+#ifdef __cpp_lib_copyable_function
+    using error_handler_t = std::copyable_function<bool(std::string&&)>;
 #else
     using error_handler_t = std::function<bool(std::string&&)>;
 #endif
@@ -879,6 +972,8 @@ public:
             if constexpr (has_stop_parsing) return unprocessed_args;
             else return {};
         }
+
+        static constexpr bool is_options_storage = true;
     };
 
 private:
@@ -892,6 +987,7 @@ private:
     int argi{};
     const char** argv{};
     void* user_data{};
+    std::string_view program_name;
     error_handler_t error_handler{};
 
     // =======================================================================
@@ -899,14 +995,13 @@ private:
     // =======================================================================
     /// Error handler that is used if the user doesn’t provide one.
     bool default_error_handler(std::string&& errmsg) {
-        auto name = program_name();
-        if (not name.empty()) std::print(stderr, "{}: ", name);
+        if (not program_name.empty()) std::print(stderr, "{}: ", program_name);
         std::println(stderr, "{}", errmsg);
 
         // Invoke the help option.
         bool invoked = false;
         auto invoke = [&]<typename opt> {
-            if constexpr (requires { opt::is_help_option; }) {
+            if constexpr (is_help_option<opt>) {
                 invoked = true;
                 invoke_help_callback<opt>();
             }
@@ -918,7 +1013,7 @@ private:
         // If no help option was found, print the help message.
         if (not invoked) {
             std::print(stderr, "Usage: ");
-            if (not name.empty()) std::print(stderr, "{} ", name);
+            if (not program_name.empty()) std::print(stderr, "{} ", program_name);
             std::print(stderr, "{}", help());
         }
 
@@ -937,9 +1032,9 @@ private:
         // New API: program name + help message [+ user data].
         using sv = std::string_view;
         if constexpr (requires { opt::help_callback(sv{}, sv{}, user_data); })
-            opt::help_callback(sv{program_name()}, sv{}, user_data);
+            opt::help_callback(sv{program_name}, sv{}, user_data);
         else if constexpr (requires { opt::help_callback(sv{}, sv{}); })
-            opt::help_callback(sv{program_name()}, help_message_raw.sv());
+            opt::help_callback(sv{program_name}, help_message_raw.sv());
 
         // Compatibility for callbacks that don’t take the program name.
         else if constexpr (requires { opt::help_callback(sv{}, user_data); })
@@ -969,12 +1064,6 @@ private:
         }
 
         return res.value();
-    }
-
-    /// Get the program name, if available.
-    auto program_name() const -> std::string_view {
-        if (argv) return argv[0];
-        return {};
     }
 
     // =======================================================================
@@ -1029,8 +1118,10 @@ private:
     static constexpr auto make_help_message() -> help_string_t { // clang-format off
         using positional_unsorted = filter<is_positional, opts...>;
         using positional = sort<get_option_name_for_help_msg_sort, positional_unsorted>;
-        using non_positional = sort<get_option_name_for_help_msg_sort, filter<is_not_positional, opts...>>;
+        using regular = sort<get_option_name_for_help_msg_sort, filter<is_regular_option, opts...>>;
+        using subcommands = sort<get_option_name_for_help_msg_sort, filter<is_subcommand_option, opts...>>;
         using values_opts = sort<get_option_name_for_help_msg_sort, filter<is_values_option, opts...>>;
+        auto ShowInHelp = [&]<typename opt> { return not opt::is_hidden; };
         std::string msg{};
 
         // Append the positional options.
@@ -1038,10 +1129,8 @@ private:
         // Do NOT sort them here as this is where we print in what order
         // they’re supposed to appear in, so sorting would be very stupid
         // here.
-        bool have_positional_opts = false;
         positional_unsorted::each([&]<typename opt> {
             if constexpr (opt::is_hidden) return;
-            have_positional_opts = true;
             if (not opt::is_required) msg += "[";
             msg += "<";
             msg += str(opt::name.arr, opt::name.len);
@@ -1059,7 +1148,7 @@ private:
         // space after the option name, as well as the type name.
         usz max_vals_opt_name_len{};
         usz max_len{};
-        Foreach<opts...>([&]<typename opt> {
+        list<opts...>::each([&]<typename opt> {
             if constexpr (opt::is_hidden) return;
             if constexpr (opt::is_values)
                 max_vals_opt_name_len = std::max(max_vals_opt_name_len, opt::name.len);
@@ -1089,7 +1178,7 @@ private:
         });
 
         // Append an argument.
-        auto append = [&]<typename opt> {
+        auto Append = [&]<typename opt> {
             if constexpr (opt::is_hidden) return;
             msg += "    ";
             auto old_len = msg.size();
@@ -1117,15 +1206,22 @@ private:
         };
 
         // Append the descriptions of positional options.
-        if (have_positional_opts) {
+        if (positional_unsorted::any(ShowInHelp)) {
             msg += "\nArguments:\n";
-            positional::each(append);
-            msg += "\n";
+            positional::each(Append);
+        }
+
+        // Append subcommands.
+        if (subcommands::any(ShowInHelp)) {
+            msg += "\nSubcommands:\n";
+            subcommands::each(Append);
         }
 
         // Append non-positional options.
-        msg += "Options:\n";
-        non_positional::each(append);
+        if (regular::any(ShowInHelp)) {
+            msg += "\nOptions:\n";
+            regular::each(Append);
+        }
 
         // If we have any values<> types, print their supported values.
         if constexpr (((opts::is_values and not opts::is_hidden) or ...)) {
@@ -1305,10 +1401,27 @@ private:
         // If it’s a callable, call it.
         if constexpr (detail::is_callback<typename opt::single_element_type>) {
             // The builtin help option is handled here. We pass the help message as an argument.
-            if constexpr (requires { opt::is_help_option; }) invoke_help_callback<opt>();
+            if constexpr (is_help_option<opt>) invoke_help_callback<opt>();
 
             // If it’s not the help option, just invoke it.
             else { opt::callback(user_data, opt_str); }
+        }
+
+        // If it’s a subcommand, dispatch all remaining arguments to its parser.
+        if constexpr (detail::is_subcommand<opt>) {
+            auto parsed = opt::declared_type::parse_impl(
+                program_name,
+                argc - argi - 1,
+                argv + argi + 1,
+                error_handler,
+                user_data
+            );
+
+            argi = argc;
+            store_option_value<requires { opt::is_multiple; }>(
+                ref_to_storage<opt::name>(),
+                std::move(parsed)
+            );
         }
 
         // Option has been handled.
@@ -1399,7 +1512,7 @@ private:
 
     void parse() {
         // Main parser loop.
-        for (argi = 1; argi < argc; argi++) {
+        for (argi = 0; argi < argc; argi++) {
             std::string_view opt_str{argv[argi]};
 
             // Stop parsing if this is the stop_parsing<> option.
@@ -1447,7 +1560,30 @@ private:
         }
     }
 
+    static auto parse_impl(
+        std::string_view program_name,
+        int argc,
+        const char** argv,
+        error_handler_t error_handler,
+        void* user_data
+    ) -> optvals_type {
+        clopts_impl self;
+        if (error_handler) self.error_handler = std::move(error_handler);
+        else self.error_handler = [&](auto&& e) { return self.default_error_handler(std::forward<decltype(e)>(e)); };
+        self.argc = argc;
+        self.argv = argv;
+        self.program_name = program_name;
+        self.user_data = user_data;
+        self.parse();
+        return std::move(self.optvals);
+    }
+
 public:
+    /// Access a subcommand.
+    template <static_string s>
+    requires is_subcommand<opt_by_name<s>>
+    using command = opt_by_name<s>::declared_type;
+
     /// \brief Parse command line options.
     ///
     /// \param argc The argument count.
@@ -1459,25 +1595,26 @@ public:
     /// \return The parsed option values.
     static auto parse(
         int argc,
-        const char* const* const argv,
+        const char* const* argv,
         error_handler_t error_handler = nullptr,
         void* user_data = nullptr
     ) -> optvals_type {
-        // Initialise state.
-        clopts_impl self;
-        if (error_handler) self.error_handler = std::move(error_handler);
-        else self.error_handler = [&](auto&& e) { return self.default_error_handler(std::forward<decltype(e)>(e)); };
-        self.argc = argc;
-        self.user_data = user_data;
+        std::string_view program_name;
+        if (argv and argc) {
+            program_name = argv[0];
+            argc--;
+            argv++;
+        }
 
-        // Safe because we don’t attempt to modify argv anyway. This
-        // is just so we can pass in both e.g. a `const char**` and a
-        // `char **`.
-        self.argv = const_cast<const char**>(argv);
-
-        // Parse the options.
-        self.parse();
-        return std::move(self.optvals);
+        // The const_cast is safe because we don’t attempt to modify argv anyway.
+        // This is just so we can pass in both e.g. a `const char**` and a `char **`.
+        return parse_impl(
+            program_name,
+            argc,
+            const_cast<const char**>(argv),
+            std::move(error_handler),
+            user_data
+        );
     }
 };
 } // namespace detail
@@ -1491,7 +1628,7 @@ namespace base::cmd {
 /// See docs/clopts.md
 template <typename... opts>
 using clopts = detail::clopts_impl< // clang-format off
-    detail::filter<detail::regular_option, opts...>,
+    typename detail::preprocess_subcommands<detail::filter<detail::regular_option, opts...>>::type,
     detail::filter<detail::special_option, opts...>,
     detail::filter<detail::is_directive, opts...>
 >; // clang-format on
@@ -1635,6 +1772,17 @@ struct multiple : option<opt::name, opt::description, std::vector<typename opt::
     constexpr multiple() = delete;
     static constexpr bool is_multiple = true;
     using is_positional_ = detail::positional_t<opt>;
+};
+
+/// Subcommand; this essentially introduces a set of options that is only parsed if
+/// the subcommand is specified.
+template <
+    detail::static_string name,
+    detail::static_string description,
+    typename ...options
+>
+struct subcommand : option<name, description, clopts<options...>> {
+    static constexpr bool is_subcommand = true;
 };
 
 /// Stop parsing when this option is encountered.

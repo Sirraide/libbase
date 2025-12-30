@@ -395,6 +395,57 @@ we’d also have to check that there isn’t both a `multiple<positional<>>` and
 it’s not clear which one would take precedence. Imo, there also isn’t much of a use case for an overridable `positional<>`
 option that you can’t just use a `multiple<positional<>>` option for, but if anyone has one, feel free to open an issue.
 
+### Meta-Option Type: `subcommand<>`
+A `subcommand<>` takes a name, description, and list of options and essentially acts as a nested `clopts<>` type; that is,
+it conditionally parses a set of options. For example:
+```c++
+using options = clopts<
+    help<>,
+    flag<"--xyz", "asdf">,
+    subcommand<"quux", "description",
+        option<"--foo", "foobar">,
+        option<"--bar", "foobar">
+    >
+>;
+```
+Here, the top-level options are `--xyz` and `quux`; once `quux` is encountered, any remaining arguments are sent to
+the subcommand parser; this is essentially equivalent to running the parser
+```c++
+clopts<
+    option<"--foo", "foobar">,
+    option<"--bar", "foobar">
+>
+```
+on any remaining arguments. Argument values of subcommands are accessed using `get<>()` in the usual manner:
+```c++ 
+auto opts = options::parse(argc, argv);
+if (auto* quux = opts.get<"quux">()) {
+    if (auto* foo = quux->get<"--foo">()) {
+        std::println("quux --foo={}", *foo);
+    }
+}
+```
+Note that subcommands are optional, so make sure to check whether the user actually specified it.
+
+Parent options are *not* inherited:
+```bash
+./program --xyz quux --foo=value # OK: '--foo=value' handled by subcommand parser.
+./program name --foo=value --xyz # ERROR: The subcommand doesn’t know about '--xyz'. 
+```
+The only exception to this is that subcommands *do* inherit any `help<>` option specified in the parent, and since
+subcommands are implemented using nested `clopts<>` types, subcommands also have their own help messages:
+```bash
+./program --help      # Prints help information for '--xyz' and 'quux'
+./program quux --help # Prints help information for '--foo' and '--bar'. 
+```
+
+The `clopts<>` type of a subcommand can be accessed using `command<name>`, e.g. `options::command<"quux">`; this may
+be useful if you want to access the help message of a subcommand, e.g.
+```c++
+std::print("{}", options::command<"quux">::help());
+```
+Nested subcommands work as expected.
+
 ### Option Type: `stop_parsing<>`
 This option is used to indicate that the parser should stop processing options when it is encountered. It takes
 a single optional string argument whose default value is `"--"`:
