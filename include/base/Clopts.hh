@@ -1417,7 +1417,6 @@ template <
     bool required = false>
 struct overridable : option<_name, _description, type, required, true> {};
 
-namespace experimental {
 /// Base short option type.
 template <
     detail::static_string _name,
@@ -1435,6 +1434,16 @@ struct short_option : detail::opt_impl<_name, _description, _type, required, ove
 
     constexpr short_option() = delete;
 };
+
+namespace experimental {
+template <
+    detail::static_string _name,
+    detail::static_string _description = "",
+    typename _type = std::string,
+    bool required = false,
+    bool overridable = false>
+using short_option [[deprecated("Use short_option instead of experimental::short_option")]] =
+    cmd::short_option<_name, _description, _type, required, overridable>;
 } // namespace experimental
 
 /// A file.

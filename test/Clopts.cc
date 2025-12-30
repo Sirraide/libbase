@@ -308,9 +308,9 @@ TEST_CASE("Multiple positional values<> work") {
 
 TEST_CASE("Short option options are parsed properly") {
     using options = clopts<
-        experimental::short_option<"s", "A string", std::string>,
-        experimental::short_option<"n", "A number", int64_t>,
-        experimental::short_option<"-f", "A float", double>>;
+        short_option<"s", "A string", std::string>,
+        short_option<"n", "A number", int64_t>,
+        short_option<"-f", "A float", double>>;
 
     std::array args = {
         "test",
@@ -777,7 +777,7 @@ TEST_CASE("ref<> referencing a multiple<> option.") {
 TEST_CASE("multiple<positional<ref>> works") {
     using options = clopts<
         multiple<positional<"file", "The file to compile", ref<std::string, "-x">>>,
-        experimental::short_option<"-x", "Override the language", std::string, false, true>,
+        short_option<"-x", "Override the language", std::string, false, true>,
         help<>
     >;
 
