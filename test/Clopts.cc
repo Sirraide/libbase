@@ -1142,6 +1142,66 @@ TEST_CASE("Clopts: mutually_exclusive") {
     );
 }
 
+TEST_CASE("Clopts: hidden<>") {
+    using options = clopts<
+        positional<"pos", "Description of parameter pos">,
+        positional<"int-pos", "Description of parameter int-pos", std::int64_t, false>,
+        option<"--str", "Description of parameter --str", std::string, false, false, true>,
+        option<"--int", "Description of parameter --int", std::int64_t>,
+        flag<"--flag", "Description of parameter --flag", true>,
+        option<"--str-values", "Description of parameter --str-values", values<"foo", "bar", "baz">, false, false, true>,
+        option<"--int-vals", "Description of parameter --int-values", values<1, 2, 3, 4, 5>>,
+        overridable<"--ref", "Description of reference parameter", ref<double, "--int">>,
+        help<>
+    >;
+
+    static constexpr auto expected = R"help(<pos> [<int-pos>] [options]
+
+Arguments:
+    <int-pos>   Description of parameter int-pos
+    <pos>       Description of parameter pos
+
+Options:
+    --help      Print this help information
+    --int       Description of parameter --int
+    --int-vals  Description of parameter --int-values
+    --ref       Description of reference parameter
+
+Supported option values:
+    --int-vals: 1, 2, 3, 4, 5
+)help";
+
+    CHECK(options::help() == expected);
+}
+
+TEST_CASE("Clopts: Omit supported values if all values<> options are hidden") {
+    using options = clopts<
+        positional<"pos", "Description of parameter pos">,
+        positional<"int-pos", "Description of parameter int-pos", std::int64_t, false>,
+        hidden<"--str", "Description of parameter --str">,
+        option<"--int", "Description of parameter --int", std::int64_t>,
+        flag<"--flag", "Description of parameter --flag", true>,
+        option<"--str-values", "Description of parameter --str-values", values<"foo", "bar", "baz">, false, false, true>,
+        option<"--int-vals", "Description of parameter --int-values", values<1, 2, 3, 4, 5>, false, false, true>,
+        overridable<"--ref", "Description of reference parameter", ref<double, "--int">>,
+        help<>
+    >;
+
+    static constexpr auto expected = R"help(<pos> [<int-pos>] [options]
+
+Arguments:
+    <int-pos>  Description of parameter int-pos
+    <pos>      Description of parameter pos
+
+Options:
+    --help     Print this help information
+    --int      Description of parameter --int
+    --ref      Description of reference parameter
+)help";
+
+    CHECK(options::help() == expected);
+}
+
 /*TEST_CASE("Aliased options are equivalent") {
     using options = clopts<
         multiple<option<"--string", "A string", std::string>>,

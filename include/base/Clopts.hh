@@ -383,7 +383,8 @@ template <
     static_string _description,
     typename ty_param,
     bool required,
-    bool overridable>
+    bool overridable,
+    bool hidden>
 struct opt_impl {
     // There are four possible cases we need to handle here:
     //   - Simple type: std::string, i64, ...
@@ -420,8 +421,10 @@ struct opt_impl {
     static constexpr bool is_ref = option_type<declared_type_base>::is_ref;
     static constexpr bool is_required = required;
     static constexpr bool is_overridable = overridable;
+    static constexpr bool is_hidden = hidden;
     static constexpr bool option_tag = true;
     static_assert(not is_flag or not is_ref, "Flags cannot reference other options"); // TODO: Allow this?
+    static_assert(not is_required or not is_hidden, "Required options cannot be hidden");
 
     static constexpr bool is_valid_option_value(
         const single_element_type& val
@@ -1026,6 +1029,7 @@ private:
         // here.
         bool have_positional_opts = false;
         positional_unsorted::each([&]<typename opt> {
+            if constexpr (opt::is_hidden) return;
             have_positional_opts = true;
             if (not opt::is_required) msg += "[";
             msg += "<";
@@ -1045,6 +1049,7 @@ private:
         usz max_vals_opt_name_len{};
         usz max_len{};
         Foreach<opts...>([&]<typename opt> {
+            if constexpr (opt::is_hidden) return;
             if constexpr (opt::is_values)
                 max_vals_opt_name_len = std::max(max_vals_opt_name_len, opt::name.len);
 
@@ -1074,6 +1079,7 @@ private:
 
         // Append an argument.
         auto append = [&]<typename opt> {
+            if constexpr (opt::is_hidden) return;
             msg += "    ";
             auto old_len = msg.size();
 
@@ -1111,9 +1117,10 @@ private:
         non_positional::each(append);
 
         // If we have any values<> types, print their supported values.
-        if constexpr ((opts::is_values or ...)) {
+        if constexpr (((opts::is_values and not opts::is_hidden) or ...)) {
             msg += "\nSupported option values:\n";
             values_opts::each([&] <typename opt> {
+                if constexpr (opt::is_hidden) return;
                 if constexpr (opt::is_values) {
                     msg += "    ";
                     msg += str(opt::name.arr, opt::name.len);
@@ -1488,8 +1495,9 @@ template <
     detail::static_string _description = "",
     typename type = std::string,
     bool required = false,
-    bool overridable = false>
-struct option : detail::opt_impl<_name, _description, type, required, overridable> {};
+    bool overridable = false,
+    bool hidden = false>
+struct option : detail::opt_impl<_name, _description, type, required, overridable, hidden> {};
 
 /// Identical to 'option', but overridable by default.
 template <
@@ -1497,7 +1505,15 @@ template <
     detail::static_string _description,
     typename type = std::string,
     bool required = false>
-struct overridable : option<_name, _description, type, required, true> {};
+struct overridable : option<_name, _description, type, required, /*overridable=*/true> {};
+
+/// Identical to 'option', but hidden by default.
+template <
+    detail::static_string _name,
+    detail::static_string _description,
+    typename type = std::string,
+    bool required = false>
+struct hidden : option<_name, _description, type, required, /*overridable=*/false, /*hidden=*/true> {};
 
 /// Base short option type.
 template <
@@ -1505,8 +1521,9 @@ template <
     detail::static_string _description = "",
     typename _type = std::string,
     bool required = false,
-    bool overridable = false>
-struct short_option : detail::opt_impl<_name, _description, _type, required, overridable> {
+    bool overridable = false,
+    bool hidden = false>
+struct short_option : detail::opt_impl<_name, _description, _type, required, overridable, hidden> {
     static constexpr decltype(_name) name = _name;
     static constexpr decltype(_description) description = _description;
     static constexpr bool is_flag = std::is_same_v<_type, bool>;
@@ -1581,8 +1598,9 @@ struct func : func_impl<_name, _description, detail::make_lambda<cb>, required> 
 /// Flags are never required because that wouldn’t make much sense.
 template <
     detail::static_string _name,
-    detail::static_string _description = "">
-struct flag : option<_name, _description, bool> {};
+    detail::static_string _description = "",
+    bool hidden = false>
+struct flag : option<_name, _description, bool, /*required=*/false, /*overridable=*/false, hidden> {};
 
 /// The help option.
 template <auto _help_cb = detail::default_help_handler>

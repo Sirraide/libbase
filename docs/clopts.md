@@ -193,11 +193,11 @@ message.
 Note that the name can be anything you want. The `--` are not required.
 
 ### Option Type: `option`
-The most basic option type is `option`. This option type takes up to five template parameters, the last two of which are optional.
+The most basic option type is `option`. This option type takes up to six template parameters, the last three of which are optional.
 ```c++
 option<"--name", "Description">
 option<"--name", "Description", std::string>
-option<"--name", "Description", std::string, /* required? */ false, /* overridable? */ false>
+option<"--name", "Description", std::string, /*required=*/false, /*overridable=*/false, /*hidden=*/false>
 ```
 
 #### **Parameters**
@@ -209,6 +209,8 @@ option<"--name", "Description", std::string, /* required? */ false, /* overridab
 5. Whether the option is overridable, i.e. whether it can be specified more
    than once, in which case only the last value is retained. This is different
    from `multiple<>` (see below). The default is `false`.
+6. Whether the option is hidden; a hidden option will not show up in the `help<>`
+   message. Required options cannot be hidden.
 
 #### **Types and Arguments**
 The `option` type always takes an argument. Both `--option value` and `--option=value` are recognised by the parser.
@@ -349,16 +351,18 @@ clopts<
 >;
 ```
 
-### Option Type: `overridable<>`
-This is just an alias:
+### Option Types: `overridable<>`, `hidden<>`
+These are just aliases. The following
 ```c++
 overridable<name, description, type>
+hidden<name, description, type>
 ``` 
 is equivalent to 
 ```c++
-option<name, description, type, /*required=*/false, /*overridable=*/true>
+option<name, description, type, /*required=*/false, /*overridable=*/true, /*hidden=*/false>
+option<name, description, type, /*required=*/false, /*overridable=*/false, /*hidden=*/true>
 ```
-in every respect.
+in every respect. If you want to specify e.g. both overridable and hidden, you have to use `option<>`.
 
 ### Meta-Option Type: `multiple<>`
 The `multiple` option type can’t be used on its own and instead wraps another option and modifies it such that multiple occurrences of that option are allowed:

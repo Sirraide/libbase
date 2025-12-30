@@ -12,6 +12,7 @@ using o9 = clopts<multiple<overridable<"foo", "bar">>>; // expected-error@base/C
 using o13 = clopts<option<"a", "">, mutually_exclusive<"a">>; // expected-error@base/Clopts.hh:* {{mutually_exclusive<> must have at least 2 arguments}}
 using o14 = clopts<option<"a", "">, mutually_exclusive<"a", "a">>; // expected-error@base/Clopts.hh:* {{mutually_exclusive<>: an option cannot be exclusive with itself}}
 using o15 = clopts<option<"a", "">, mutually_exclusive<"a", "b", "a">>; // expected-error@base/Clopts.hh:* {{mutually_exclusive<>: an option cannot be exclusive with itself}}
+using o16 = clopts<option<"a", "", std::string, true, false, true>>; // expected-error@base/Clopts.hh:* {{Required options cannot be hidden}}
 
 int a(int argc, char** argv) {
     // expected-error@base/Clopts.hh:* {{Cannot have more than one multiple<positional<>> option}}
@@ -53,3 +54,4 @@ int a(int argc, char** argv) {
 
 // expected-note@*           0+ {{}}
 // expected-note@base/Clopts.hh:* 0+ {{}}
+// expected-error@base/Clopts.hh:* 0+ {{no type named 'canonical_type' in}}
