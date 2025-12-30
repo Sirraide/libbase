@@ -642,7 +642,7 @@ TEST_CASE("Options can reference other options") {
     >;
     static_assert(std::is_same_v<
         std::remove_cvref_t<decltype(opts.get<"-y">())>,
-        std::span<tuple>
+        MutableSpan<tuple>
     >);
 
     auto vals = opts.get<"-y">();
@@ -678,7 +678,7 @@ TEST_CASE("More complex option referencing examples") {
     auto vals = opts.get<"-v">();
 
     using tuple = std::tuple<std::string, bool, std::optional<std::string>>;
-    static_assert(std::is_same_v<std::remove_cvref_t<decltype(vals)>, std::span<tuple>>);
+    static_assert(std::is_same_v<std::remove_cvref_t<decltype(vals)>, MutableSpan<tuple>>);
 
     REQUIRE(vals.size() == 8);
     CHECK((vals[0] == tuple{"a", false, std::nullopt}));
@@ -714,12 +714,12 @@ TEST_CASE("multiple ref<> referencing a multiple<> option.") {
 
     static_assert(std::is_same_v<
         std::remove_cvref_t<decltype(vals)>,
-        std::span<std::string>
+        MutableSpan<std::string>
     >);
 
     static_assert(std::is_same_v<
         std::remove_cvref_t<decltype(all)>,
-        std::span<tuple>
+        MutableSpan<tuple>
     >);
 
     REQUIRE(vals.size() == 2);
@@ -793,7 +793,7 @@ TEST_CASE("multiple<positional<ref>> works") {
     using tuple = std::tuple<std::string, std::optional<std::string>>;
     static_assert(std::is_same_v<
         std::remove_cvref_t<decltype(files)>,
-        std::span<tuple>
+        MutableSpan<tuple>
     >);
 
     REQUIRE(files.size() == 1);

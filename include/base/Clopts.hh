@@ -865,7 +865,7 @@ class clopts_impl<list<opts...>, list<special...>, list<directives...>> {
         // For flags, just return a bool.
         std::conditional_t<utils::is_same<typename opt::canonical_type, bool>, bool,
         // For multiple<> options, return a span.
-        std::conditional_t<is_vector_v<storage_type_t<opt>>, std::span<single_element_storage_type_t<opt>>,
+        std::conditional_t<is_vector_v<storage_type_t<opt>>, MutableSpan<single_element_storage_type_t<opt>>,
         // Otherwise, return a pointer.
         storage_type_t<opt>*
     >>; // clang-format on
