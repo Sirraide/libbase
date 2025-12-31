@@ -222,7 +222,6 @@ Supported types for the 3rd template parameter are:
 -  integer: Any signed or unsigned integer type (including `__int128`, but *not* `char8_t` and friends).
 - `double`: A floating-point number.
 - `values<>`: See below.
-- `ref<>`: See below.
 
 Integers and floating-point numbers are currently parsed via `std::from_chars`.
 
@@ -241,53 +240,6 @@ values<"foo", "bar", "baz">
 ```
 
 If the values are strings, `get<>` will return a `std::string`; if the values are integers, `get<>` will return an `int64_t`.
-
-#### Type: `ref<>`
-The `ref<>` type is used to reference other options and will capture the state
-of that option whenever this option is encountered. Consider
-```c++
-option<"--type", "Thing type", std::int64_t>,
-multiple<option<"--thing", "A thing", ref<std::string, "--type">> 
-```
-
-Here `ref<std::string, "--type">` means ‘this option takes a string and also
-captures the state of the `--type` option whenever it is encountered. A possible 
-invocation would be
-```bash
-./program --thing a \
-          --type 1 --thing foo \
-          --type 2 --thing bar
-```
-
-Here, the content of `"--thing"` (which is a span because of the `multiple<>`) is
-```c++
-std::span<
-    std::tuple<
-        std::string, 
-        std::optional<std::int64_t>
-    >
-> args = *opts.get<"--thing">();
-
-ASSERT(
-    args ==
-    {
-        {"a",   std::nullopt},
-        {"foo", std::optional<std::int64_t>(1)},
-        {"bar", std::optional<std::int64_t>(2}}
-    }
-);
-```
-
-As you can see, the individual values are stored as tuples here. Because `ref<>` could
-reference the value of an option before it has been encountered, the referenced values
-are optionals, and `std::nullopt` is used if the option hasn’t been seen yet.
-
-More notes about `ref<>`s:
-- Because it would theoretically be possible to construct cycles, `ref<>` options currently
-  cannot reference each other (but conversely, referencing options that are passed after the
-  `ref<>` option is perfectly fine).
-- `multiple<>` interacts with `ref<>` as expected; particularly, a `ref<>` referencing another 
-  `multiple<>` will store a vector of the referenced values.
 
 ### Option Type: `flag`
 Flags have no argument. For flags, `get<>()` returns a `bool` that is `true` when they're present, 

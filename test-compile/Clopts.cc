@@ -55,4 +55,4 @@ int a(int argc, char** argv) {
 
 // expected-note@*           0+ {{}}
 // expected-note@base/Clopts.hh:* 0+ {{}}
-// expected-error@base/Clopts.hh:* 0+ {{no type named 'canonical_type' in}}
+// expected-error@base/Clopts.hh:* 0+ {{no type named 'declared_type' in}}

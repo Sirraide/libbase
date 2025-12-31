@@ -620,186 +620,6 @@ TEST_CASE("Overridable options work") {
     CHECK(*opts2.get<"-x">() == "c");
 }
 
-TEST_CASE("Options can reference other options") {
-    using options = clopts<
-        overridable<"-x", "type">,
-        multiple<option<"-y", "tagged", ref<std::string, "-x", "-x">>>
-    >;
-
-    std::array args = {
-        "test",
-        "-y", "x",
-        "-x", "1",
-        "-y", "4"
-    };
-
-    auto opts = options::parse(args.size(), args.data(), error_handler);
-
-    using tuple = std::tuple<
-        std::string,
-        std::optional<std::string>,
-        std::optional<std::string>
-    >;
-    static_assert(std::is_same_v<
-        std::remove_cvref_t<decltype(opts.get<"-y">())>,
-        MutableSpan<tuple>
-    >);
-
-    auto vals = opts.get<"-y">();
-    REQUIRE(vals.size() == 2);
-    CHECK((vals[0] == tuple{"x", std::nullopt, std::nullopt}));
-    CHECK((vals[1] == tuple{"4", "1", "1"}));
-}
-
-TEST_CASE("More complex option referencing examples") {
-    std::array args = {
-        "test",
-        "-v", "a",
-        "-v", "b",
-        "--flag",
-        "-v", "c",
-        "-x", "foo",
-        "-v", "d",
-        "-v", "e",
-        "-x", "bar",
-        "-v", "f",
-        "-v", "g",
-        "-x", "",
-        "-v", "h",
-    };
-
-    using options = clopts<
-        flag<"--flag", "flag">,
-        overridable<"-x", "switch">,
-        multiple<option<"-v", "value", ref<std::string, "--flag", "-x">>>
-    >;
-
-    auto opts = options::parse(args.size(), args.data(), error_handler);
-    auto vals = opts.get<"-v">();
-
-    using tuple = std::tuple<std::string, bool, std::optional<std::string>>;
-    static_assert(std::is_same_v<std::remove_cvref_t<decltype(vals)>, MutableSpan<tuple>>);
-
-    REQUIRE(vals.size() == 8);
-    CHECK((vals[0] == tuple{"a", false, std::nullopt}));
-    CHECK((vals[1] == tuple{"b", false, std::nullopt}));
-    CHECK((vals[2] == tuple{"c", true, std::nullopt}));
-    CHECK((vals[3] == tuple{"d", true, "foo"}));
-    CHECK((vals[4] == tuple{"e", true, "foo"}));
-    CHECK((vals[5] == tuple{"f", true, "bar"}));
-    CHECK((vals[6] == tuple{"g", true, "bar"}));
-    CHECK((vals[7] == tuple{"h", true, ""}));
-}
-
-TEST_CASE("multiple ref<> referencing a multiple<> option.") {
-    using options = clopts<
-        multiple<option<"-v", "value">>,
-        multiple<option<"--all", "value", ref<std::string, "-v">>>
-    >;
-
-    std::array args = {
-        "test",
-        "--all", "a",
-        "-v", "foo",
-        "--all", "b",
-        "-v", "bar",
-        "--all", "c",
-    };
-
-    using vector = std::vector<std::string>;
-    using tuple = std::tuple<std::string, vector>;
-    auto opts = options::parse(args.size(), args.data(), error_handler);
-    auto vals = opts.get<"-v">();
-    auto all = opts.get<"--all">();
-
-    static_assert(std::is_same_v<
-        std::remove_cvref_t<decltype(vals)>,
-        MutableSpan<std::string>
-    >);
-
-    static_assert(std::is_same_v<
-        std::remove_cvref_t<decltype(all)>,
-        MutableSpan<tuple>
-    >);
-
-    REQUIRE(vals.size() == 2);
-    CHECK(vals[0] == "foo");
-    CHECK(vals[1] == "bar");
-
-    REQUIRE(all.size() == 3);
-    CHECK((all[0] == tuple{"a", vector{}}));
-    CHECK((all[1] == tuple{"b", vector{"foo"}}));
-    CHECK((all[2] == tuple{"c", vector{"foo", "bar"}}));
-}
-
-
-TEST_CASE("ref<> referencing a multiple<> option.") {
-    using options = clopts<
-        multiple<option<"-v", "value">>,
-        option<"--all", "value", ref<std::string, "-v">>
-    >;
-
-    std::array args1 = {
-        "test",
-        "--all", "a",
-        "-v", "foo",
-    };
-
-    std::array args2 = {
-        "test",
-        "-v", "foo",
-        "-v", "bar",
-        "--all", "a",
-    };
-
-    using vector = std::vector<std::string>;
-    using tuple = std::tuple<std::string, vector>;
-    auto opts1 = options::parse(args1.size(), args1.data(), error_handler);
-    auto opts2 = options::parse(args2.size(), args2.data(), error_handler);
-
-    auto vals1 = opts1.get<"-v">();
-    auto vals2 = opts2.get<"-v">();
-    auto all1 = opts1.get<"--all">();
-    auto all2 = opts2.get<"--all">();
-
-    REQUIRE(vals1.size() == 1);
-    REQUIRE(vals2.size() == 2);
-    REQUIRE(vals1[0] == "foo");
-    REQUIRE(vals2[0] == "foo");
-    REQUIRE(vals2[1] == "bar");
-    REQUIRE(all1);
-    REQUIRE(all2);
-
-    CHECK((*all1 == tuple{"a", vector{}}));
-    CHECK((*all2 == tuple{"a", vector{"foo", "bar"}}));
-}
-
-TEST_CASE("multiple<positional<ref>> works") {
-    using options = clopts<
-        multiple<positional<"file", "The file to compile", ref<std::string, "-x">>>,
-        short_option<"-x", "Override the language", std::string, false, true>,
-        help<>
-    >;
-
-    std::array args = {
-        "test",
-        "-xfoo",
-        "bar",
-    };
-
-    auto opts = options::parse(args.size(), args.data(), error_handler);
-    auto files = opts.get<"file">();
-
-    using tuple = std::tuple<std::string, std::optional<std::string>>;
-    static_assert(std::is_same_v<
-        std::remove_cvref_t<decltype(files)>,
-        MutableSpan<tuple>
-    >);
-
-    REQUIRE(files.size() == 1);
-    CHECK((files[0] == tuple{"bar", "foo"}));
-}
-
 TEST_CASE("Documentation compiles (example 1)") {
     using options = clopts<
         option<"--repeat", "How many times the output should be repeated (default 1)", int64_t>,
@@ -864,7 +684,7 @@ TEST_CASE("Help message is formatted correctly") {
         flag<"--flag", "Description of parameter --flag">,
         option<"--str-values", "Description of parameter --str-values", values<"foo", "bar", "baz">>,
         option<"--num-values", "Description of parameter --int-values", values<1, 2, 3, 4, 5>>,
-        overridable<"--ref", "Description of reference parameter", ref<double, "--int">>,
+        overridable<"--ref", "Description of reference parameter", double>,
         help<>
     >;
 
@@ -1151,7 +971,7 @@ TEST_CASE("Clopts: hidden<>") {
         flag<"--flag", "Description of parameter --flag", true>,
         option<"--str-values", "Description of parameter --str-values", values<"foo", "bar", "baz">, false, false, true>,
         option<"--int-vals", "Description of parameter --int-values", values<1, 2, 3, 4, 5>>,
-        overridable<"--ref", "Description of reference parameter", ref<double, "--int">>,
+        overridable<"--ref", "Description of reference parameter", double>,
         help<>
     >;
 
@@ -1183,7 +1003,7 @@ TEST_CASE("Clopts: Omit supported values if all values<> options are hidden") {
         flag<"--flag", "Description of parameter --flag", true>,
         option<"--str-values", "Description of parameter --str-values", values<"foo", "bar", "baz">, false, false, true>,
         option<"--int-vals", "Description of parameter --int-values", values<1, 2, 3, 4, 5>, false, false, true>,
-        overridable<"--ref", "Description of reference parameter", ref<double, "--int">>,
+        overridable<"--ref", "Description of reference parameter", double>,
         help<>
     >;
 
