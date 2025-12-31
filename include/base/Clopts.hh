@@ -156,6 +156,7 @@ struct is_positional {
 
 template <typename opt> using positional_t = typename is_positional<opt>::type;
 template <typename opt> concept is_positional_v = is_positional<opt>::value;
+template <typename opt> concept is_short_option = requires { opt::is_short; };
 template <typename opt> concept is_subcommand = requires { opt::is_subcommand; };
 
 template <typename opt>
@@ -196,7 +197,7 @@ template <typename opt> concept is_help_option = requires { opt::is_help_option;
 /// help text. This is true for all options that take arguments, except
 /// the builtin help option.
 template <typename opt>
-concept should_print_argument_type = has_argument<typename opt::type> and not is_help_option<opt>;
+concept should_print_argument_type = has_argument<typename opt::single_element_type> and not is_help_option<opt>;
 
 /// Helper for static asserts.
 template <typename t>
@@ -752,7 +753,7 @@ class clopts_impl<list<opts...>, list<special...>, list<directives...>> {
             usz j = 0;
             While<opts...>(ok, [&]<typename opt2>() {
                 // Check the condition.
-                ok = i == j or not requires { opt::is_short; } or not opt2::name.sv().starts_with(opt::name.sv());
+                ok = i == j or not is_short_option<opt> or not opt2::name.sv().starts_with(opt::name.sv());
                 j++;
             });
             i++;
@@ -1205,6 +1206,7 @@ private:
 
             // If we’re printing the type, we have the following formats:
             //
+            //     name=<type>    Description
             //     name <type>    Description
             //     <name> : type  Description
             //
@@ -1241,8 +1243,14 @@ private:
             // Append type.
             if constexpr (should_print_argument_type<opt>) {
                 auto tname = type_name<typename opt::canonical_type>();
-                msg += " : ";
-                msg += str(tname.arr, tname.len);
+                if constexpr (is_positional_v<opt>) {
+                    msg += " : ";
+                    msg += str(tname.arr, tname.len);
+                } else {
+                    msg += is_short_option<opt> ? " <" : "=<";
+                    msg += str(tname.arr, tname.len);
+                    msg += ">";
+                }
             }
 
             // Align to right margin.
@@ -1403,7 +1411,7 @@ private:
         // --option=value or short opt.
         if (opt_str.size() > opt::name.size()) {
             // Parse the rest of the option as the value if we have a '=' or if this is a short option.
-            if (opt_str[opt::name.size()] == '=' or requires { opt::is_short; }) {
+            if (opt_str[opt::name.size()] == '=' or is_short_option<opt>) {
                 // Otherwise, parse the value.
                 auto opt_start_offs = opt::name.size() + (opt_str[opt::name.size()] == '=');
                 const auto opt_name = opt_str.substr(0, opt_start_offs);
