@@ -1418,100 +1418,106 @@ TEST_CASE("Clopts: i128") {
 #endif
 
 template <typename T>
-static void TestInt(const char* value) {
+static void TestNumber(const char* value) {
+    using options = clopts<option<"x", "", T>>;
     std::array args = { "test", "x", value };
-    (void) clopts<option<"x", "", T>>::parse(args.size(), args.data(), error_handler);
+    [[maybe_unused]] auto opts = options::parse(args.size(), args.data(), error_handler);
+    static_assert(utils::is<decltype(*opts.template get<"x">()), T>);
 }
 
 TEST_CASE("Clopts: integer types: edge cases") {
-    CHECK_NOTHROW(TestInt<i8>("0"));
-    CHECK_NOTHROW(TestInt<i8>("1"));
-    CHECK_NOTHROW(TestInt<i8>("127"));
-    CHECK_NOTHROW(TestInt<i8>("-1"));
-    CHECK_NOTHROW(TestInt<i8>("-128"));
-    CHECK_THROWS(TestInt<i8>("128"));
-    CHECK_THROWS(TestInt<i8>("-129"));
-    CHECK_THROWS(TestInt<i8>("asdadasd"));
-    CHECK_THROWS(TestInt<i8>("-asdadasd"));
+    CHECK_NOTHROW(TestNumber<i8>("0"));
+    CHECK_NOTHROW(TestNumber<i8>("1"));
+    CHECK_NOTHROW(TestNumber<i8>("127"));
+    CHECK_NOTHROW(TestNumber<i8>("-1"));
+    CHECK_NOTHROW(TestNumber<i8>("-128"));
+    CHECK_THROWS(TestNumber<i8>("128"));
+    CHECK_THROWS(TestNumber<i8>("-129"));
+    CHECK_THROWS(TestNumber<i8>("asdadasd"));
+    CHECK_THROWS(TestNumber<i8>("-asdadasd"));
 
 
-    CHECK_NOTHROW(TestInt<i16>("0"));
-    CHECK_NOTHROW(TestInt<i16>("1"));
-    CHECK_NOTHROW(TestInt<i16>("-1"));
-    CHECK_NOTHROW(TestInt<i16>("32767"));
-    CHECK_NOTHROW(TestInt<i16>("-32768"));
-    CHECK_THROWS(TestInt<i16>("32768"));
-    CHECK_THROWS(TestInt<i16>("-32769"));
-    CHECK_THROWS(TestInt<i16>("foo"));
+    CHECK_NOTHROW(TestNumber<i16>("0"));
+    CHECK_NOTHROW(TestNumber<i16>("1"));
+    CHECK_NOTHROW(TestNumber<i16>("-1"));
+    CHECK_NOTHROW(TestNumber<i16>("32767"));
+    CHECK_NOTHROW(TestNumber<i16>("-32768"));
+    CHECK_THROWS(TestNumber<i16>("32768"));
+    CHECK_THROWS(TestNumber<i16>("-32769"));
+    CHECK_THROWS(TestNumber<i16>("foo"));
 
-    CHECK_NOTHROW(TestInt<i32>("0"));
-    CHECK_NOTHROW(TestInt<i32>("1"));
-    CHECK_NOTHROW(TestInt<i32>("-1"));
-    CHECK_NOTHROW(TestInt<i32>("2147483647"));
-    CHECK_NOTHROW(TestInt<i32>("-2147483648"));
-    CHECK_THROWS(TestInt<i32>("2147483648"));
-    CHECK_THROWS(TestInt<i32>("-2147483649"));
-    CHECK_THROWS(TestInt<i32>("foo"));
+    CHECK_NOTHROW(TestNumber<i32>("0"));
+    CHECK_NOTHROW(TestNumber<i32>("1"));
+    CHECK_NOTHROW(TestNumber<i32>("-1"));
+    CHECK_NOTHROW(TestNumber<i32>("2147483647"));
+    CHECK_NOTHROW(TestNumber<i32>("-2147483648"));
+    CHECK_THROWS(TestNumber<i32>("2147483648"));
+    CHECK_THROWS(TestNumber<i32>("-2147483649"));
+    CHECK_THROWS(TestNumber<i32>("foo"));
 
-    CHECK_NOTHROW(TestInt<i64>("0"));
-    CHECK_NOTHROW(TestInt<i64>("1"));
-    CHECK_NOTHROW(TestInt<i64>("-1"));
-    CHECK_NOTHROW(TestInt<i64>("9223372036854775807"));
-    CHECK_NOTHROW(TestInt<i64>("-9223372036854775808"));
-    CHECK_THROWS(TestInt<i64>("9223372036854775808"));
-    CHECK_THROWS(TestInt<i64>("-9223372036854775809"));
-    CHECK_THROWS(TestInt<i64>("foo"));
+    CHECK_NOTHROW(TestNumber<i64>("0"));
+    CHECK_NOTHROW(TestNumber<i64>("1"));
+    CHECK_NOTHROW(TestNumber<i64>("-1"));
+    CHECK_NOTHROW(TestNumber<i64>("9223372036854775807"));
+    CHECK_NOTHROW(TestNumber<i64>("-9223372036854775808"));
+    CHECK_THROWS(TestNumber<i64>("9223372036854775808"));
+    CHECK_THROWS(TestNumber<i64>("-9223372036854775809"));
+    CHECK_THROWS(TestNumber<i64>("foo"));
 
-    CHECK_NOTHROW(TestInt<u8>("0"));
-    CHECK_NOTHROW(TestInt<u8>("1"));
-    CHECK_NOTHROW(TestInt<u8>("255"));
-    CHECK_THROWS(TestInt<u8>("256"));
-    CHECK_THROWS(TestInt<u8>("-1"));
-    CHECK_THROWS(TestInt<u8>("-255"));
-    CHECK_THROWS(TestInt<i8>("asdadasd"));
-    CHECK_THROWS(TestInt<i8>("-asdadasd"));
+    CHECK_NOTHROW(TestNumber<u8>("0"));
+    CHECK_NOTHROW(TestNumber<u8>("1"));
+    CHECK_NOTHROW(TestNumber<u8>("255"));
+    CHECK_THROWS(TestNumber<u8>("256"));
+    CHECK_THROWS(TestNumber<u8>("-1"));
+    CHECK_THROWS(TestNumber<u8>("-255"));
+    CHECK_THROWS(TestNumber<i8>("asdadasd"));
+    CHECK_THROWS(TestNumber<i8>("-asdadasd"));
 
-    CHECK_NOTHROW(TestInt<u16>("0"));
-    CHECK_NOTHROW(TestInt<u16>("1"));
-    CHECK_NOTHROW(TestInt<u16>("65535"));
-    CHECK_THROWS(TestInt<u16>("65536"));
-    CHECK_THROWS(TestInt<u16>("-1"));
-    CHECK_THROWS(TestInt<u16>("foo"));
+    CHECK_NOTHROW(TestNumber<u16>("0"));
+    CHECK_NOTHROW(TestNumber<u16>("1"));
+    CHECK_NOTHROW(TestNumber<u16>("65535"));
+    CHECK_THROWS(TestNumber<u16>("65536"));
+    CHECK_THROWS(TestNumber<u16>("-1"));
+    CHECK_THROWS(TestNumber<u16>("foo"));
 
-    CHECK_NOTHROW(TestInt<u32>("0"));
-    CHECK_NOTHROW(TestInt<u32>("1"));
-    CHECK_NOTHROW(TestInt<u32>("4294967295"));
-    CHECK_THROWS(TestInt<u32>("4294967296"));
-    CHECK_THROWS(TestInt<u32>("-1"));
-    CHECK_THROWS(TestInt<u32>("foo"));
+    CHECK_NOTHROW(TestNumber<u32>("0"));
+    CHECK_NOTHROW(TestNumber<u32>("1"));
+    CHECK_NOTHROW(TestNumber<u32>("4294967295"));
+    CHECK_THROWS(TestNumber<u32>("4294967296"));
+    CHECK_THROWS(TestNumber<u32>("-1"));
+    CHECK_THROWS(TestNumber<u32>("foo"));
 
-    CHECK_NOTHROW(TestInt<u64>("0"));
-    CHECK_NOTHROW(TestInt<u64>("1"));
-    CHECK_NOTHROW(TestInt<u64>("18446744073709551615"));
-    CHECK_THROWS(TestInt<u64>("18446744073709551616"));
-    CHECK_THROWS(TestInt<u64>("-1"));
-    CHECK_THROWS(TestInt<u64>("foo"));
+    CHECK_NOTHROW(TestNumber<u64>("0"));
+    CHECK_NOTHROW(TestNumber<u64>("1"));
+    CHECK_NOTHROW(TestNumber<u64>("18446744073709551615"));
+    CHECK_THROWS(TestNumber<u64>("18446744073709551616"));
+    CHECK_THROWS(TestNumber<u64>("-1"));
+    CHECK_THROWS(TestNumber<u64>("foo"));
 }
 
 #ifdef LIBBASE_I128_AVAILABLE
 TEST_CASE("Clopts: i128: edge cases") {
-    CHECK_NOTHROW(TestInt<i128>("0"));
-    CHECK_NOTHROW(TestInt<i128>("1"));
-    CHECK_NOTHROW(TestInt<i128>("-1"));
-    CHECK_NOTHROW(TestInt<i128>("170141183460469231731687303715884105727"));
-    CHECK_NOTHROW(TestInt<i128>("-170141183460469231731687303715884105728"));
-    CHECK_THROWS(TestInt<i128>("170141183460469231731687303715884105728"));
-    CHECK_THROWS(TestInt<i128>("-170141183460469231731687303715884105729"));
-    CHECK_THROWS(TestInt<i128>("foo"));
+    CHECK_NOTHROW(TestNumber<i128>("0"));
+    CHECK_NOTHROW(TestNumber<i128>("1"));
+    CHECK_NOTHROW(TestNumber<i128>("-1"));
+    CHECK_NOTHROW(TestNumber<i128>("170141183460469231731687303715884105727"));
+    CHECK_NOTHROW(TestNumber<i128>("-170141183460469231731687303715884105728"));
+    CHECK_THROWS(TestNumber<i128>("170141183460469231731687303715884105728"));
+    CHECK_THROWS(TestNumber<i128>("-170141183460469231731687303715884105729"));
+    CHECK_THROWS(TestNumber<i128>("foo"));
 
-    CHECK_NOTHROW(TestInt<u128>("0"));
-    CHECK_NOTHROW(TestInt<u128>("1"));
-    CHECK_NOTHROW(TestInt<u128>("340282366920938463463374607431768211455"));
-    CHECK_THROWS(TestInt<u128>("340282366920938463463374607431768211456"));
-    CHECK_THROWS(TestInt<u64>("-1"));
-    CHECK_THROWS(TestInt<u128>("foo"));
+    CHECK_NOTHROW(TestNumber<u128>("0"));
+    CHECK_NOTHROW(TestNumber<u128>("1"));
+    CHECK_NOTHROW(TestNumber<u128>("340282366920938463463374607431768211455"));
+    CHECK_THROWS(TestNumber<u128>("340282366920938463463374607431768211456"));
+    CHECK_THROWS(TestNumber<u64>("-1"));
+    CHECK_THROWS(TestNumber<u128>("foo"));
 }
 #endif
+
+TEST_CASE("Clopts: float") {
+    CHECK_NOTHROW(TestNumber<f32>("3.14159"));
+}
 
 /*TEST_CASE("Aliased options are equivalent") {
     using options = clopts<

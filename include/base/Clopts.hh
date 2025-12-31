@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <base/FS.hh>
+#include <base/Numeric.hh>
 #include <base/Size.hh>
 #include <base/Types.hh>
 #include <base/Utils.hh>
@@ -389,12 +390,12 @@ struct ref {
 template <typename type>
 concept is_valid_option_type = utils::is_same<type, std::string, // clang-format off
     bool,
-    double,
     special_tag,
     callback_arg_type,
     callback_noarg_type
 > or is_vector_v<type> or
     is_integer<type> or
+    std::floating_point<type> or
     requires { type::is_values; } or
     requires { type::is_file_data; } or
     requires { type::is_options_storage; };
@@ -477,7 +478,7 @@ struct opt_impl {
     static_assert(not std::is_void_v<canonical_type>, "Option type may not be void. Use bool instead");
     static_assert(
         is_valid_option_type<canonical_type>,
-        "Option type must be std::string, bool, i64, double, file_data, values<>, or callback"
+        "Option type must be std::string, bool, an integer, a floating-point type, file_data, values<>, or callback"
     );
 
     static constexpr decltype(_name) name = _name;
@@ -532,14 +533,19 @@ static consteval auto type_name() -> static_string<25> {
     static_string<25> buffer;
     if constexpr (utils::is<t, std::string>) buffer.append("string");
     else if constexpr (utils::is<t, bool>) buffer.append("bool");
-    else if constexpr (is_integer<t> or std::floating_point<t>) buffer.append("number");
-    else if constexpr (requires { t::is_file_data; }) buffer.append("file");
+    else if constexpr (is_integer<t>) {
+        buffer.append(std::signed_integral<t> ? "i" : "u");
+        buffer.append(constexpr_to_string(Size::Of<t>().bits()));
+    } else if constexpr (std::floating_point<t>) {
+        buffer.append("f");
+        buffer.append(constexpr_to_string(Size::Of<t>().bits()));
+    } else if constexpr (requires { t::is_file_data; }) buffer.append("file");
     else if constexpr (detail::is_callback<t>) buffer.append("arg");
     else if constexpr (detail::is_vector_v<t>) {
         buffer.append(type_name<typename t::value_type>());
         buffer.append("s");
     } else {
-        static_assert(false, "Option type must be std::string, bool, integer, double, or void(*)(), or a vector thereof");
+        static_assert(false, "Option type must be std::string, bool, integer, floating-point number, or void(*)(), or a vector thereof");
     }
     return buffer;
 }
@@ -1077,7 +1083,7 @@ private:
         );
     }
 
-    /// Helper to parse an integer or double.
+    /// Helper to parse an integer or float.
     template <typename Number>
     auto parse_number(std::string_view s) -> Number {
         if (s.empty()) {
@@ -1539,9 +1545,9 @@ private:
             return dat;
         }
 
-        // Parse an integer or double.
-        else if constexpr (is_integer<element>) return parse_number<typename opt::single_element_type>(opt_val);
-        else if constexpr (std::is_same_v<element, double>) return parse_number<double>(opt_val);
+        // Parse an integer or float.
+        else if constexpr (is_integer<element> or std::floating_point<element>)
+            return parse_number<element>(opt_val);
 
         // Should never get here.
         else static_assert(false, "Unreachable");
