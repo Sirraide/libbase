@@ -1830,6 +1830,7 @@ struct multiple : option<opt::name, opt::description, std::vector<typename opt::
 
     constexpr multiple() = delete;
     static constexpr bool is_multiple = true;
+    static constexpr bool is_short = detail::is_short_option<opt>;
     using is_positional_ = detail::positional_t<opt>;
 };
 

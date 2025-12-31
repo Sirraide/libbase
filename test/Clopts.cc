@@ -1519,6 +1519,12 @@ TEST_CASE("Clopts: float") {
     CHECK_NOTHROW(TestNumber<f32>("3.14159"));
 }
 
+TEST_CASE("Clopts: multiple<short_option<>>") {
+    std::array args = { "test", "-x1", "-x2", "-x=3", "-x", "4" };
+    auto opts = clopts<multiple<short_option<"-x", "", int>>>::parse(args.size(), args.data(), error_handler);
+    CHECK(opts.get<"-x">() == Span<int>{1, 2, 3, 4});
+}
+
 /*TEST_CASE("Aliased options are equivalent") {
     using options = clopts<
         multiple<option<"--string", "A string", std::string>>,
