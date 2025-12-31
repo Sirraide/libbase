@@ -47,6 +47,13 @@ struct file {
 
 /// For backwards compatibility.
 using file_data = file<>;
+
+/// Properties common to all options.
+struct opt_props {
+    bool required = false;
+    bool overridable = false;
+    bool hidden = false;
+};
 }
 
 namespace base::detail {
@@ -389,9 +396,7 @@ template <
     static_string _name,
     static_string _description,
     typename ty_param,
-    bool required,
-    bool overridable,
-    bool hidden>
+    opt_props props>
 struct opt_impl {
     /// The actual type that was passed in.
     using declared_type = ty_param;
@@ -407,9 +412,10 @@ struct opt_impl {
     static constexpr decltype(_description) description = _description;
     static constexpr bool is_flag = std::is_same_v<declared_type, bool>;
     static constexpr bool is_values = detail::is_values<declared_type>;
-    static constexpr bool is_required = required;
-    static constexpr bool is_overridable = overridable;
-    static constexpr bool is_hidden = hidden;
+    static constexpr auto properties = props;
+    static constexpr bool is_required = props.required;
+    static constexpr bool is_overridable = props.overridable;
+    static constexpr bool is_hidden = props.hidden;
     static constexpr bool option_tag = true;
     static_assert(not is_required or not is_hidden, "Required options cannot be hidden");
 
@@ -1494,13 +1500,11 @@ using detail::values;
 
 /// Base option type.
 template <
-    detail::static_string _name,
-    detail::static_string _description = "",
+    detail::static_string name,
+    detail::static_string description,
     typename type = std::string,
-    bool required = false,
-    bool overridable = false,
-    bool hidden = false>
-struct option : detail::opt_impl<_name, _description, type, required, overridable, hidden> {};
+    opt_props props = {}>
+struct option : detail::opt_impl<name, description, type, props> {};
 
 /// Identical to 'option', but overridable by default.
 template <
@@ -1508,15 +1512,14 @@ template <
     detail::static_string _description,
     typename type = std::string,
     bool required = false>
-struct overridable : option<_name, _description, type, required, /*overridable=*/true> {};
+struct overridable : option<_name, _description, type, {.required = required, .overridable = true}> {};
 
 /// Identical to 'option', but hidden by default.
 template <
     detail::static_string _name,
     detail::static_string _description,
-    typename type = std::string,
-    bool required = false>
-struct hidden : option<_name, _description, type, required, /*overridable=*/false, /*hidden=*/true> {};
+    typename type = std::string>
+struct hidden : option<_name, _description, type, {.hidden = true}> {};
 
 /// Base short option type.
 template <
@@ -1526,7 +1529,11 @@ template <
     bool required = false,
     bool overridable = false,
     bool hidden = false>
-struct short_option : detail::opt_impl<_name, _description, _type, required, overridable, hidden> {
+struct short_option : detail::opt_impl<_name, _description, _type, {
+    .required = required,
+    .overridable = overridable,
+    .hidden = hidden
+}> {
     static constexpr decltype(_name) name = _name;
     static constexpr decltype(_description) description = _description;
     static constexpr bool is_flag = std::is_same_v<_type, bool>;
@@ -1557,7 +1564,7 @@ template <
     detail::static_string _description,
     typename _type = std::string,
     bool required = true>
-struct positional : option<_name, _description, _type, required> {
+struct positional : option<_name, _description, _type, {.required = required}> {
     using is_positional_ = std::true_type;
 };
 
@@ -1567,7 +1574,7 @@ template <
     detail::static_string _description,
     typename lambda,
     bool required = false>
-struct func_impl : option<_name, _description, typename lambda::type, required> {
+struct func_impl : option<_name, _description, typename lambda::type, {.required = required}> {
     static constexpr typename lambda::lambda callback = {};
 };
 
@@ -1586,7 +1593,7 @@ template <
     detail::static_string _name,
     detail::static_string _description = "",
     bool hidden = false>
-struct flag : option<_name, _description, bool, /*required=*/false, /*overridable=*/false, hidden> {};
+struct flag : option<_name, _description, bool, {.hidden = hidden}> {};
 
 /// The help option.
 template <auto _help_cb = detail::default_help_handler>
@@ -1597,7 +1604,7 @@ struct help : func<"--help", "Print this help information", [] {}> {
 
 /// Multiple meta-option.
 template <typename opt>
-struct multiple : option<opt::name, opt::description, typename opt::declared_type, opt::is_required> {
+struct multiple : option<opt::name, opt::description, typename opt::declared_type, opt::properties> {
     static_assert(not utils::is<typename opt::declared_type, bool>, "Type of multiple<> cannot be bool");
     static_assert(not utils::is<typename opt::declared_type, detail::callback_arg_type>, "Type of multiple<> cannot be a callback");
     static_assert(not utils::is<typename opt::declared_type, detail::callback_noarg_type>, "Type of multiple<> cannot be a callback");

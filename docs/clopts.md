@@ -68,7 +68,7 @@ using options = clopts<
     positional<"file", "The name of the file", file<std::vector<std::byte>>, true>,
     positional<"foobar", "[description goes here]", std::string, false>,
     option<"--size", "The size parameter (whatever that means)", int64_t>,
-    multiple<option<"--int", "Integers", int64_t, true>>,
+    multiple<option<"--int", "Integers", int64_t, {.required = true}>>,
     flag<"--test", "Test flag">,
     option<"--prime", "A prime number that is less than 14", values<2, 3, 5, 7, 11, 13>>,
     func<"--func", "Print 42 and exit", print_number_and_exit>,
@@ -193,24 +193,34 @@ message.
 Note that the name can be anything you want. The `--` are not required.
 
 ### Option Type: `option`
-The most basic option type is `option`. This option type takes up to six template parameters, the last three of which are optional.
+The most basic option type is `option`. This option type takes up to four template parameters, the last two 
+of which are optional.
 ```c++
 option<"--name", "Description">
 option<"--name", "Description", std::string>
-option<"--name", "Description", std::string, /*required=*/false, /*overridable=*/false, /*hidden=*/false>
+option<"--name", "Description", std::string, opt_props{/* see below */}>
 ```
 
 #### **Parameters**
 1. The option name, which must be a string literal (at most 256 bytes).
 2. A description of the option, also a string literal (at most 512 bytes).
 3. The type of the option (see below). The default is `std::string`.
-4. Whether the option is required, i.e. whether omitting it is an error.
-   The default is `false`.
-5. Whether the option is overridable, i.e. whether it can be specified more
-   than once, in which case only the last value is retained. This is different
-   from `multiple<>` (see below). The default is `false`.
-6. Whether the option is hidden; a hidden option will not show up in the `help<>`
-   message. Required options cannot be hidden.
+4. Various option properties, packaged in an `opt_props` struct. Currently, these properties are:
+   - `required`: Whether the option is required, i.e. whether omitting it is an error. The default is `false`.
+   - `overridable`: Whether the option is overridable, i.e. whether it can be specified more
+      than once, in which case only the last value is retained. This is different
+      from `multiple<>` (see below). The default is `false`. 
+   - `hidden`: Whether the option is hidden; a hidden option will not show up in the `help<>`
+      message. Required options cannot be hidden. The default is `false`
+   
+You can specify individual properties or multiple ones using designated initialisers:
+```c++
+option<"--name", "Description", std::string, {.overridable = true}>
+option<"--name", "Description", std::string, {.required = true, .overridable = true}>
+```
+
+Some of the option types below specify default values for these, e.g. `positional<>` options are `required`
+by default. See also especially `hidden<>`/`overridable<>`.
 
 #### **Types and Arguments**
 The `option` type always takes an argument. Both `--option value` and `--option=value` are recognised by the parser.
@@ -313,8 +323,8 @@ hidden<name, description, type>
 ``` 
 is equivalent to 
 ```c++
-option<name, description, type, /*required=*/false, /*overridable=*/true, /*hidden=*/false>
-option<name, description, type, /*required=*/false, /*overridable=*/false, /*hidden=*/true>
+option<name, description, type, {.overridable = true}>
+option<name, description, type, {.hidden = true}>
 ```
 in every respect. If you want to specify e.g. both overridable and hidden, you have to use `option<>`.
 
@@ -474,19 +484,23 @@ The following properties are checked at compile-time:
 * At most one of the options passed to this can be required.
 
 ### Custom Option Types
-You can define your own custom option types by inheriting from `option`. For instance the builtin `flag` type is defined as
+Defining custom *option types* (i.e. `option<>`, `flag<>`, `multiple<>`, etc.) is not supported. However, you can define
+custom *option value types* by specialising `base::cmd::parser`:
 ```c++
-template <
-    detail::static_string _name,
-    detail::static_string _description = "",
-    bool required = false>
-struct flag : option<_name, _description, bool, required> {};
+struct Pair { int x; int y; };
+
+template <>
+struct base::cmd::parser<Pair> {
+    using storage_type = Pair;
+    static auto parse(std::string_view arg) -> Result<Pair> {
+        using IntParser = base::cmd::parser<int>;
+        auto comma = arg.find(',');
+        if (comma == std::string_view::npos) return Error("Expected 'int,int'");
+        auto first = Try(IntParser::parse(arg.substr(0, comma)));
+        auto second = Try(IntParser::parse(arg.substr(comma + 1)));
+        return Pair{first, second};
+    }
+
+    static constexpr auto type_name() -> str { return "pair"; }
+};
 ```
-
-Make sure to use `static_string` if you want to be able to pass a string
-literal as a non-type template parameter.
-
-However, keep in mind that implementing certain features, like the `func` 
-type, would also require modifying the main library code and that the library is not designed to allow for the addition of arbitrary new option types. It is recommended to use the builtin option types whenever possible, and there are no plans to add additional support for user-defined option types. 
-
-At the same time, if you have an idea for an option type that it would make sense supporting, feel free to open an issue or a pull request. Additional option types may be added in the future.

@@ -114,7 +114,7 @@ TEST_CASE("Options can be parsed out of order") {
 }
 
 TEST_CASE("Required options must be present") {
-    using options = clopts<option<"--required", "A required option", std::string, true>>;
+    using options = clopts<option<"--required", "A required option", std::string, {.required = true}>>;
     CHECK_THROWS(options::parse(0, nullptr, error_handler));
 }
 
@@ -124,7 +124,7 @@ TEST_CASE("Flags are never required") {
 }
 
 TEST_CASE("Setting a custom error handler works") {
-    using options = clopts<option<"--required", "A required option", std::string, true>>;
+    using options = clopts<option<"--required", "A required option", std::string, {.required = true}>>;
     bool called = false;
     options::parse(0, nullptr, [&](std::string&&) { return called = true; });
     CHECK(called);
@@ -371,8 +371,8 @@ TEST_CASE("Integer overflow is an error") {
 
 TEST_CASE("Multiple meta-option") {
     using options = clopts<
-        multiple<option<"--int", "Integers", int64_t, true>>,
-        multiple<option<"--string", "Strings", std::string, true>>>;
+        multiple<option<"--int", "Integers", int64_t, {.required = true}>>,
+        multiple<option<"--string", "Strings", std::string, {.required = true}>>>;
 
     std::array args = {
         "test",
@@ -399,8 +399,8 @@ TEST_CASE("Multiple meta-option") {
 
 TEST_CASE("Multiple + Positional works") {
     using options = clopts<
-        multiple<option<"--int", "Integers", int64_t, true>>,
-        multiple<option<"--string", "Strings", std::string, true>>,
+        multiple<option<"--int", "Integers", int64_t, {.required = true}>>,
+        multiple<option<"--string", "Strings", std::string, {.required = true}>>,
         multiple<positional<"rest", "The remaining arguments", std::string, false>>>;
 
     std::array args = {
@@ -479,7 +479,7 @@ TEST_CASE("File option can map a file properly") {
 
 TEST_CASE("stop_parsing<> option") {
     using options = clopts<
-        multiple<option<"--foo", "Foo option", std::string, true>>,
+        multiple<option<"--foo", "Foo option", std::string, {.required = true}>>,
         flag<"--bar", "Bar option">,
         stop_parsing<"stop">>;
 
@@ -610,7 +610,7 @@ TEST_CASE("Overridable options work") {
         "-x", "c",
     };
 
-    using options1 = clopts<option<"-x", "A string", std::string, false, true>>;
+    using options1 = clopts<option<"-x", "A string", std::string, {.overridable = true}>>;
     using options2 = clopts<overridable<"-x", "A string">>;
 
     auto opts1 = options1::parse(args.size(), args.data(), error_handler);
@@ -623,7 +623,7 @@ TEST_CASE("Overridable options work") {
 TEST_CASE("Documentation compiles (example 1)") {
     using options = clopts<
         option<"--repeat", "How many times the output should be repeated (default 1)", int64_t>,
-        positional<"file", "The file whose contents should be printed", file<>, /*required=*/true>,
+        positional<"file", "The file whose contents should be printed", file<>>,
         help<>>;
 
     std::array args = {
@@ -649,7 +649,7 @@ TEST_CASE("Documentation compiles (example 2)") {
         positional<"file", "The name of the file", file<std::vector<std::byte>>, true>,
         positional<"foobar", "[description goes here]", std::string, false>,
         option<"--size", "The size parameter (whatever that means)", int64_t>,
-        multiple<option<"--int", "Integers", int64_t, true>>,
+        multiple<option<"--int", "Integers", int64_t, {.required = true}>>,
         flag<"--test", "Test flag">,
         option<"--prime", "A prime number that is less than 14", values<2, 3, 5, 7, 11, 13>>,
         func<"--func", "Print 42 and exit", print_number_and_exit>,
@@ -966,10 +966,10 @@ TEST_CASE("Clopts: hidden<>") {
     using options = clopts<
         positional<"pos", "Description of parameter pos">,
         positional<"int-pos", "Description of parameter int-pos", std::int64_t, false>,
-        option<"--str", "Description of parameter --str", std::string, false, false, true>,
+        hidden<"--str", "Description of parameter --str">,
         option<"--int", "Description of parameter --int", std::int64_t>,
         flag<"--flag", "Description of parameter --flag", true>,
-        option<"--str-values", "Description of parameter --str-values", values<"foo", "bar", "baz">, false, false, true>,
+        option<"--str-values", "Description of parameter --str-values", values<"foo", "bar", "baz">, {.hidden = true}>,
         option<"--int-vals", "Description of parameter --int-values", values<1, 2, 3, 4, 5>>,
         overridable<"--ref", "Description of reference parameter", double>,
         help<>
@@ -1001,8 +1001,8 @@ TEST_CASE("Clopts: Omit supported values if all values<> options are hidden") {
         hidden<"--str", "Description of parameter --str">,
         option<"--int", "Description of parameter --int", std::int64_t>,
         flag<"--flag", "Description of parameter --flag", true>,
-        option<"--str-values", "Description of parameter --str-values", values<"foo", "bar", "baz">, false, false, true>,
-        option<"--int-vals", "Description of parameter --int-values", values<1, 2, 3, 4, 5>, false, false, true>,
+        hidden<"--str-values", "Description of parameter --str-values", values<"foo", "bar", "baz">>,
+        hidden<"--int-vals", "Description of parameter --int-values", values<1, 2, 3, 4, 5>>,
         overridable<"--ref", "Description of reference parameter", double>,
         help<>
     >;
@@ -1343,6 +1343,32 @@ TEST_CASE("Clopts: multiple<short_option<>>") {
     std::array args = { "test", "-x1", "-x2", "-x=3", "-x", "4" };
     auto opts = clopts<multiple<short_option<"-x", "", int>>>::parse(args.size(), args.data(), error_handler);
     CHECK(opts.get<"-x">() == Span<int>{1, 2, 3, 4});
+}
+
+namespace {
+struct Pair { int x; int y; };
+}
+
+template <>
+struct base::cmd::parser<Pair> {
+    using storage_type = Pair;
+    static auto parse(std::string_view arg) -> Result<Pair> {
+        using IntParser = base::cmd::parser<int>;
+        auto comma = arg.find(',');
+        if (comma == std::string_view::npos) return Error("Expected 'int,int'");
+        auto first = Try(IntParser::parse(arg.substr(0, comma)));
+        auto second = Try(IntParser::parse(arg.substr(comma + 1)));
+        return Pair{first, second};
+    }
+
+    static constexpr auto type_name() -> str { return "pair"; }
+};
+
+TEST_CASE("Clopts: Custom option value type") {
+    std::array args = { "test", "-x", "1,2" };
+    auto opts = clopts<option<"-x", "", Pair>>::parse(args.size(), args.data(), error_handler);
+    CHECK(opts.get<"-x">()->x == 1);
+    CHECK(opts.get<"-x">()->y == 2);
 }
 
 /*TEST_CASE("Aliased options are equivalent") {
