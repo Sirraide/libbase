@@ -47,6 +47,11 @@ template <> auto Parse<u64>(std::string_view sv) noexcept -> Result<u64>;
 /// Floating-point parsers.
 template <> auto Parse<f32>(std::string_view sv) noexcept -> Result<f32>;
 template <> auto Parse<f64>(std::string_view sv) noexcept -> Result<f64>;
+
+#ifdef LIBBASE_I128_AVAILABLE
+template <> auto Parse<i128>(std::string_view sv) noexcept -> Result<i128>;
+template <> auto Parse<u128>(std::string_view sv) noexcept -> Result<u128>;
+#endif
 } // namespace base
 
 #endif // LIBBASE_NUMERIC_HH

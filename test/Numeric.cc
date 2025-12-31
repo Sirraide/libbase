@@ -115,6 +115,28 @@ TEST_CASE("Parse<u64>") {
     ERR(Parse<u64>, "foo", "Invalid argument");
 }
 
+#ifdef LIBBASE_I128_AVAILABLE
+TEST_CASE("Parse<i128>") {
+    OK(Parse<i128>, 0);
+    OK(Parse<i128>, 1);
+    OK(Parse<i128>, -1);
+    CHECK(Parse<i128>("170141183460469231731687303715884105727").value() == L<i128>::max());
+    CHECK(Parse<i128>("-170141183460469231731687303715884105728").value() == L<i128>::min());
+    ERR(Parse<i128>, "170141183460469231731687303715884105728", "Numerical result out of range");
+    ERR(Parse<i128>, "-170141183460469231731687303715884105729", "Numerical result out of range");
+    ERR(Parse<i128>, "foo", "Invalid argument");
+}
+
+TEST_CASE("Parse<u128>") {
+    OK(Parse<u128>, 0);
+    OK(Parse<u128>, 1);
+    CHECK(Parse<u128>("340282366920938463463374607431768211455").value() == L<u128>::max());
+    ERR(Parse<u128>, "340282366920938463463374607431768211456", "Numerical result out of range");
+    ERR(Parse<u64>, "-1", "Invalid argument");
+    ERR(Parse<u128>, "foo", "Invalid argument");
+}
+#endif
+
 TEST_CASE("Parse<f32>") {
     CHECK(Parse<f32>("0").value() == 0.f);
     CHECK(Parse<f32>("-0").value() == -0.f);

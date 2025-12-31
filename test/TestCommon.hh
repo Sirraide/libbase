@@ -51,6 +51,22 @@ struct Catch::StringMaker<std::optional<T>> {
     }
 };
 
+#ifdef LIBBASE_I128_AVAILABLE
+template <>
+struct Catch::StringMaker<base::i128> {
+    static std::string convert(base::i128 value) {
+        return std::format("{}", value);
+    }
+};
+
+template <>
+struct Catch::StringMaker<base::u128> {
+    static std::string convert(base::u128 value) {
+        return std::format("{}", value);
+    }
+};
+#endif
+
 inline auto operator""_raw(const char* str, size_t len) -> RawString {
     return {std::string{str, len}};
 }

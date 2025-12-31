@@ -1351,6 +1351,168 @@ Options:
     }
 }
 
+TEST_CASE("Clopts: Integer types") {
+    using options = clopts<
+        option<"--i8", "", i8>,
+        option<"--u8", "", u8>,
+        option<"--i16", "", i16>,
+        option<"--u16", "", u16>,
+        option<"--i32", "", i32>,
+        option<"--u32", "", u32>,
+        option<"--i64", "", i64>,
+        option<"--u64", "", u64>
+    >;
+
+    std::array args = {
+        "test",
+        "--i8", "42",
+        "--u8", "43",
+        "--i16", "44",
+        "--u16", "45",
+        "--i32", "46",
+        "--u32", "47",
+        "--i64", "48",
+        "--u64", "49",
+    };
+
+    auto opts = options::parse(args.size(), args.data(), error_handler);
+    static_assert(utils::is<decltype(*opts.get<"--i8">()), i8>);
+    static_assert(utils::is<decltype(*opts.get<"--u8">()), u8>);
+    static_assert(utils::is<decltype(*opts.get<"--i16">()), i16>);
+    static_assert(utils::is<decltype(*opts.get<"--u16">()), u16>);
+    static_assert(utils::is<decltype(*opts.get<"--i32">()), i32>);
+    static_assert(utils::is<decltype(*opts.get<"--u32">()), u32>);
+    static_assert(utils::is<decltype(*opts.get<"--i64">()), i64>);
+    static_assert(utils::is<decltype(*opts.get<"--u64">()), u64>);
+
+    CHECK(*opts.get<"--i8">() == 42);
+    CHECK(*opts.get<"--u8">() == 43);
+    CHECK(*opts.get<"--i16">() == 44);
+    CHECK(*opts.get<"--u16">() == 45);
+    CHECK(*opts.get<"--i32">() == 46);
+    CHECK(*opts.get<"--u32">() == 47);
+    CHECK(*opts.get<"--i64">() == 48);
+    CHECK(*opts.get<"--u64">() == 49);
+}
+
+#ifdef LIBBASE_I128_AVAILABLE
+TEST_CASE("Clopts: i128") {
+    using options = clopts<
+        option<"--i128", "", i128>,
+        option<"--u128", "", u128>
+    >;
+
+    std::array args = {
+        "test",
+        "--i128", "42",
+        "--u128", "43",
+    };
+
+    auto opts = options::parse(args.size(), args.data(), error_handler);
+    static_assert(utils::is<decltype(*opts.get<"--i128">()), i128>);
+    static_assert(utils::is<decltype(*opts.get<"--u128">()), u128>);
+
+    CHECK(*opts.get<"--i128">() == 42);
+    CHECK(*opts.get<"--u128">() == 43);
+}
+#endif
+
+template <typename T>
+static void TestInt(const char* value) {
+    std::array args = { "test", "x", value };
+    (void) clopts<option<"x", "", T>>::parse(args.size(), args.data(), error_handler);
+}
+
+TEST_CASE("Clopts: integer types: edge cases") {
+    CHECK_NOTHROW(TestInt<i8>("0"));
+    CHECK_NOTHROW(TestInt<i8>("1"));
+    CHECK_NOTHROW(TestInt<i8>("127"));
+    CHECK_NOTHROW(TestInt<i8>("-1"));
+    CHECK_NOTHROW(TestInt<i8>("-128"));
+    CHECK_THROWS(TestInt<i8>("128"));
+    CHECK_THROWS(TestInt<i8>("-129"));
+    CHECK_THROWS(TestInt<i8>("asdadasd"));
+    CHECK_THROWS(TestInt<i8>("-asdadasd"));
+
+
+    CHECK_NOTHROW(TestInt<i16>("0"));
+    CHECK_NOTHROW(TestInt<i16>("1"));
+    CHECK_NOTHROW(TestInt<i16>("-1"));
+    CHECK_NOTHROW(TestInt<i16>("32767"));
+    CHECK_NOTHROW(TestInt<i16>("-32768"));
+    CHECK_THROWS(TestInt<i16>("32768"));
+    CHECK_THROWS(TestInt<i16>("-32769"));
+    CHECK_THROWS(TestInt<i16>("foo"));
+
+    CHECK_NOTHROW(TestInt<i32>("0"));
+    CHECK_NOTHROW(TestInt<i32>("1"));
+    CHECK_NOTHROW(TestInt<i32>("-1"));
+    CHECK_NOTHROW(TestInt<i32>("2147483647"));
+    CHECK_NOTHROW(TestInt<i32>("-2147483648"));
+    CHECK_THROWS(TestInt<i32>("2147483648"));
+    CHECK_THROWS(TestInt<i32>("-2147483649"));
+    CHECK_THROWS(TestInt<i32>("foo"));
+
+    CHECK_NOTHROW(TestInt<i64>("0"));
+    CHECK_NOTHROW(TestInt<i64>("1"));
+    CHECK_NOTHROW(TestInt<i64>("-1"));
+    CHECK_NOTHROW(TestInt<i64>("9223372036854775807"));
+    CHECK_NOTHROW(TestInt<i64>("-9223372036854775808"));
+    CHECK_THROWS(TestInt<i64>("9223372036854775808"));
+    CHECK_THROWS(TestInt<i64>("-9223372036854775809"));
+    CHECK_THROWS(TestInt<i64>("foo"));
+
+    CHECK_NOTHROW(TestInt<u8>("0"));
+    CHECK_NOTHROW(TestInt<u8>("1"));
+    CHECK_NOTHROW(TestInt<u8>("255"));
+    CHECK_THROWS(TestInt<u8>("256"));
+    CHECK_THROWS(TestInt<u8>("-1"));
+    CHECK_THROWS(TestInt<u8>("-255"));
+    CHECK_THROWS(TestInt<i8>("asdadasd"));
+    CHECK_THROWS(TestInt<i8>("-asdadasd"));
+
+    CHECK_NOTHROW(TestInt<u16>("0"));
+    CHECK_NOTHROW(TestInt<u16>("1"));
+    CHECK_NOTHROW(TestInt<u16>("65535"));
+    CHECK_THROWS(TestInt<u16>("65536"));
+    CHECK_THROWS(TestInt<u16>("-1"));
+    CHECK_THROWS(TestInt<u16>("foo"));
+
+    CHECK_NOTHROW(TestInt<u32>("0"));
+    CHECK_NOTHROW(TestInt<u32>("1"));
+    CHECK_NOTHROW(TestInt<u32>("4294967295"));
+    CHECK_THROWS(TestInt<u32>("4294967296"));
+    CHECK_THROWS(TestInt<u32>("-1"));
+    CHECK_THROWS(TestInt<u32>("foo"));
+
+    CHECK_NOTHROW(TestInt<u64>("0"));
+    CHECK_NOTHROW(TestInt<u64>("1"));
+    CHECK_NOTHROW(TestInt<u64>("18446744073709551615"));
+    CHECK_THROWS(TestInt<u64>("18446744073709551616"));
+    CHECK_THROWS(TestInt<u64>("-1"));
+    CHECK_THROWS(TestInt<u64>("foo"));
+}
+
+#ifdef LIBBASE_I128_AVAILABLE
+TEST_CASE("Clopts: i128: edge cases") {
+    CHECK_NOTHROW(TestInt<i128>("0"));
+    CHECK_NOTHROW(TestInt<i128>("1"));
+    CHECK_NOTHROW(TestInt<i128>("-1"));
+    CHECK_NOTHROW(TestInt<i128>("170141183460469231731687303715884105727"));
+    CHECK_NOTHROW(TestInt<i128>("-170141183460469231731687303715884105728"));
+    CHECK_THROWS(TestInt<i128>("170141183460469231731687303715884105728"));
+    CHECK_THROWS(TestInt<i128>("-170141183460469231731687303715884105729"));
+    CHECK_THROWS(TestInt<i128>("foo"));
+
+    CHECK_NOTHROW(TestInt<u128>("0"));
+    CHECK_NOTHROW(TestInt<u128>("1"));
+    CHECK_NOTHROW(TestInt<u128>("340282366920938463463374607431768211455"));
+    CHECK_THROWS(TestInt<u128>("340282366920938463463374607431768211456"));
+    CHECK_THROWS(TestInt<u64>("-1"));
+    CHECK_THROWS(TestInt<u128>("foo"));
+}
+#endif
+
 /*TEST_CASE("Aliased options are equivalent") {
     using options = clopts<
         multiple<option<"--string", "A string", std::string>>,

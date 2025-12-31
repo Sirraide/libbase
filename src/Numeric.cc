@@ -45,3 +45,8 @@ template <> auto base::Parse<u32>(std::string_view sv) noexcept -> Result<u32> {
 template <> auto base::Parse<u64>(std::string_view sv) noexcept -> Result<u64> { return ParseImpl<u64>(sv); }
 template <> auto base::Parse<f32>(std::string_view sv) noexcept -> Result<f32> { return ParseImpl<f32>(sv); }
 template <> auto base::Parse<f64>(std::string_view sv) noexcept -> Result<f64> { return ParseImpl<f64>(sv); }
+
+#ifdef LIBBASE_I128_AVAILABLE
+template <> auto base::Parse<i128>(std::string_view sv) noexcept -> Result<i128> { return ParseImpl<i128>(sv); }
+template <> auto base::Parse<u128>(std::string_view sv) noexcept -> Result<u128> { return ParseImpl<u128>(sv); }
+#endif

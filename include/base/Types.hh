@@ -7,6 +7,10 @@
 #include <source_location>
 #include <type_traits>
 
+#ifdef __SIZEOF_INT128__
+#    define LIBBASE_I128_AVAILABLE
+#endif
+
 namespace base {
 namespace rgs = std::ranges;
 namespace vws = std::ranges::views;
@@ -27,6 +31,11 @@ using iptr = std::intptr_t;
 
 using f32 = float;
 using f64 = double;
+
+#ifdef LIBBASE_I128_AVAILABLE
+using i128 = __int128;
+using u128 = unsigned __int128;
+#endif
 
 namespace utils {
 /// Used instead of 'Assert()' in some places so we can catch the

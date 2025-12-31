@@ -1,12 +1,12 @@
 #ifndef LIBBASE_CLOPTS_HH
 #define LIBBASE_CLOPTS_HH
 
-#include <base/FS.hh>
-#include <base/Types.hh>
-#include <base/Utils.hh>
-
 #include <algorithm>
 #include <array>
+#include <base/FS.hh>
+#include <base/Size.hh>
+#include <base/Types.hh>
+#include <base/Utils.hh>
 #include <bitset>
 #include <functional>
 #include <optional>
@@ -273,16 +273,45 @@ struct at_scope_exit {
 /// do not constitute actual options in an of themselves.
 struct special_tag;
 
+/// 'std::integral', but without 'bool' and the character types.
+template <typename T> concept is_integer = utils::is_same<
+    T,
+    char,
+    signed char,
+    unsigned char,
+    short,
+    unsigned short,
+    int,
+    unsigned,
+    long,
+    unsigned long,
+    long long,
+    unsigned long long
+#ifdef LIBBASE_I128_AVAILABLE
+    , i128
+    , u128
+#endif
+>;
+
+#ifdef LIBBASE_I128_AVAILABLE
+using MaxInt = i128;
+#else
+using MaxInt = i64;
+#endif
+
 /// Constexpr to_string for integers. Returns the number of bytes written.
-constexpr std::string constexpr_to_string(i64 i) {
+template <is_integer T>
+constexpr std::string constexpr_to_string(T i) {
     if (i == 0) return "0"; // Special handling for 0.
 
     std::string out;
     bool negative = false;
-    if (i < 0) {
-        out += '-';
-        negative = true;
-        i = -i;
+    if constexpr (std::signed_integral<T>) {
+        if (i < 0) {
+            out += '-';
+            negative = true;
+            i = -i;
+        }
     }
 
     while (i) {
@@ -361,11 +390,11 @@ template <typename type>
 concept is_valid_option_type = utils::is_same<type, std::string, // clang-format off
     bool,
     double,
-    i64,
     special_tag,
     callback_arg_type,
     callback_noarg_type
 > or is_vector_v<type> or
+    is_integer<type> or
     requires { type::is_values; } or
     requires { type::is_file_data; } or
     requires { type::is_options_storage; };
@@ -503,7 +532,7 @@ static consteval auto type_name() -> static_string<25> {
     static_string<25> buffer;
     if constexpr (utils::is<t, std::string>) buffer.append("string");
     else if constexpr (utils::is<t, bool>) buffer.append("bool");
-    else if constexpr (utils::is<t, i64, double>) buffer.append("number");
+    else if constexpr (is_integer<t> or std::floating_point<t>) buffer.append("number");
     else if constexpr (requires { t::is_file_data; }) buffer.append("file");
     else if constexpr (detail::is_callback<t>) buffer.append("arg");
     else if constexpr (detail::is_vector_v<t>) {
@@ -874,7 +903,6 @@ class clopts_impl<list<opts...>, list<special...>, list<directives...>> {
     using help_string_t = static_string<1024 + 1024 * sizeof...(opts)>; // Size should be ‘big enough’™.
     using optvals_tuple_t = std::tuple<storage_type_t<opts>...>;
     using string = std::string;
-    using integer = i64;
 
     static constexpr bool has_stop_parsing = (requires { special::is_stop_parsing; } or ...);
 
@@ -1051,15 +1079,31 @@ private:
 
     /// Helper to parse an integer or double.
     template <typename Number>
-    auto parse_number(std::string_view s, std::string_view name) -> Number {
+    auto parse_number(std::string_view s) -> Number {
         if (s.empty()) {
-            handle_error("Expected {}, got empty string", name);
+            handle_error(
+                "Expected {}, got empty string",
+                is_integer<Number> ? "integer" : "floating-point number"
+            );
             return {};
         }
 
         auto res = Parse<Number>(s);
         if (not res) {
-            handle_error("'{}' does not appear to be a valid {}", s, name);
+            if constexpr (is_integer<Number>) {
+                handle_error(
+                    "'{}' does not appear to be a valid {} {}-bit integer",
+                    s,
+                    std::signed_integral<Number> ? "signed" : "unsigned",
+                    Size::Of<Number>().bits()
+                );
+            } else {
+                handle_error(
+                    "'{}' does not appear to be a valid {}-bit floating-point number",
+                    s,
+                    Size::Of<Number>().bits()
+                );
+            }
             return {};
         }
 
@@ -1496,8 +1540,8 @@ private:
         }
 
         // Parse an integer or double.
-        else if constexpr (std::is_same_v<element, integer>) return parse_number<integer>(opt_val, "integer");
-        else if constexpr (std::is_same_v<element, double>) return parse_number<double>(opt_val, "floating-point number");
+        else if constexpr (is_integer<element>) return parse_number<typename opt::single_element_type>(opt_val);
+        else if constexpr (std::is_same_v<element, double>) return parse_number<double>(opt_val);
 
         // Should never get here.
         else static_assert(false, "Unreachable");

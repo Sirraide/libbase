@@ -219,10 +219,12 @@ The `option` type always takes an argument. Both `--option value` and `--option=
 Supported types for the 3rd template parameter are:
 - `std::string`: Any string.
 - `file<>`: A path to a file that must exist and must be accessible.
-- `int64_t`: A valid (signed) 64-bit integer (as per `std::strtoll`).
-- `double`: A valid floating point number (as per `std::strtod`).
+-  integer: Any signed or unsigned integer type (including `__int128`, but *not* `char8_t` and friends).
+- `double`: A floating-point number.
 - `values<>`: See below.
 - `ref<>`: See below.
+
+Integers and floating-point numbers are currently parsed via `std::from_chars`.
 
 ##### Type: `file<>`
 The `file<>` type indicates that the argument should be treated as a path to a file, the contents of which will be loaded into memory at parse time (note: lazy loading is *not* supported). When accessed with `get<>()`, both the path and contents will be returned. If the parser can't load the file (for instance, because it doesn't exist), it will invoke the error handler with an appropriate message, and the option value is left in an indeterminate state. The template arguments are the type to use for the file
