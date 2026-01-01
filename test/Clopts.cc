@@ -681,7 +681,7 @@ TEST_CASE("Help message is formatted correctly") {
         positional<"int-pos", "Description of parameter int-pos", std::int64_t, false>,
         option<"--str", "Description of parameter --str", std::string>,
         short_option<"--int", "Description of parameter --int", std::int64_t>,
-        flag<"--flag", "Description of parameter --flag">,
+        flag<"--flag", "Description of parameter --flag", {.default_value = true}>,
         option<"--str-values", "Description of parameter --str-values", values<"foo", "bar", "baz">>,
         option<"--num-values", "Description of parameter --int-values", values<1, 2, 3, 4, 5>>,
         overridable<"--ref", "Description of reference parameter", double>,
@@ -695,7 +695,7 @@ Arguments:
     <pos> : string         Description of parameter pos
 
 Options:
-    --flag[=<bool>]        Description of parameter --flag
+    --flag[=<bool>]        Description of parameter --flag (default: true)
     --help                 Print this help information
     --int <i64>            Description of parameter --int
     --num-values=<i64>     Description of parameter --int-values
@@ -1437,7 +1437,7 @@ TEST_CASE("Clopts: alias<> help message") {
         positional<"int-pos", "Description of parameter int-pos", std::int64_t, false>,
         option<"--str", "Description of parameter --str", std::string>,
         short_option<"--int", "Description of parameter --int", std::int64_t>,
-        flag<"--flag", "Description of parameter --flag">,
+        flag<"--flag", "Description of parameter --flag", {.default_value = true}>,
         option<"--str-values", "Description of parameter --str-values", values<"foo", "bar", "baz">>,
         option<"--num-values", "Description of parameter --int-values", values<1, 2, 3, 4, 5>>,
         overridable<"--ref", "Description of reference parameter", double>,
@@ -1455,7 +1455,7 @@ Arguments:
     <pos> : string                Description of parameter pos
 
 Options:
-    --flag, -f[=<bool>]           Description of parameter --flag
+    --flag, -f[=<bool>]           Description of parameter --flag (default: true)
     --help                        Print this help information
     --int, -i <i64>               Description of parameter --int
     --num-values, --values=<i64>  Description of parameter --int-values

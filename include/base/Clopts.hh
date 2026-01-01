@@ -202,6 +202,16 @@ concept has_argument =
     not utils::is<typename opt::declared_type, callback_noarg_type> and
     not opt::is(opt_kind::subcommand);
 
+/// Check if we should print the argument type of an option.
+///
+/// For flags, we only print the '[=<bool>]' if the default value is true.
+template <typename opt>
+concept should_print_argument_type = [] {
+    if constexpr (not has_argument<opt>) return false;
+    else if constexpr (not opt::is(opt_kind::flag)) return true;
+    else return opt::default_value;
+}();
+
 /// Helper for static asserts.
 template <typename t>
 concept always_false = false;
@@ -868,11 +878,6 @@ class internal::clopts_impl<
     template <typename opt>
     using get_return_type_t = get_return_type<opt>::type;
 
-    /// Various types.
-    /// FIXME: Compute this size properly.
-    using help_string_t = static_string<1'024 + 1'024 * sizeof...(opts)>; // Size should be ‘big enough’™.
-    using optvals_tuple_t = std::tuple<storage_type_t<opts>...>;
-
     static constexpr bool has_stop_parsing = (special::is(opt_kind::stop_parsing) or ...);
 
 public:
@@ -888,7 +893,7 @@ public:
     /// Result type.
     class optvals_type {
         friend clopts_impl;
-        optvals_tuple_t optvals{};
+        std::tuple<storage_type_t<opts>...> optvals{};
         std::bitset<sizeof...(opts)> opts_found{};
         [[no_unique_address]] std::conditional_t<has_stop_parsing, Span<const char*>, empty> unprocessed_args{};
 
@@ -1091,7 +1096,7 @@ private:
     //  Help Message.
     // =======================================================================
     /// Create the help message.
-    static constexpr auto make_help_message() -> help_string_t { // clang-format off
+    static constexpr auto make_help_message() -> std::string { // clang-format off
         using positional_unsorted = filter<is_positional_filter, opts...>;
         using positional = sort<get_option_name_for_help_msg_sort, positional_unsorted>;
         using regular = sort<get_option_name_for_help_msg_sort, filter<is_regular_filter, opts...>>;
@@ -1144,7 +1149,7 @@ private:
             // Apart from the type name, we also need to account for the extra
             // formatting characters.
             usz len = 0;
-            if constexpr (has_argument<opt>) {
+            if constexpr (should_print_argument_type<opt>) {
                 len = opt::name.len + TypeName.template operator()<opt>().size();
                 len += opt::is(opt_kind::positional, opt_kind::flag) ? 5 : 3;
             }
@@ -1191,7 +1196,7 @@ private:
             });
 
             // Append type.
-            if constexpr (has_argument<opt>) {
+            if constexpr (should_print_argument_type<opt>) {
                 if constexpr (opt::is(opt_kind::positional)) {
                     msg += " : ";
                     msg += TypeName.template operator()<opt>();
@@ -1211,6 +1216,14 @@ private:
             // Two extra spaces between this and the description.
             msg += "  ";
             msg += str(opt::description.arr, opt::description.len);
+
+            // If this is a flag w/ default value 'true', indicate that here.
+            if constexpr (opt::is(opt_kind::flag)) {
+                if constexpr (opt::default_value) {
+                    msg += " (default: true)";
+                }
+            }
+
             msg += "\n";
         };
 
@@ -1254,13 +1267,11 @@ private:
         }
 
         // Return the combined help message.
-        help_string_t s;
-        s.append(msg);
-        return s;
+        return msg;
     } // clang-format on
 
     /// Help message is created at compile time.
-    static constexpr help_string_t help_message_raw = make_help_message();
+    static constexpr static_string<make_help_message().size() + 1> help_message_raw{make_help_message()};
 
 public:
     /// Get the help message.

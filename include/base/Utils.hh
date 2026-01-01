@@ -229,6 +229,13 @@ struct static_string {
     /// Construct an empty string.
     constexpr static_string() {}
 
+    /// Construct a string from a 'std::string'
+    constexpr static_string(const std::string& s) {
+        Assert(sz >= s.size() + 1);
+        std::copy_n(s.data(), sz, arr);
+        len = s.size();
+    }
+
     /// Construct from a string literal.
     consteval static_string(const char (&_data)[sz]) {
         Assert(_data[sz - 1] == 0, "Expected null-terminated string");
