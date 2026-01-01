@@ -695,7 +695,7 @@ Arguments:
     <pos> : string         Description of parameter pos
 
 Options:
-    --flag                 Description of parameter --flag
+    --flag[=<bool>]        Description of parameter --flag
     --help                 Print this help information
     --int <i64>            Description of parameter --int
     --num-values=<i64>     Description of parameter --int-values
@@ -968,7 +968,7 @@ TEST_CASE("Clopts: hidden<>") {
         positional<"int-pos", "Description of parameter int-pos", std::int64_t, false>,
         hidden<"--str", "Description of parameter --str">,
         option<"--int", "Description of parameter --int", std::int64_t>,
-        flag<"--flag", "Description of parameter --flag", true>,
+        flag<"--flag", "Description of parameter --flag", {.hidden = true}>,
         option<"--str-values", "Description of parameter --str-values", values<"foo", "bar", "baz">, {.hidden = true}>,
         option<"--int-vals", "Description of parameter --int-values", values<1, 2, 3, 4, 5>>,
         overridable<"--ref", "Description of reference parameter", double>,
@@ -1000,7 +1000,7 @@ TEST_CASE("Clopts: Omit supported values if all values<> options are hidden") {
         positional<"int-pos", "Description of parameter int-pos", std::int64_t, false>,
         hidden<"--str", "Description of parameter --str">,
         option<"--int", "Description of parameter --int", std::int64_t>,
-        flag<"--flag", "Description of parameter --flag", true>,
+        flag<"--flag", "Description of parameter --flag", {.hidden = true}>,
         hidden<"--str-values", "Description of parameter --str-values", values<"foo", "bar", "baz">>,
         hidden<"--int-vals", "Description of parameter --int-values", values<1, 2, 3, 4, 5>>,
         overridable<"--ref", "Description of reference parameter", double>,
@@ -1369,6 +1369,46 @@ TEST_CASE("Clopts: Custom option value type") {
     auto opts = clopts<option<"-x", "", Pair>>::parse(args.size(), args.data(), error_handler);
     CHECK(opts.get<"-x">()->x == 1);
     CHECK(opts.get<"-x">()->y == 2);
+}
+
+TEST_CASE("Clopts: flag<> default value") {
+    std::array args = { "test" };
+    auto opts1 = clopts<flag<"-x", "", {.default_value = true}>>::parse(args.size(), args.data(), error_handler);
+    auto opts2 = clopts<flag<"-x", "", {.default_value = false}>>::parse(args.size(), args.data(), error_handler);
+    CHECK(opts1.get<"-x">());
+    CHECK(not opts2.get<"-x">());
+}
+
+TEST_CASE("Clopts: flag<> explicit value") {
+    using options = clopts<
+        flag<"--a", "", {.default_value = true}>,
+        flag<"--b", "", {.default_value = false}>
+    >;
+
+    std::array args1 = {
+        "test",
+        "--a=true",
+        "--b=true",
+    };
+
+    auto opts1 = options::parse(args1.size(), args1.data(), error_handler);
+    CHECK(opts1.get<"--a">());
+    CHECK(opts1.get<"--b">());
+
+    std::array args2 = {
+        "test",
+        "--a=false",
+        "--b=false",
+    };
+
+    auto opts2 = options::parse(args2.size(), args2.data(), error_handler);
+    CHECK(not opts2.get<"--a">());
+    CHECK(not opts2.get<"--b">());
+
+    std::array args3 = { "test", "--a=garbage", };
+    std::array args4 = { "test", "--ab", };
+    CHECK_THROWS(options::parse(args3.size(), args3.data(), error_handler));
+    CHECK_THROWS(options::parse(args4.size(), args4.data(), error_handler));
 }
 
 /*TEST_CASE("Aliased options are equivalent") {

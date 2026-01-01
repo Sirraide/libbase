@@ -54,6 +54,12 @@ struct opt_props {
     bool overridable = false;
     bool hidden = false;
 };
+
+/// Properties of flags.
+struct flag_props {
+    bool hidden = false;
+    bool default_value = false;
+};
 }
 
 namespace base::detail {
@@ -164,7 +170,7 @@ template <typename opt> using positional_t = typename is_positional<opt>::type;
 template <typename opt> concept is_positional_v = is_positional<opt>::value;
 template <typename opt> concept is_short_option = requires { opt::is_short; };
 template <typename opt> concept is_multiple = requires { opt::is_multiple; };
-template <typename opt> concept is_flag = opt::is_flag;
+template <typename opt> concept is_flag = requires { opt::is_flag; };
 template <typename opt> concept is_subcommand = requires { opt::is_subcommand; };
 template <typename ty> concept is_values = requires { ty::is_values; };
 
@@ -193,7 +199,7 @@ concept is_callback = utils::is<T, callback_arg_type, callback_noarg_type>;
 /// Check if an option type takes an argument.
 template <typename opt>
 concept has_argument =
-    not utils::is<typename opt::declared_type, bool, callback_noarg_type> and
+    not utils::is<typename opt::declared_type, callback_noarg_type> and
     not is_subcommand<opt>;
 
 /// Check if this is the help<> option.
@@ -410,13 +416,11 @@ struct opt_impl {
     static_assert(sizeof _name.arr < 256, "Option name may not be longer than 256 characters");
     static constexpr decltype(_name) name = _name;
     static constexpr decltype(_description) description = _description;
-    static constexpr bool is_flag = std::is_same_v<declared_type, bool>;
     static constexpr bool is_values = detail::is_values<declared_type>;
     static constexpr auto properties = props;
     static constexpr bool is_required = props.required;
     static constexpr bool is_overridable = props.overridable;
     static constexpr bool is_hidden = props.hidden;
-    static constexpr bool option_tag = true;
     static_assert(not is_required or not is_hidden, "Required options cannot be hidden");
 
     constexpr opt_impl() = delete;
@@ -795,6 +799,10 @@ class base::detail::clopts_impl<
     static_assert(validate_multiple() <= 1, "Cannot have more than one multiple<positional<>> option");
     static_assert(check_mutually_exclusive_exist(), "mutually_exclusive<> must reference existing options");
     static_assert(check_mutually_exclusive_required(), "Cannot mark two required options as mutually_exclusive<>");
+    static_assert(
+        ((is_flag<opts> or not std::same_as<typename opts::declared_type, bool>) and ...),
+        "Use flag<> for options with value type 'bool'"
+    );
 
     // =======================================================================
     //  Option Storage.
@@ -885,6 +893,17 @@ public:
         }
 
     public:
+        constexpr optvals_type() {
+            // Initialise flags to their default values.
+            list<opts...>::each([&]<typename opt>{
+                if constexpr (is_flag<opt>) {
+                    if constexpr (opt::default_value) {
+                        opts_found[optindex<opt::name>()] = true;
+                    }
+                }
+            });
+        }
+
         /// \brief Get the value of an option.
         ///
         /// This is not \c [[nodiscard]] because that raises an ICE when compiling
@@ -1032,25 +1051,26 @@ private:
 
     /// Mark an option as found.
     template <typename opt>
-    void set_found() {
+    void set_found(bool value = true) {
         // Check if this option accepts multiple values.
         if constexpr (
             not is_multiple<opt> and
+            not is_flag<opt> and
             not detail::is_callback<typename opt::declared_type> and
             not opt::is_overridable
         ) {
             if (found<opt::name>()) handle_error("Duplicate option: '{}'", opt::name);
         }
 
-        optvals.opts_found[optindex<opt::name>()] = true;
+        optvals.opts_found[optindex<opt::name>()] = value;
     }
 
     /// Store an option value.
     template <typename opt>
     void store_option_value(auto value) {
-        auto& storage = ref_to_storage<opt::name>();
-        if constexpr (is_multiple<opt>) storage.push_back(std::move(value));
-        else storage = std::move(value);
+        if constexpr (is_flag<opt>) set_found<opt>(value);
+        else if constexpr (is_multiple<opt>) ref_to_storage<opt::name>().push_back(std::move(value));
+        else ref_to_storage<opt::name>() = std::move(value);
     }
 
     // =======================================================================
@@ -1102,17 +1122,17 @@ private:
 
             // If we’re printing the type, we have the following formats:
             //
-            //     name=<type>    Description
-            //     name <type>    Description
-            //     <name> : type  Description
+            //     name=<type>    Description (option)
+            //     name[=<bool>]  Description (flag)
+            //     name <type>    Description (short option)
+            //     <name> : type  Description (positional option)
             //
             // Apart from the type name, we also need to account for the extra
-            // ' <>' of normal options, and for the extra '<>' as well as the
-            // ' : ' of positional options.
+            // formatting characters.
             if constexpr (should_print_argument_type<opt>) {
                 max_len = std::max(
                     max_len,
-                    opt::name.len + TypeName.template operator()<opt>().size() + (is_positional_v<opt> ? 5 : 3)
+                    opt::name.len + TypeName.template operator()<opt>().size() + (is_positional_v<opt> or is_flag<opt> ? 5 : 3)
                 );
             }
 
@@ -1140,6 +1160,8 @@ private:
                 if constexpr (is_positional_v<opt>) {
                     msg += " : ";
                     msg += TypeName.template operator()<opt>();
+                } else if constexpr (is_flag<opt>) {
+                    msg += "[=<bool>]";
                 } else {
                     msg += is_short_option<opt> ? " <" : "=<";
                     msg += TypeName.template operator()<opt>();
@@ -1217,7 +1239,7 @@ private:
     // =======================================================================
     /// Handle an option value.
     template <typename opt>
-    void dispatch_option_with_arg(std::string_view opt_str, std::string_view opt_val) {
+    void dispatch_option_with_arg(std::string_view opt_val) {
         // Callbacks can’t use multiple<>, so checking the declared type is fine.
         using declared = opt::declared_type;
 
@@ -1226,8 +1248,8 @@ private:
 
         // If this is a function option, simply call the callback and we're done.
         if constexpr (detail::is_callback<declared>) {
-            if constexpr (utils::is<declared, callback_noarg_type>) opt::callback(user_data, opt_str);
-            else opt::callback(user_data, opt_str, opt_val);
+            if constexpr (utils::is<declared, callback_noarg_type>) opt::callback(user_data, opt::name.sv());
+            else opt::callback(user_data, opt::name.sv(), opt_val);
         }
 
         // Otherwise, parse the argument.
@@ -1258,9 +1280,8 @@ private:
             if (opt_str[opt::name.size()] == '=' or is_short_option<opt>) {
                 // Otherwise, parse the value.
                 auto opt_start_offs = opt::name.size() + (opt_str[opt::name.size()] == '=');
-                const auto opt_name = opt_str.substr(0, opt_start_offs);
-                const auto opt_val = opt_str.substr(opt_start_offs);
-                dispatch_option_with_arg<opt>(opt_name, opt_val);
+                auto opt_val = opt_str.substr(opt_start_offs);
+                dispatch_option_with_arg<opt>(opt_val);
                 return true;
             }
 
@@ -1287,9 +1308,26 @@ private:
             }
 
             // Parse the argument.
-            dispatch_option_with_arg<opt>(opt_str, argv[argi]);
+            dispatch_option_with_arg<opt>(argv[argi]);
             return true;
         }
+    }
+
+    template <typename opt>
+    bool handle_flag(str opt_str) {
+        // Flag w/o argument.
+        if (opt_str == opt::name.sv()) {
+            set_found<opt>();
+            return true;
+        }
+
+        // Make sure we have '--name=', and not just some other option that
+        // happens to share a prefix with this flag.
+        if (not opt_str.consume(opt::name) or not opt_str.consume('=')) return false;
+
+        // Ok, the user passed an argument to this flag.
+        dispatch_option_with_arg<opt>(opt_str);
+        return true;
     }
 
     template <typename opt>
@@ -1298,7 +1336,7 @@ private:
         // we encountered. If we’re just a prefix, then we don’t handle this.
         if (opt_str != opt::name.sv()) return false;
 
-        // Mark the option as found. That’s all we need to do for flags.
+        // Mark the option as found.
         set_found<opt>();
 
         // If it’s a callable, call it.
@@ -1339,7 +1377,7 @@ private:
         }
 
         // Otherwise, attempt to parse this as the option value.
-        dispatch_option_with_arg<opt>(opt::name.sv(), opt_str);
+        dispatch_option_with_arg<opt>(opt_str);
         return true;
     }
 
@@ -1347,8 +1385,9 @@ private:
     bool handle_non_positional(std::string_view opt_str) {
         const auto handle = [this]<typename opt>(std::string_view str) {
             // `this->` is to silence a warning.
-            if constexpr (detail::is_positional_v<opt>) return false;
-            else if constexpr (not detail::has_argument<opt>) return this->handle_non_positional<opt>(str);
+            if constexpr (is_positional_v<opt>) return false;
+            else if constexpr (is_flag<opt>) return this->handle_flag<opt>(str);
+            else if constexpr (not has_argument<opt>) return this->handle_non_positional<opt>(str);
             else return this->handle_non_positional_with_arg<opt>(str);
         };
 
@@ -1359,7 +1398,7 @@ private:
     bool handle_positional(std::string_view opt_str) {
         const auto handle = [this]<typename opt>(std::string_view str) {
             // `this->` is to silence a warning.
-            if constexpr (detail::is_positional_v<opt>) return this->handle_positional_impl<opt>(str);
+            if constexpr (is_positional_v<opt>) return this->handle_positional_impl<opt>(str);
             else return false;
         };
 
@@ -1536,10 +1575,7 @@ struct short_option : detail::opt_impl<_name, _description, _type, {
 }> {
     static constexpr decltype(_name) name = _name;
     static constexpr decltype(_description) description = _description;
-    static constexpr bool is_flag = std::is_same_v<_type, bool>;
-    static constexpr bool is_required = required;
     static constexpr bool is_short = true;
-    static constexpr bool option_tag = true;
 
     constexpr short_option() = delete;
 };
@@ -1592,8 +1628,11 @@ struct func : func_impl<_name, _description, detail::make_lambda<cb>, required> 
 template <
     detail::static_string _name,
     detail::static_string _description = "",
-    bool hidden = false>
-struct flag : option<_name, _description, bool, {.hidden = hidden}> {};
+    flag_props props = {}>
+struct flag : option<_name, _description, bool, {.hidden = props.hidden}> {
+    static constexpr bool default_value = props.default_value;
+    static constexpr bool is_flag = true;
+};
 
 /// The help option.
 template <auto _help_cb = detail::default_help_handler>
