@@ -163,18 +163,6 @@ struct sort_impl<get_key, list<>> { using type = list<>; };
 template <template <typename> typename get_key, typename type_list>
 using sort = typename sort_impl<get_key, type_list>::type;
 
-/// Iterate over a pack while a condition is true.
-template <typename... pack>
-constexpr void While(bool& cond, auto&& lambda) {
-    auto impl = [&]<typename t>() -> bool {
-        if (not cond) return false;
-        lambda.template operator()<t>();
-        return true;
-    };
-
-    (void) (impl.template operator()<pack>() and ...);
-}
-
 // ===========================================================================
 //  Type Traits and Metaprogramming Types.
 // ===========================================================================
@@ -711,48 +699,32 @@ class internal::clopts_impl<
 
     /// Make sure no two options have the same name.
     static consteval bool check_duplicate_options() {
-        // State is ok initially.
-        bool ok = true;
         usz i = 0;
-
-        // Iterate over each option for each option.
-        While<opts...>(ok, [&]<typename opt>() {
+        return not list<opts...>::any([&]<typename opt>() {
             usz j = 0;
-            While<opts...>(ok, [&]<typename opt2>() {
-                // If the options are not the same, but their names are the same
-                // then this is an error. Iteration will stop at this point because
-                // \c ok is also the condition for the two loops.
-                ok = i == j or opt::name != opt2::name;
-                j++;
+            LIBBASE_DEFER { i++; };
+            return list<opts...>::any([&]<typename opt2>() {
+                LIBBASE_DEFER { j++; };
+                return i != j and opt::name == opt2::name;
             });
-            i++;
         });
-
-        // Return whether everything is ok.
-        return ok;
     }
 
     // This check is currently broken on MSVC 19.38 and later, for some reason.
 #if !defined(_MSC_VER) || defined(__clang__) || _MSC_VER < 1938
     /// Make sure that no option has a prefix that is a short option.
     static consteval bool check_short_opts() {
-        // State is ok initially.
-        bool ok = true;
-        usz i = 0;
-
         // Iterate over each option for each option.
-        While<opts...>(ok, [&]<typename opt>() {
+        usz i = 0;
+        return not list<opts...>::any([&]<typename opt>() {
             usz j = 0;
-            While<opts...>(ok, [&]<typename opt2>() {
+            LIBBASE_DEFER { i++; };
+            return list<opts...>::any([&]<typename opt2>() {
                 // Check the condition.
-                ok = i == j or not opt::is(opt_kind::short_option) or not opt2::name.sv().starts_with(opt::name.sv());
-                j++;
+                LIBBASE_DEFER { j++; };
+                return i != j and opt::is(opt_kind::short_option) and opt2::name.sv().starts_with(opt::name.sv());
             });
-            i++;
         });
-
-        // Return whether everything is ok.
-        return ok;
     }
 
     static_assert(check_short_opts(), "Option name may not start with the name of a short option");
@@ -765,18 +737,13 @@ class internal::clopts_impl<
 
     /// Validate that mutually_exclusive options exist.
     static consteval bool check_mutually_exclusive_exist() {
-        bool ok = true;
-        While<directives...>(ok, [&]<typename dir> {
-            if constexpr (dir::is(dir_kind::mutually_exclusive)) {
-                for (auto name : dir::options) {
-                    if (not((opts::name == name) or ...)) {
-                        ok = false;
-                        return;
-                    }
-                }
-            }
+        return not list<directives...>::any([&]<typename dir> {
+            if constexpr (dir::is(dir_kind::mutually_exclusive))
+                for (auto name : dir::options)
+                    if (not ((opts::name == name) or ...))
+                        return true;
+            return false;
         });
-        return ok;
     }
 
     /// Validate that we don’t require two required options to be mutually
@@ -811,7 +778,7 @@ class internal::clopts_impl<
                 }
 
                 // Alias references an option that does not exist.
-                if (not list<opts...>::any([&]<typename opt>() { return opt::name == dir::aliased; })) {
+                if (not ((opts::name == dir::aliased) or ...)) {
                     problem = "Option '"s + dir::aliased.sv() + "' referenced by alias '" + dir::name.sv() + "' does not exist";
                     return true;
                 }
@@ -1034,17 +1001,15 @@ private:
         if (not program_name.empty()) std::print(stderr, "{}: ", program_name);
         std::println(stderr, "{}", errmsg);
 
-        // Invoke the help option.
-        bool invoked = false;
-        auto invoke = [&]<typename opt> {
+        // Invoke the help option if there is one.
+        bool invoked = list<opts...>::any([&]<typename opt> {
             if constexpr (opt::is(opt_kind::help)) {
-                invoked = true;
                 invoke_help_callback<opt>();
+                return true;
+            } else {
+                return false;
             }
-        };
-
-        // If there is a help option, invoke it.
-        (invoke.template operator()<opts>(), ...);
+        });
 
         // If no help option was found, print the help message.
         if (not invoked) {
@@ -1471,24 +1436,18 @@ private:
 
     /// Invoke handle_regular_impl on every option until one returns true.
     bool try_non_positional(std::string_view opt_str) {
-        const auto handle = [this]<typename opt>(std::string_view str) {
-            // `this->` is to silence a warning.
+        return list<opts...>::any([&]<typename opt> {
             if constexpr (opt::is(opt_kind::positional)) return false;
-            else return try_non_positional<opt>(opt::name, str);
-        };
-
-        return (handle.template operator()<opts>(opt_str) or ...);
+            else return try_non_positional<opt>(opt::name, opt_str);
+        });
     }
 
     /// Invoke handle_positional_impl on every option until one returns true.
     bool try_positional(std::string_view opt_str) {
-        const auto handle = [this]<typename opt>(std::string_view str) {
-            // `this->` is to silence a warning.
-            if constexpr (opt::is(opt_kind::positional)) return this->handle_positional_impl<opt>(str);
+        return list<opts...>::any([&]<typename opt> {
+            if constexpr (opt::is(opt_kind::positional)) return handle_positional_impl<opt>(opt_str);
             else return false;
-        };
-
-        return (handle.template operator()<opts>(opt_str) or ...);
+        });
     }
 
     /// Check if we should stop parsing.

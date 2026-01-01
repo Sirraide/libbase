@@ -154,8 +154,8 @@ class DeferImpl {
     Callable c;
 
 public:
-    DeferImpl(Callable c) : c(std::move(c)) {}
-    ~DeferImpl() { c(); }
+    constexpr DeferImpl(Callable c) : c(std::move(c)) {}
+    constexpr ~DeferImpl() { c(); }
 };
 
 template <typename T>
