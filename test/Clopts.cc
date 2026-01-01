@@ -46,8 +46,8 @@ static void print_number_and_exit(void* arg, std::string_view) {
     std::exit(0);
 }
 
-static_assert(internal::is_positional_v<positional<"foo", "bar">>);
-static_assert(internal::is_positional_v<multiple<positional<"foo", "bar">>>);
+static_assert(positional<"foo", "bar">::is(internal::opt_kind::positional));
+static_assert(multiple<positional<"foo", "bar">>::is(internal::opt_kind::positional));
 
 using basic_options = clopts<
     option<"--string", "A string", std::string>,

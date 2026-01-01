@@ -68,3 +68,5 @@ int a(int argc, char** argv) {
 // expected-note@*           0+ {{}}
 // expected-note@base/Clopts.hh:* 0+ {{}}
 // expected-error@base/Clopts.hh:* 0+ {{no type named 'declared_type' in}}
+// expected-error@base/Clopts.hh:* 0+ {{no matching function for call to 'is'}}
+// expected-error@base/Clopts.hh:* 0+ {{implicit instantiation of undefined template}}

@@ -37,7 +37,6 @@ template <typename contents_type_t = fs::FileContents, typename path_type_t = fs
 struct file {
     using contents_type = contents_type_t;
     using path_type = path_type_t;
-    static constexpr bool is_file_data = true;
 
     /// The file path.
     path_type path;
@@ -54,6 +53,13 @@ struct opt_props {
     bool required = false;
     bool overridable = false;
     bool hidden = false;
+    bool multiple = false;
+
+    constexpr auto with_multiple() const -> opt_props {
+        opt_props copy = *this;
+        copy.multiple = true;
+        return copy;
+    }
 };
 
 /// Properties of flags.
@@ -67,6 +73,22 @@ using namespace std::literals;
 using namespace cmd;
 using utils::static_string;
 using utils::list;
+
+enum class opt_kind {
+    option,
+    positional,
+    short_option,
+    flag,
+    func,
+    help,
+    subcommand,
+    stop_parsing
+};
+
+enum class dir_kind {
+    alias,
+    mutually_exclusive,
+};
 
 template <typename... opts>
 class clopts_impl;
@@ -159,33 +181,20 @@ constexpr void While(bool& cond, auto&& lambda) {
 /// Empty type.
 struct empty {};
 
-/// Check if an option is a positional option.
 template <typename opt>
-struct is_positional {
-    static constexpr bool value = requires {{typename opt::is_positional_{}} -> std::same_as<std::true_type>; };
-    using type = std::bool_constant<value>;
-};
-
-template <typename opt> using positional_t = typename is_positional<opt>::type;
-
-// FIXME: This is jank; refactor this to be an enum and add a 'kind' member to every option and directive.
-template <typename opt> concept is_positional_v = is_positional<opt>::value;
-template <typename opt> concept is_short_option = requires { opt::is_short; };
-template <typename opt> concept is_multiple = requires { opt::is_multiple; };
-template <typename opt> concept is_alias = requires { opt::is_alias; };
-template <typename opt> concept is_flag = requires { opt::is_flag; };
-template <typename opt> concept is_subcommand = requires { opt::is_subcommand; };
-template <typename ty> concept is_values = requires { ty::is_values; };
-
-template <typename opt>
-struct is_regular_option {
-    static constexpr bool value = not is_positional<opt>::value and not is_subcommand<opt>;
+struct is_regular_filter {
+    static constexpr bool value = not opt::is(opt_kind::positional, opt_kind::subcommand);
     using type = std::bool_constant<value>;
 };
 
 template <typename opt>
-struct is_subcommand_option {
-    static constexpr bool value = is_subcommand<opt>;
+struct is_positional_filter {
+    static constexpr bool value = opt::is(opt_kind::positional);
+};
+
+template <typename opt>
+struct is_subcommand_filter {
+    static constexpr bool value = opt::is(opt_kind::subcommand);
     using type = std::bool_constant<value>;
 };
 
@@ -203,16 +212,7 @@ concept is_callback = utils::is<T, callback_arg_type, callback_noarg_type>;
 template <typename opt>
 concept has_argument =
     not utils::is<typename opt::declared_type, callback_noarg_type> and
-    not is_subcommand<opt>;
-
-/// Check if this is the help<> option.
-template <typename opt> concept is_help_option = requires { opt::is_help_option; };
-
-/// Whether we should include the argument type of an option in the
-/// help text. This is true for all options that take arguments, except
-/// the builtin help option.
-template <typename opt>
-concept should_print_argument_type = has_argument<opt> and not is_help_option<opt>;
+    not opt::is(opt_kind::subcommand);
 
 /// Helper for static asserts.
 template <typename t>
@@ -367,7 +367,6 @@ template <typename _type, auto... data>
 struct values_impl {
     using type = _type;
     constexpr values_impl() = delete;
-    static constexpr bool is_values = true;
 
     static constexpr bool is_valid_option_value(const type& val) {
         auto test = [val]<auto value>() -> bool {
@@ -398,10 +397,17 @@ template <string_or_int... data>
 requires values_must_be_all_strings_or_all_ints<data...>
 struct values : values_impl<std::conditional_t<(data.is_integer and ...), i64, std::string>, data...> {};
 
+template <typename>
+struct is_values { static constexpr bool value = false; };
+
+template <string_or_int... data>
+struct is_values<values<data...>> { static constexpr bool value = true; };
+
 // ===========================================================================
 //  Option Implementation.
 // ===========================================================================
 template <
+    opt_kind k,
     static_string _name,
     static_string _description,
     typename ty_param,
@@ -419,19 +425,29 @@ struct opt_impl {
     static_assert(sizeof _name.arr < 256, "Option name may not be longer than 256 characters");
     static constexpr decltype(_name) name = _name;
     static constexpr decltype(_description) description = _description;
-    static constexpr bool is_values = internal::is_values<declared_type>;
+    static constexpr bool is_values = internal::is_values<declared_type>::value;
     static constexpr auto properties = props;
-    static constexpr bool is_required = props.required;
-    static constexpr bool is_overridable = props.overridable;
-    static constexpr bool is_hidden = props.hidden;
-    static_assert(not is_required or not is_hidden, "Required options cannot be hidden");
+    static constexpr opt_kind kind = k;
+    static_assert(not props.required or not props.hidden, "Required options cannot be hidden");
 
     constexpr opt_impl() = delete;
+
+    [[nodiscard]] static constexpr bool is(std::same_as<opt_kind> auto ...ks) {
+        return ((ks == k) or ...);
+    }
 };
+
+struct directive_base {};
 
 /// A directive modifies the parsing process, but doesn’t correspond to
 /// any option on the command-line.
-struct directive {
+template <dir_kind k>
+struct directive : directive_base {
+    static constexpr dir_kind kind = k;
+    [[nodiscard]] static constexpr bool is(std::same_as<dir_kind> auto ...ks) {
+        return ((ks == k) or ...);
+    }
+
     // This is a hack to prevent follow-up errors if 'regular_option' is
     // instantiated with a directive as an argument. There is a constraint
     // that is supposed to prevent that, but it seems that Clang just ignores
@@ -476,7 +492,7 @@ struct find_help_option {
 template <typename opt, typename ...opts>
 struct find_help_option<list<opt, opts...>> {
     using type = std::conditional_t<
-        is_help_option<opt>,
+        opt::is(opt_kind::help),
         std::type_identity<opt>,
         find_help_option<list<opts...>>
     >::type;
@@ -507,7 +523,7 @@ struct apply_to_subcommand<std::false_type, subcommand<name, description, option
 template <typename help, typename opt>
 struct preprocess_subcommand {
     using type = std::conditional_t<
-        is_subcommand<opt>,
+        opt::is(opt_kind::subcommand),
         apply_to_subcommand<help, opt>,
         std::type_identity<opt>
     >::type;
@@ -525,38 +541,26 @@ struct preprocess_subcommands<list<opts...>> {
 };
 
 template <typename opt>
-struct is_values_option {
+struct is_values_filter {
     static constexpr bool value = opt::is_values;
 };
 
 /// Check if an option is a directive.
 template <typename opt>
 struct is_directive {
-    static constexpr bool value = std::derived_from<opt, directive>;
+    static constexpr bool value = std::derived_from<opt, directive_base>;
 };
 
 /// Check if an option is a regular option.
 template <typename opt>
 struct regular_option {
-    static constexpr bool value = not utils::is<typename opt::declared_type, special_tag>;
-};
-
-template <typename opt>
-requires std::derived_from<opt, directive>
-struct regular_option<opt> {
-    static constexpr bool value = false;
+    static constexpr bool value = not is_directive<opt>::value and not utils::is<typename opt::declared_type, special_tag>;
 };
 
 /// Check if an option is a special option.
 template <typename opt>
 struct special_option {
-    static constexpr bool value = not regular_option<opt>::value;
-};
-
-template <typename opt>
-requires std::derived_from<opt, directive>
-struct special_option<opt> {
-    static constexpr bool value = false;
+    static constexpr bool value = not is_directive<opt>::value and not regular_option<opt>::value;
 };
 }
 
@@ -741,7 +745,7 @@ class internal::clopts_impl<
             usz j = 0;
             While<opts...>(ok, [&]<typename opt2>() {
                 // Check the condition.
-                ok = i == j or not is_short_option<opt> or not opt2::name.sv().starts_with(opt::name.sv());
+                ok = i == j or not opt::is(opt_kind::short_option) or not opt2::name.sv().starts_with(opt::name.sv());
                 j++;
             });
             i++;
@@ -756,15 +760,14 @@ class internal::clopts_impl<
 
     /// Make sure there is at most one multiple<positional<>> option.
     static consteval usz validate_multiple() {
-        auto is_mul = []<typename opt>() { return is_multiple<opt>; };
-        return (... + (is_mul.template operator()<opts>() and internal::is_positional_v<opts>) );
+        return ((opts::properties.multiple and opts::is(opt_kind::positional)) + ...);
     }
 
     /// Validate that mutually_exclusive options exist.
     static consteval bool check_mutually_exclusive_exist() {
         bool ok = true;
         While<directives...>(ok, [&]<typename dir> {
-            if constexpr (requires { dir::is_mutually_exclusive; }) {
+            if constexpr (dir::is(dir_kind::mutually_exclusive)) {
                 for (auto name : dir::options) {
                     if (not((opts::name == name) or ...)) {
                         ok = false;
@@ -781,10 +784,10 @@ class internal::clopts_impl<
     static consteval bool check_mutually_exclusive_required() {
         bool ok = true;
         list<directives...>::each([&]<typename dir> {
-            if constexpr (requires { dir::is_mutually_exclusive; }) {
+            if constexpr (dir::is(dir_kind::mutually_exclusive)) {
                 [[maybe_unused]] bool found = false;
                 list<opts...>::each([&]<typename opt> {
-                    if (opt::is_required and rgs::contains(dir::options, str(opt::name))) {
+                    if (opt::properties.required and rgs::contains(dir::options, str(opt::name))) {
                         if (not found) found = true;
                         else ok = false;
                     }
@@ -800,7 +803,7 @@ class internal::clopts_impl<
         std::vector<Alias> aliases;
         std::string problem;
         bool has_error = list<directives...>::any([&]<typename dir>{
-            if constexpr (is_alias<dir>) {
+            if constexpr (dir::is(dir_kind::alias)) {
                 // Alias already exists.
                 if (auto it = rgs::find(aliases, dir::name.sv(), &Alias::first); it != aliases.end()) {
                     problem = "Alias '"s + dir::name.sv() + "' already references option '" + it->second + "'";
@@ -818,7 +821,7 @@ class internal::clopts_impl<
                 // Positional options can’t be aliased.
                 return list<opts...>::any([&]<typename opt> {
                     if constexpr (opt::name == dir::aliased) {
-                        if constexpr (is_positional_v<opt>) {
+                        if constexpr (opt::is(opt_kind::positional)) {
                             problem = "Alias '"s + dir::name.sv() + "' references a positional option: '" + dir::aliased.sv() + "'";
                             return true;
                         }
@@ -842,7 +845,7 @@ class internal::clopts_impl<
     static_assert(check_mutually_exclusive_required(), "Cannot mark two required options as mutually_exclusive<>");
     static_assert(check_aliases().first, check_aliases().second);
     static_assert(
-        ((is_flag<opts> or not std::same_as<typename opts::declared_type, bool>) and ...),
+        ((opts::is(opt_kind::flag) or not std::same_as<typename opts::declared_type, bool>) and ...),
         "Use flag<> for options with value type 'bool'"
     );
 
@@ -854,7 +857,8 @@ class internal::clopts_impl<
         using type = opt::parser::storage_type;
     };
 
-    template <is_multiple opt>
+    template <typename opt>
+    requires (opt::properties.multiple)
     struct storage_type<opt> {
         // We can just delegate to the parser since all the special cases
         // (e.g. multiple<>, subcommands, ...) aren’t valid as an argument
@@ -862,7 +866,8 @@ class internal::clopts_impl<
         using type = std::vector<typename opt::parser::storage_type>;
     };
 
-    template <is_subcommand opt>
+    template <typename opt>
+    requires (opt::is(opt_kind::subcommand))
     struct storage_type<opt> {
         using type = opt::declared_type::optvals_type;
     };
@@ -881,12 +886,14 @@ class internal::clopts_impl<
         using type = storage_type_t<opt>*;
     };
 
-    template <is_multiple opt>
+    template <typename opt>
+    requires (opt::properties.multiple)
     struct get_return_type<opt> {
         using type = MutableSpan<typename opt::parser::storage_type>;
     };
 
-    template <is_flag opt>
+    template <typename opt>
+    requires (opt::is(opt_kind::flag))
     struct get_return_type<opt> {
         using type = bool;
     };
@@ -899,7 +906,7 @@ class internal::clopts_impl<
     using help_string_t = static_string<1'024 + 1'024 * sizeof...(opts)>; // Size should be ‘big enough’™.
     using optvals_tuple_t = std::tuple<storage_type_t<opts>...>;
 
-    static constexpr bool has_stop_parsing = (requires { special::is_stop_parsing; } or ...);
+    static constexpr bool has_stop_parsing = (special::is(opt_kind::stop_parsing) or ...);
 
 public:
 #ifdef __cpp_lib_copyable_function
@@ -928,7 +935,7 @@ public:
             if constexpr (std::is_same_v<declared, bool>) return opts_found[opt_idx];
 
             // We always return a span to multiple<> options because the user can just check if it’s empty.
-            else if constexpr (is_multiple<opt>) return std::get<opt_idx>(optvals);
+            else if constexpr (opt::properties.multiple) return std::get<opt_idx>(optvals);
 
             // Otherwise, return nullptr if the option wasn’t found, and a pointer to the value otherwise.
             else return not opts_found[opt_idx] ? nullptr : std::addressof(std::get<opt_idx>(optvals));
@@ -938,7 +945,7 @@ public:
         constexpr optvals_type() {
             // Initialise flags to their default values.
             list<opts...>::each([&]<typename opt>{
-                if constexpr (is_flag<opt>) {
+                if constexpr (opt::is(opt_kind::flag)) {
                     if constexpr (opt::default_value) {
                         opts_found[optindex<opt::name>()] = true;
                     }
@@ -1030,7 +1037,7 @@ private:
         // Invoke the help option.
         bool invoked = false;
         auto invoke = [&]<typename opt> {
-            if constexpr (is_help_option<opt>) {
+            if constexpr (opt::is(opt_kind::help)) {
                 invoked = true;
                 invoke_help_callback<opt>();
             }
@@ -1096,10 +1103,10 @@ private:
     void set_found(bool value = true) {
         // Check if this option accepts multiple values.
         if constexpr (
-            not is_multiple<opt> and
-            not is_flag<opt> and
+            not opt::properties.multiple and
+            not opt::is(opt_kind::flag) and
             not internal::is_callback<typename opt::declared_type> and
-            not opt::is_overridable
+            not opt::properties.overridable
         ) {
             if (found<opt::name>()) handle_error("Duplicate option: '{}'", opt::name);
         }
@@ -1110,8 +1117,8 @@ private:
     /// Store an option value.
     template <typename opt>
     void store_option_value(auto value) {
-        if constexpr (is_flag<opt>) set_found<opt>(value);
-        else if constexpr (is_multiple<opt>) ref_to_storage<opt::name>().push_back(std::move(value));
+        if constexpr (opt::is(opt_kind::flag)) set_found<opt>(value);
+        else if constexpr (opt::properties.multiple) ref_to_storage<opt::name>().push_back(std::move(value));
         else ref_to_storage<opt::name>() = std::move(value);
     }
 
@@ -1120,14 +1127,14 @@ private:
     // =======================================================================
     /// Create the help message.
     static constexpr auto make_help_message() -> help_string_t { // clang-format off
-        using positional_unsorted = filter<is_positional, opts...>;
+        using positional_unsorted = filter<is_positional_filter, opts...>;
         using positional = sort<get_option_name_for_help_msg_sort, positional_unsorted>;
-        using regular = sort<get_option_name_for_help_msg_sort, filter<is_regular_option, opts...>>;
-        using subcommands = sort<get_option_name_for_help_msg_sort, filter<is_subcommand_option, opts...>>;
-        using values_opts = sort<get_option_name_for_help_msg_sort, filter<is_values_option, opts...>>;
+        using regular = sort<get_option_name_for_help_msg_sort, filter<is_regular_filter, opts...>>;
+        using subcommands = sort<get_option_name_for_help_msg_sort, filter<is_subcommand_filter, opts...>>;
+        using values_opts = sort<get_option_name_for_help_msg_sort, filter<is_values_filter, opts...>>;
         std::string msg{};
 
-        auto ShowInHelp = [&]<typename opt> { return not opt::is_hidden; };
+        auto ShowInHelp = [&]<typename opt> { return not opt::properties.hidden; };
         auto TypeName = [&]<typename opt> {
             if constexpr (std::same_as<typename opt::declared_type, callback_arg_type>) return str("arg");
             else return opt::parser::type_name();
@@ -1139,12 +1146,12 @@ private:
         // they’re supposed to appear in, so sorting would be very stupid
         // here.
         positional_unsorted::each([&]<typename opt> {
-            if constexpr (opt::is_hidden) return;
-            if (not opt::is_required) msg += "[";
+            if constexpr (opt::properties.hidden) return;
+            if (not opt::properties.required) msg += "[";
             msg += "<";
             msg += str(opt::name.arr, opt::name.len);
             msg += ">";
-            if (not opt::is_required) msg += "]";
+            if (not opt::properties.required) msg += "]";
             msg += " ";
         });
 
@@ -1158,7 +1165,7 @@ private:
         usz max_vals_opt_name_len{};
         usz max_len{};
         list<opts...>::each([&]<typename opt> {
-            if constexpr (opt::is_hidden) return;
+            if constexpr (opt::properties.hidden) return;
             if constexpr (opt::is_values)
                 max_vals_opt_name_len = std::max(max_vals_opt_name_len, opt::name.len);
 
@@ -1172,21 +1179,22 @@ private:
             // Apart from the type name, we also need to account for the extra
             // formatting characters.
             usz len = 0;
-            if constexpr (should_print_argument_type<opt>) {
-                len = opt::name.len + TypeName.template operator()<opt>().size() + (is_positional_v<opt> or is_flag<opt> ? 5 : 3);
+            if constexpr (has_argument<opt>) {
+                len = opt::name.len + TypeName.template operator()<opt>().size();
+                len += opt::is(opt_kind::positional, opt_kind::flag) ? 5 : 3;
             }
 
             // Otherwise, we only care about the name of the option and the
             // extra '<>' of positional options.
             else {
                 len = opt::name.len;
-                if constexpr (is_positional_v<opt>) len += 2;
+                if constexpr (opt::is(opt_kind::positional)) len += 2;
             }
 
             // Additionally, include any aliases that this option may have. Each
             // alias is printed inline after the option name and preceded by ', '.
             list<directives...>::each([&]<typename dir> {
-                if constexpr (is_alias<dir>) {
+                if constexpr (dir::is(dir_kind::alias)) {
                     if constexpr (dir::aliased == opt::name) {
                         len += dir::name.size() + 2;
                     }
@@ -1198,18 +1206,18 @@ private:
 
         // Append an argument.
         auto Append = [&]<typename opt> {
-            if constexpr (opt::is_hidden) return;
+            if constexpr (opt::properties.hidden) return;
             msg += "    ";
             auto old_len = msg.size();
 
             // Append name.
-            if constexpr (is_positional_v<opt>) msg += "<";
+            if constexpr (opt::is(opt_kind::positional)) msg += "<";
             msg += str(opt::name.arr, opt::name.len);
-            if constexpr (is_positional_v<opt>) msg += ">";
+            if constexpr (opt::is(opt_kind::positional)) msg += ">";
 
             // Append aliases.
             list<directives...>::each([&]<typename dir> {
-                if constexpr (is_alias<dir>) {
+                if constexpr (dir::is(dir_kind::alias)) {
                     if constexpr (dir::aliased == opt::name) {
                         msg += ", ";
                         msg += dir::name.sv();
@@ -1218,14 +1226,14 @@ private:
             });
 
             // Append type.
-            if constexpr (should_print_argument_type<opt>) {
-                if constexpr (is_positional_v<opt>) {
+            if constexpr (has_argument<opt>) {
+                if constexpr (opt::is(opt_kind::positional)) {
                     msg += " : ";
                     msg += TypeName.template operator()<opt>();
-                } else if constexpr (is_flag<opt>) {
+                } else if constexpr (opt::is(opt_kind::flag)) {
                     msg += "[=<bool>]";
                 } else {
-                    msg += is_short_option<opt> ? " <" : "=<";
+                    msg += opt::is(opt_kind::short_option) ? " <" : "=<";
                     msg += TypeName.template operator()<opt>();
                     msg += ">";
                 }
@@ -1260,10 +1268,10 @@ private:
         }
 
         // If we have any values<> types, print their supported values.
-        if constexpr (((opts::is_values and not opts::is_hidden) or ...)) {
+        if constexpr (((opts::is_values and not opts::properties.hidden) or ...)) {
             msg += "\nSupported option values:\n";
             values_opts::each([&] <typename opt> {
-                if constexpr (opt::is_hidden) return;
+                if constexpr (opt::properties.hidden) return;
                 if constexpr (opt::is_values) {
                     msg += "    ";
                     msg += str(opt::name.arr, opt::name.len);
@@ -1339,7 +1347,7 @@ private:
         // --option=value or short opt.
         if (opt_str.size() > name_or_alias.size()) {
             // Parse the rest of the option as the value if we have a '=' or if this is a short option.
-            if (opt_str[name_or_alias.size()] == '=' or is_short_option<opt>) {
+            if (opt_str[name_or_alias.size()] == '=' or opt::is(opt_kind::short_option)) {
                 // Otherwise, parse the value.
                 auto opt_start_offs = name_or_alias.size() + (opt_str[name_or_alias.size()] == '=');
                 auto opt_val = opt_str.substr(opt_start_offs);
@@ -1404,14 +1412,14 @@ private:
         // If it’s a callable, call it.
         if constexpr (internal::is_callback<typename opt::declared_type>) {
             // The builtin help option is handled here. We pass the help message as an argument.
-            if constexpr (is_help_option<opt>) invoke_help_callback<opt>();
+            if constexpr (opt::is(opt_kind::help)) invoke_help_callback<opt>();
 
             // If it’s not the help option, just invoke it.
             else { opt::callback(user_data, opt_str); }
         }
 
         // If it’s a subcommand, dispatch all remaining arguments to its parser.
-        if constexpr (internal::is_subcommand<opt>) {
+        if constexpr (opt::is(opt_kind::subcommand)) {
             auto parsed = opt::declared_type::parse_impl(
                 program_name,
                 argc - argi - 1,
@@ -1434,7 +1442,7 @@ private:
         static_assert(not internal::is_callback<typename opt::declared_type>, "positional<>s may not have a callback");
 
         // If we've already encountered this positional option, then return.
-        if constexpr (not is_multiple<opt>) {
+        if constexpr (not opt::properties.multiple) {
             if (found<opt::name>()) return false;
         }
 
@@ -1445,7 +1453,7 @@ private:
 
     template <typename opt>
     bool try_non_positional(str name_or_alias, std::string_view str) {
-        if constexpr (is_flag<opt>) return this->handle_flag<opt>(name_or_alias, str);
+        if constexpr (opt::is(opt_kind::flag)) return this->handle_flag<opt>(name_or_alias, str);
         else if constexpr (not has_argument<opt>) return this->handle_non_positional_without_arg<opt>(name_or_alias, str);
         else return this->handle_non_positional_with_arg<opt>(name_or_alias, str);
     }
@@ -1453,7 +1461,7 @@ private:
     /// Try to see if this is an alias.
     bool try_alias(std::string_view opt_str) {
         return list<directives...>::any([&]<typename dir>{
-            if constexpr (is_alias<dir>) {
+            if constexpr (dir::is(dir_kind::alias)) {
                 return try_non_positional<opt_by_name<dir::aliased>>(dir::name, opt_str);
             } else {
                 return false;
@@ -1465,7 +1473,7 @@ private:
     bool try_non_positional(std::string_view opt_str) {
         const auto handle = [this]<typename opt>(std::string_view str) {
             // `this->` is to silence a warning.
-            if constexpr (is_positional_v<opt>) return false;
+            if constexpr (opt::is(opt_kind::positional)) return false;
             else return try_non_positional<opt>(opt::name, str);
         };
 
@@ -1476,7 +1484,7 @@ private:
     bool try_positional(std::string_view opt_str) {
         const auto handle = [this]<typename opt>(std::string_view str) {
             // `this->` is to silence a warning.
-            if constexpr (is_positional_v<opt>) return this->handle_positional_impl<opt>(str);
+            if constexpr (opt::is(opt_kind::positional)) return this->handle_positional_impl<opt>(str);
             else return false;
         };
 
@@ -1486,7 +1494,7 @@ private:
     /// Check if we should stop parsing.
     template <typename opt>
     bool stop_parsing(std::string_view opt_str) {
-        if constexpr (requires { opt::is_stop_parsing; }) return opt_str == opt::name.sv();
+        if constexpr (opt::is(opt_kind::stop_parsing)) return opt_str == opt::name.sv();
         return false;
     }
 
@@ -1514,7 +1522,7 @@ private:
 
         // Make sure all required options were found.
         list<opts...>::each([&]<typename opt> {
-            if constexpr (opt::is_required) {
+            if constexpr (opt::properties.required) {
                 if (not found<opt::name>()) {
                     handle_error("Option '{}' is required", opt::name);
                 }
@@ -1523,7 +1531,7 @@ private:
 
         // Make sure that mutually_exclusive is respected.
         list<directives...>::each([&]<typename dir> {
-            if constexpr (requires { dir::is_mutually_exclusive; }) {
+            if constexpr (dir::is(dir_kind::mutually_exclusive)) {
                 std::optional<str> prev;
                 list<opts...>::each([&]<typename opt> {
                     if (found<opt::name>() and rgs::contains(dir::options, str(opt::name))) {
@@ -1564,7 +1572,7 @@ private:
 public:
     /// Access a subcommand.
     template <static_string s>
-    requires is_subcommand<opt_by_name<s>>
+    requires (opt_by_name<s>::is(opt_kind::subcommand))
     using command = opt_by_name<s>::declared_type;
 
     /// \brief Parse command line options.
@@ -1623,7 +1631,7 @@ template <
     static_string description,
     typename type = std::string,
     opt_props props = {}>
-struct option : internal::opt_impl<name, description, type, props> {};
+struct option : internal::opt_impl<internal::opt_kind::option, name, description, type, props> {};
 
 /// Identical to 'option', but overridable by default.
 template <
@@ -1648,14 +1656,13 @@ template <
     bool required = false,
     bool overridable = false,
     bool hidden = false>
-struct short_option : internal::opt_impl<_name, _description, _type, {
+struct short_option : internal::opt_impl<internal::opt_kind::short_option, _name, _description, _type, {
     .required = required,
     .overridable = overridable,
     .hidden = hidden
 }> {
     static constexpr decltype(_name) name = _name;
     static constexpr decltype(_description) description = _description;
-    static constexpr bool is_short = true;
 
     constexpr short_option() = delete;
 };
@@ -1676,66 +1683,94 @@ using short_option [[deprecated("Use short_option instead of experimental::short
 /// Positional options cannot be overridable; use multiple<positional<>>
 /// instead.
 template <
-    static_string _name,
-    static_string _description,
-    typename _type = std::string,
+    static_string name,
+    static_string description,
+    typename type = std::string,
     bool required = true>
-struct positional : option<_name, _description, _type, {.required = required}> {
-    using is_positional_ = std::true_type;
-};
+struct positional : internal::opt_impl<
+    internal::opt_kind::positional,
+    name,
+    description,
+    type,
+    {.required = required}
+> {};
 
 /// Func option implementation.
 template <
-    static_string _name,
-    static_string _description,
+    internal::opt_kind kind,
+    static_string name,
+    static_string description,
     typename lambda,
     bool required = false>
-struct func_impl : option<_name, _description, typename lambda::type, {.required = required}> {
+struct func_impl : internal::opt_impl<
+    kind,
+    name,
+    description,
+    typename lambda::type,
+    {.required = required}
+> {
     static constexpr typename lambda::lambda callback = {};
 };
 
 /// A function option.
 template <
-    static_string _name,
-    static_string _description,
+    static_string name,
+    static_string description,
     auto cb,
     bool required = false>
-struct func : func_impl<_name, _description, internal::make_lambda<cb>, required> {};
+struct func : func_impl<
+    internal::opt_kind::func,
+    name,
+    description,
+    internal::make_lambda<cb>,
+    required
+> {};
 
 /// A flag option.
 ///
 /// Flags are never required because that wouldn’t make much sense.
 template <
-    static_string _name,
-    static_string _description = "",
+    static_string name,
+    static_string description = "",
     flag_props props = {}>
-struct flag : option<_name, _description, bool, {.hidden = props.hidden}> {
+struct flag : internal::opt_impl<
+    internal::opt_kind::flag,
+    name,
+    description,
+    bool,
+    {.hidden = props.hidden}
+> {
     static constexpr bool default_value = props.default_value;
-    static constexpr bool is_flag = true;
 };
 
 /// The help option.
-template <auto _help_cb = internal::default_help_handler>
-struct help : func<"--help", "Print this help information", [] {}> {
-    static constexpr decltype(_help_cb) help_callback = _help_cb;
-    static constexpr bool is_help_option = true;
+template <auto help_cb = internal::default_help_handler>
+struct help : func_impl<
+    internal::opt_kind::help,
+    "--help",
+    "Print this help information",
+    internal::make_lambda<[] {}>
+> {
+    static constexpr decltype(help_cb) help_callback = help_cb;
 };
 
 /// Multiple meta-option.
 template <typename opt>
-struct multiple : option<opt::name, opt::description, typename opt::declared_type, opt::properties> {
+struct multiple : internal::opt_impl<
+    opt::kind,
+    opt::name,
+    opt::description,
+    typename opt::declared_type,
+    opt::properties.with_multiple()
+> {
     static_assert(not utils::is<typename opt::declared_type, bool>, "Type of multiple<> cannot be bool");
     static_assert(not utils::is<typename opt::declared_type, internal::callback_arg_type>, "Type of multiple<> cannot be a callback");
     static_assert(not utils::is<typename opt::declared_type, internal::callback_noarg_type>, "Type of multiple<> cannot be a callback");
-    static_assert(not internal::is_multiple<opt>, "multiple<multiple<>> is invalid");
-    static_assert(not requires { opt::is_stop_parsing; }, "multiple<stop_parsing<>> is invalid");
-    static_assert(not requires { opt::is_subcommand; }, "multiple<subcommand<>> is invalid");
-    static_assert(not opt::is_overridable, "multiple<> cannot be overridable");
-
+    static_assert(not opt::properties.multiple, "multiple<multiple<>> is invalid");
+    static_assert(not opt::is(internal::opt_kind::stop_parsing), "multiple<stop_parsing<>> is invalid");
+    static_assert(not opt::is(internal::opt_kind::subcommand), "multiple<subcommand<>> is invalid");
+    static_assert(not opt::properties.overridable, "multiple<> cannot be overridable");
     constexpr multiple() = delete;
-    static constexpr bool is_multiple = true;
-    static constexpr bool is_short = internal::is_short_option<opt>;
-    using is_positional_ = internal::positional_t<opt>;
 };
 
 /// Subcommand; this essentially introduces a set of options that is only parsed if
@@ -1745,30 +1780,36 @@ template <
     static_string description,
     typename ...options
 >
-struct subcommand : option<name, description, clopts<options...>> {
-    static constexpr bool is_subcommand = true;
-};
+struct subcommand : internal::opt_impl<
+    internal::opt_kind::subcommand,
+    name,
+    description,
+    clopts<options...>,
+    {}
+> {};
 
 /// Stop parsing when this option is encountered.
 template <static_string stop_at = "--">
-struct stop_parsing : option<stop_at, "Stop parsing command-line arguments", internal::special_tag> {
-    static constexpr bool is_stop_parsing = true;
-};
+struct stop_parsing : internal::opt_impl<
+    internal::opt_kind::stop_parsing,
+    stop_at,
+    "Stop parsing command-line arguments",
+    internal::special_tag,
+    {}
+> {};
 
 /// An option alias.
 template <static_string new_name, static_string aliased_option>
-struct alias : internal::directive {
-    static constexpr bool is_alias = true;
+struct alias : internal::directive<internal::dir_kind::alias> {
     static constexpr decltype(new_name) name = new_name;
     static constexpr decltype(aliased_option) aliased = aliased_option;
 };
 
 /// Mark that of a set of options, only one can be specified.
 template <static_string ...opts>
-struct mutually_exclusive : internal::directive {
+struct mutually_exclusive : internal::directive<internal::dir_kind::mutually_exclusive> {
     static_assert(sizeof...(opts) > 1, "mutually_exclusive<> must have at least 2 arguments");
     static constexpr std::array<str, sizeof...(opts)> options{str(opts.sv())...};
-    static constexpr bool is_mutually_exclusive = true;
 
 private:
     static consteval bool validate() {
