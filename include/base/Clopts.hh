@@ -12,7 +12,6 @@
 #include <functional>
 #include <optional>
 #include <print>
-#include <span>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -62,9 +61,8 @@ struct flag_props {
     bool hidden = false;
     bool default_value = false;
 };
-}
 
-namespace base::detail {
+namespace internal {
 using namespace std::literals;
 using namespace cmd;
 using utils::static_string;
@@ -421,7 +419,7 @@ struct opt_impl {
     static_assert(sizeof _name.arr < 256, "Option name may not be longer than 256 characters");
     static constexpr decltype(_name) name = _name;
     static constexpr decltype(_description) description = _description;
-    static constexpr bool is_values = detail::is_values<declared_type>;
+    static constexpr bool is_values = internal::is_values<declared_type>;
     static constexpr auto properties = props;
     static constexpr bool is_required = props.required;
     static constexpr bool is_overridable = props.overridable;
@@ -561,10 +559,10 @@ struct special_option<opt> {
     static constexpr bool value = false;
 };
 }
+
 // ===========================================================================
 //  Parsers
 // ===========================================================================
-namespace base::cmd {
 /// Parser for strings.
 template <>
 struct parser<std::string> {
@@ -589,8 +587,8 @@ struct parser<bool> {
 
 /// Parser for 'values<>'.
 template <auto... vs>
-struct parser<detail::values<vs...>> {
-    using vals = detail::values<vs...>;
+struct parser<internal::values<vs...>> {
+    using vals = internal::values<vs...>;
     using element_parser = parser<typename vals::type>;
     using storage_type = element_parser::storage_type;
 
@@ -604,7 +602,7 @@ struct parser<detail::values<vs...>> {
 };
 
 /// Parser for integer types.
-template <detail::is_integer Int>
+template <internal::is_integer Int>
 struct parser<Int> {
     using storage_type = Int;
     static auto parse(std::string_view arg) -> Result<Int> {
@@ -613,7 +611,7 @@ struct parser<Int> {
 
     static constexpr auto type_name() -> std::string {
         std::string buf = std::signed_integral<Int> ? "i" : "u";
-        buf += detail::constexpr_to_string(Size::Of<Int>().bits());
+        buf += internal::constexpr_to_string(Size::Of<Int>().bits());
         return buf;
     }
 };
@@ -628,7 +626,7 @@ struct parser<Float> {
 
     static constexpr auto type_name() -> std::string {
         std::string buf = "f";
-        buf += detail::constexpr_to_string(Size::Of<Float>().bits());
+        buf += internal::constexpr_to_string(Size::Of<Float>().bits());
         return buf;
     }
 };
@@ -646,15 +644,15 @@ struct parser<file<ContentsType, PathType>> {
 
     static constexpr auto type_name() -> str { return "file"; }
 };
-}
+
 // ===========================================================================
 //  Main Implementation.
 // ===========================================================================
 template <typename... opts, typename... special, typename... directives>
-class base::detail::clopts_impl<
-    base::utils::list<opts...>,
-    base::utils::list<special...>,
-    base::utils::list<directives...>
+class internal::clopts_impl<
+    internal::list<opts...>,
+    internal::list<special...>,
+    internal::list<directives...>
 > {
     LIBBASE_IMMOVABLE(clopts_impl);
 
@@ -759,7 +757,7 @@ class base::detail::clopts_impl<
     /// Make sure there is at most one multiple<positional<>> option.
     static consteval usz validate_multiple() {
         auto is_mul = []<typename opt>() { return is_multiple<opt>; };
-        return (... + (is_mul.template operator()<opts>() and detail::is_positional_v<opts>) );
+        return (... + (is_mul.template operator()<opts>() and internal::is_positional_v<opts>) );
     }
 
     /// Validate that mutually_exclusive options exist.
@@ -1075,7 +1073,7 @@ private:
 
         // Invalid help option callback.
         else static_assert(
-            detail::always_false<opt>,
+            internal::always_false<opt>,
             "Invalid help option signature. Consult the README for more information"
         );
     }
@@ -1100,7 +1098,7 @@ private:
         if constexpr (
             not is_multiple<opt> and
             not is_flag<opt> and
-            not detail::is_callback<typename opt::declared_type> and
+            not internal::is_callback<typename opt::declared_type> and
             not opt::is_overridable
         ) {
             if (found<opt::name>()) handle_error("Duplicate option: '{}'", opt::name);
@@ -1311,7 +1309,7 @@ private:
         set_found<opt>();
 
         // If this is a function option, simply call the callback and we're done.
-        if constexpr (detail::is_callback<declared>) {
+        if constexpr (internal::is_callback<declared>) {
             if constexpr (utils::is<declared, callback_noarg_type>) opt::callback(user_data, opt::name.sv());
             else opt::callback(user_data, opt::name.sv(), opt_val);
         }
@@ -1404,7 +1402,7 @@ private:
         set_found<opt>();
 
         // If it’s a callable, call it.
-        if constexpr (detail::is_callback<typename opt::declared_type>) {
+        if constexpr (internal::is_callback<typename opt::declared_type>) {
             // The builtin help option is handled here. We pass the help message as an argument.
             if constexpr (is_help_option<opt>) invoke_help_callback<opt>();
 
@@ -1413,7 +1411,7 @@ private:
         }
 
         // If it’s a subcommand, dispatch all remaining arguments to its parser.
-        if constexpr (detail::is_subcommand<opt>) {
+        if constexpr (internal::is_subcommand<opt>) {
             auto parsed = opt::declared_type::parse_impl(
                 program_name,
                 argc - argi - 1,
@@ -1433,7 +1431,7 @@ private:
     /// Handle a positional option.
     template <typename opt>
     bool handle_positional_impl(std::string_view opt_str) {
-        static_assert(not detail::is_callback<typename opt::declared_type>, "positional<>s may not have a callback");
+        static_assert(not internal::is_callback<typename opt::declared_type>, "positional<>s may not have a callback");
 
         // If we've already encountered this positional option, then return.
         if constexpr (not is_multiple<opt>) {
@@ -1601,57 +1599,56 @@ public:
             user_data
         );
     }
-}; // namespace detail
+}; // namespace internal
 
 /// ===========================================================================
 ///  API
 /// ===========================================================================
-namespace base::cmd {
 /// Main command-line options type.
 ///
 /// See docs/clopts.md
 template <typename... opts>
-using clopts = detail::clopts_impl< // clang-format off
-    typename detail::preprocess_subcommands<detail::filter<detail::regular_option, opts...>>::type,
-    detail::filter<detail::special_option, opts...>,
-    detail::filter<detail::is_directive, opts...>
+using clopts = internal::clopts_impl< // clang-format off
+    typename internal::preprocess_subcommands<internal::filter<internal::regular_option, opts...>>::type,
+    internal::filter<internal::special_option, opts...>,
+    internal::filter<internal::is_directive, opts...>
 >; // clang-format on
 
 /// Types.
-using detail::values;
+using internal::values;
 
 /// Base option type.
 template <
-    detail::static_string name,
-    detail::static_string description,
+    static_string name,
+    static_string description,
     typename type = std::string,
     opt_props props = {}>
-struct option : detail::opt_impl<name, description, type, props> {};
+struct option : internal::opt_impl<name, description, type, props> {};
 
 /// Identical to 'option', but overridable by default.
 template <
-    detail::static_string _name,
-    detail::static_string _description,
+    static_string _name,
+    static_string _description,
     typename type = std::string,
     bool required = false>
 struct overridable : option<_name, _description, type, {.required = required, .overridable = true}> {};
 
 /// Identical to 'option', but hidden by default.
 template <
-    detail::static_string _name,
-    detail::static_string _description,
+    static_string _name,
+    static_string _description,
     typename type = std::string>
 struct hidden : option<_name, _description, type, {.hidden = true}> {};
 
 /// Base short option type.
 template <
-    detail::static_string _name,
-    detail::static_string _description = "",
+    static_string _name,
+    static_string _description = "",
     typename _type = std::string,
     bool required = false,
     bool overridable = false,
     bool hidden = false>
-struct short_option : detail::opt_impl<_name, _description, _type, {
+struct short_option : internal::opt_impl<_name, _description, _type, {
     .required = required,
     .overridable = overridable,
     .hidden = hidden
@@ -1665,8 +1662,8 @@ struct short_option : detail::opt_impl<_name, _description, _type, {
 
 namespace experimental {
 template <
-    detail::static_string _name,
-    detail::static_string _description = "",
+    static_string _name,
+    static_string _description = "",
     typename _type = std::string,
     bool required = false,
     bool overridable = false>
@@ -1679,8 +1676,8 @@ using short_option [[deprecated("Use short_option instead of experimental::short
 /// Positional options cannot be overridable; use multiple<positional<>>
 /// instead.
 template <
-    detail::static_string _name,
-    detail::static_string _description,
+    static_string _name,
+    static_string _description,
     typename _type = std::string,
     bool required = true>
 struct positional : option<_name, _description, _type, {.required = required}> {
@@ -1689,8 +1686,8 @@ struct positional : option<_name, _description, _type, {.required = required}> {
 
 /// Func option implementation.
 template <
-    detail::static_string _name,
-    detail::static_string _description,
+    static_string _name,
+    static_string _description,
     typename lambda,
     bool required = false>
 struct func_impl : option<_name, _description, typename lambda::type, {.required = required}> {
@@ -1699,18 +1696,18 @@ struct func_impl : option<_name, _description, typename lambda::type, {.required
 
 /// A function option.
 template <
-    detail::static_string _name,
-    detail::static_string _description,
+    static_string _name,
+    static_string _description,
     auto cb,
     bool required = false>
-struct func : func_impl<_name, _description, detail::make_lambda<cb>, required> {};
+struct func : func_impl<_name, _description, internal::make_lambda<cb>, required> {};
 
 /// A flag option.
 ///
 /// Flags are never required because that wouldn’t make much sense.
 template <
-    detail::static_string _name,
-    detail::static_string _description = "",
+    static_string _name,
+    static_string _description = "",
     flag_props props = {}>
 struct flag : option<_name, _description, bool, {.hidden = props.hidden}> {
     static constexpr bool default_value = props.default_value;
@@ -1718,7 +1715,7 @@ struct flag : option<_name, _description, bool, {.hidden = props.hidden}> {
 };
 
 /// The help option.
-template <auto _help_cb = detail::default_help_handler>
+template <auto _help_cb = internal::default_help_handler>
 struct help : func<"--help", "Print this help information", [] {}> {
     static constexpr decltype(_help_cb) help_callback = _help_cb;
     static constexpr bool is_help_option = true;
@@ -1728,24 +1725,24 @@ struct help : func<"--help", "Print this help information", [] {}> {
 template <typename opt>
 struct multiple : option<opt::name, opt::description, typename opt::declared_type, opt::properties> {
     static_assert(not utils::is<typename opt::declared_type, bool>, "Type of multiple<> cannot be bool");
-    static_assert(not utils::is<typename opt::declared_type, detail::callback_arg_type>, "Type of multiple<> cannot be a callback");
-    static_assert(not utils::is<typename opt::declared_type, detail::callback_noarg_type>, "Type of multiple<> cannot be a callback");
-    static_assert(not detail::is_multiple<opt>, "multiple<multiple<>> is invalid");
+    static_assert(not utils::is<typename opt::declared_type, internal::callback_arg_type>, "Type of multiple<> cannot be a callback");
+    static_assert(not utils::is<typename opt::declared_type, internal::callback_noarg_type>, "Type of multiple<> cannot be a callback");
+    static_assert(not internal::is_multiple<opt>, "multiple<multiple<>> is invalid");
     static_assert(not requires { opt::is_stop_parsing; }, "multiple<stop_parsing<>> is invalid");
     static_assert(not requires { opt::is_subcommand; }, "multiple<subcommand<>> is invalid");
     static_assert(not opt::is_overridable, "multiple<> cannot be overridable");
 
     constexpr multiple() = delete;
     static constexpr bool is_multiple = true;
-    static constexpr bool is_short = detail::is_short_option<opt>;
-    using is_positional_ = detail::positional_t<opt>;
+    static constexpr bool is_short = internal::is_short_option<opt>;
+    using is_positional_ = internal::positional_t<opt>;
 };
 
 /// Subcommand; this essentially introduces a set of options that is only parsed if
 /// the subcommand is specified.
 template <
-    detail::static_string name,
-    detail::static_string description,
+    static_string name,
+    static_string description,
     typename ...options
 >
 struct subcommand : option<name, description, clopts<options...>> {
@@ -1754,13 +1751,13 @@ struct subcommand : option<name, description, clopts<options...>> {
 
 /// Stop parsing when this option is encountered.
 template <static_string stop_at = "--">
-struct stop_parsing : option<stop_at, "Stop parsing command-line arguments", detail::special_tag> {
+struct stop_parsing : option<stop_at, "Stop parsing command-line arguments", internal::special_tag> {
     static constexpr bool is_stop_parsing = true;
 };
 
 /// An option alias.
 template <static_string new_name, static_string aliased_option>
-struct alias : detail::directive {
+struct alias : internal::directive {
     static constexpr bool is_alias = true;
     static constexpr decltype(new_name) name = new_name;
     static constexpr decltype(aliased_option) aliased = aliased_option;
@@ -1768,7 +1765,7 @@ struct alias : detail::directive {
 
 /// Mark that of a set of options, only one can be specified.
 template <static_string ...opts>
-struct mutually_exclusive : detail::directive {
+struct mutually_exclusive : internal::directive {
     static_assert(sizeof...(opts) > 1, "mutually_exclusive<> must have at least 2 arguments");
     static constexpr std::array<str, sizeof...(opts)> options{str(opts.sv())...};
     static constexpr bool is_mutually_exclusive = true;

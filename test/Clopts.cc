@@ -46,8 +46,8 @@ static void print_number_and_exit(void* arg, std::string_view) {
     std::exit(0);
 }
 
-static_assert(detail::is_positional_v<positional<"foo", "bar">>);
-static_assert(detail::is_positional_v<multiple<positional<"foo", "bar">>>);
+static_assert(internal::is_positional_v<positional<"foo", "bar">>);
+static_assert(internal::is_positional_v<multiple<positional<"foo", "bar">>>);
 
 using basic_options = clopts<
     option<"--string", "A string", std::string>,
@@ -712,7 +712,7 @@ Supported option values:
 }
 
 static_assert(std::is_same_v<
-    detail::concat<utils::list<int, double>, utils::list<char, short>>,
+    internal::concat<utils::list<int, double>, utils::list<char, short>>,
     utils::list<int, double, char, short>
 >);
 
