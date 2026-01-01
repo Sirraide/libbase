@@ -418,9 +418,7 @@ struct opt_impl {
     using parser = parser<declared_type>;
 
     /// Make sure this is a valid option.
-    static_assert(sizeof _description.arr < 512, "Description may not be longer than 512 characters");
     static_assert(_name.len > 0, "Option name may not be empty");
-    static_assert(sizeof _name.arr < 256, "Option name may not be longer than 256 characters");
     static constexpr decltype(_name) name = _name;
     static constexpr decltype(_description) description = _description;
     static constexpr bool is_values = internal::is_values<declared_type>::value;
