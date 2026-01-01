@@ -292,4 +292,10 @@ if (LIBBASE_BUILD_TESTS)
                 -I "${PROJECT_SOURCE_DIR}/include"
         )
     endif()
+
+    ## Local test file that I use to experiment w/ things.
+    if (LIBBASE_BUILD_TEST_PROGRAM)
+        add_executable(test-program out/test.cc)
+        target_link_libraries(test-program libbase)
+    endif()
 endif()

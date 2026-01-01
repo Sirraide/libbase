@@ -1411,7 +1411,7 @@ TEST_CASE("Clopts: flag<> explicit value") {
     CHECK_THROWS(options::parse(args4.size(), args4.data(), error_handler));
 }
 
-/*TEST_CASE("Aliased options are equivalent") {
+TEST_CASE("Clopts: Aliased options are equivalent") {
     using options = clopts<
         multiple<option<"--string", "A string", std::string>>,
         alias<"-s", "--string">
@@ -1426,12 +1426,51 @@ TEST_CASE("Clopts: flag<> explicit value") {
     };
 
     auto opts = options::parse(args.size(), args.data(), error_handler);
-    REQUIRE(opts.get<"--string">() == opts.get<"-s">());
-    REQUIRE(opts.get<"-s">()->size() == 2);
-    CHECK(opts.get<"-s">()->at(0) == "123");
-    CHECK(opts.get<"-s">()->at(1) == "456");
-}*/
+    REQUIRE(opts.get<"--string">().size() == 2);
+    CHECK(opts.get<"--string">().at(0) == "123");
+    CHECK(opts.get<"--string">().at(1) == "456");
+}
+
+TEST_CASE("Clopts: alias<> help message") {
+    using options = clopts<
+        positional<"pos", "Description of parameter pos">,
+        positional<"int-pos", "Description of parameter int-pos", std::int64_t, false>,
+        option<"--str", "Description of parameter --str", std::string>,
+        short_option<"--int", "Description of parameter --int", std::int64_t>,
+        flag<"--flag", "Description of parameter --flag">,
+        option<"--str-values", "Description of parameter --str-values", values<"foo", "bar", "baz">>,
+        option<"--num-values", "Description of parameter --int-values", values<1, 2, 3, 4, 5>>,
+        overridable<"--ref", "Description of reference parameter", double>,
+        alias<"-s", "--str">,
+        alias<"-i", "--int">,
+        alias<"-f", "--flag">,
+        alias<"--values", "--num-values">,
+        help<>
+    >;
+
+    static constexpr auto expected = R"help(<pos> [<int-pos>] [options]
+
+Arguments:
+    <int-pos> : i64               Description of parameter int-pos
+    <pos> : string                Description of parameter pos
+
+Options:
+    --flag, -f[=<bool>]           Description of parameter --flag
+    --help                        Print this help information
+    --int, -i <i64>               Description of parameter --int
+    --num-values, --values=<i64>  Description of parameter --int-values
+    --ref=<f64>                   Description of reference parameter
+    --str, -s=<string>            Description of parameter --str
+    --str-values=<string>         Description of parameter --str-values
+
+Supported option values:
+    --num-values: 1, 2, 3, 4, 5
+    --str-values: foo, bar, baz
+)help";
+
+    CHECK(options::help() == expected);
+}
+
 
 /// TODO:
-///  - alias<"-f", "--filename">; alternatively: option<names<"-f", "--filename">, "description">
 ///  - Finish short_option

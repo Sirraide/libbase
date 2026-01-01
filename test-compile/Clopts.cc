@@ -51,6 +51,18 @@ int a(int argc, char** argv) {
     // expected-error@base/Clopts.hh:* {{Cannot mark two required options as mutually_exclusive<>}}
     using o18 = clopts<positional<"a", "">, option<"c", "">, positional<"b", "">, mutually_exclusive<"a", "c", "b">>;
     (void) o18::parse(argc, argv);
+
+    // expected-error@base/Clopts.hh:* {{Alias 'z' already references option 'a'}}
+    using o20 = clopts<option<"a", "">, option<"b", "">, alias<"z", "a">, alias<"z", "b">>;
+    (void) o20::parse(argc, argv);
+
+    // expected-error@base/Clopts.hh:* {{Option 'b' referenced by alias 'z' does not exist}}
+    using o21 = clopts<option<"a", "">, alias<"z", "b">>;
+    (void) o21::parse(argc, argv);
+
+    // expected-error@base/Clopts.hh:* {{Alias 'z' references a positional option: 'a'}}
+    using o22 = clopts<positional<"a", "">, alias<"z", "a">>;
+    (void) o22::parse(argc, argv);
 }
 
 // expected-note@*           0+ {{}}

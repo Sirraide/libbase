@@ -22,9 +22,11 @@
 //  Forward Declarations.
 // ===========================================================================
 namespace base::cmd {
+using utils::static_string;
+
 template <
-    utils::static_string name,
-    utils::static_string description,
+    static_string name,
+    static_string description,
     typename ...options
 > struct subcommand;
 
@@ -167,9 +169,12 @@ struct is_positional {
 };
 
 template <typename opt> using positional_t = typename is_positional<opt>::type;
+
+// FIXME: This is jank; refactor this to be an enum and add a 'kind' member to every option and directive.
 template <typename opt> concept is_positional_v = is_positional<opt>::value;
 template <typename opt> concept is_short_option = requires { opt::is_short; };
 template <typename opt> concept is_multiple = requires { opt::is_multiple; };
+template <typename opt> concept is_alias = requires { opt::is_alias; };
 template <typename opt> concept is_flag = requires { opt::is_flag; };
 template <typename opt> concept is_subcommand = requires { opt::is_subcommand; };
 template <typename ty> concept is_values = requires { ty::is_values; };
@@ -791,6 +796,44 @@ class base::detail::clopts_impl<
         return ok;
     }
 
+    /// Ensure that aliases actually reference existing options.
+    static consteval auto check_aliases() -> std::pair<bool, std::string> {
+        using Alias = std::pair<std::string_view, std::string_view>;
+        std::vector<Alias> aliases;
+        std::string problem;
+        bool has_error = list<directives...>::any([&]<typename dir>{
+            if constexpr (is_alias<dir>) {
+                // Alias already exists.
+                if (auto it = rgs::find(aliases, dir::name.sv(), &Alias::first); it != aliases.end()) {
+                    problem = "Alias '"s + dir::name.sv() + "' already references option '" + it->second + "'";
+                    return true;
+                }
+
+                // Alias references an option that does not exist.
+                if (not list<opts...>::any([&]<typename opt>() { return opt::name == dir::aliased; })) {
+                    problem = "Option '"s + dir::aliased.sv() + "' referenced by alias '" + dir::name.sv() + "' does not exist";
+                    return true;
+                }
+
+                aliases.emplace_back(dir::name.sv(), dir::aliased.sv());
+
+                // Positional options can’t be aliased.
+                return list<opts...>::any([&]<typename opt> {
+                    if constexpr (opt::name == dir::aliased) {
+                        if constexpr (is_positional_v<opt>) {
+                            problem = "Alias '"s + dir::name.sv() + "' references a positional option: '" + dir::aliased.sv() + "'";
+                            return true;
+                        }
+                    }
+                    return false;
+                });
+            }
+
+            return false;
+        });
+        return {not has_error, std::move(problem)};
+    }
+
     /// Make sure we don’t have invalid option combinations.
     ///
     /// TODO: Can we use a 'consteval {}' block for these (once compiler support those) and print
@@ -799,6 +842,7 @@ class base::detail::clopts_impl<
     static_assert(validate_multiple() <= 1, "Cannot have more than one multiple<positional<>> option");
     static_assert(check_mutually_exclusive_exist(), "mutually_exclusive<> must reference existing options");
     static_assert(check_mutually_exclusive_required(), "Cannot mark two required options as mutually_exclusive<>");
+    static_assert(check_aliases().first, check_aliases().second);
     static_assert(
         ((is_flag<opts> or not std::same_as<typename opts::declared_type, bool>) and ...),
         "Use flag<> for options with value type 'bool'"
@@ -1111,8 +1155,8 @@ private:
 
         // Determine the length of the longest name + typename so that
         // we know how much padding to insert before actually printing
-        // the description. Also factor in the <> signs around and the
-        // space after the option name, as well as the type name.
+        // the description. Also factor in the type name, formatting
+        // characters around the type, as well as aliases.
         usz max_vals_opt_name_len{};
         usz max_len{};
         list<opts...>::each([&]<typename opt> {
@@ -1129,19 +1173,29 @@ private:
             //
             // Apart from the type name, we also need to account for the extra
             // formatting characters.
+            usz len = 0;
             if constexpr (should_print_argument_type<opt>) {
-                max_len = std::max(
-                    max_len,
-                    opt::name.len + TypeName.template operator()<opt>().size() + (is_positional_v<opt> or is_flag<opt> ? 5 : 3)
-                );
+                len = opt::name.len + TypeName.template operator()<opt>().size() + (is_positional_v<opt> or is_flag<opt> ? 5 : 3);
             }
 
             // Otherwise, we only care about the name of the option and the
             // extra '<>' of positional options.
             else {
-                if constexpr (is_positional_v<opt>) max_len = std::max(max_len, opt::name.len + 2);
-                else max_len = std::max(max_len, opt::name.len);
+                len = opt::name.len;
+                if constexpr (is_positional_v<opt>) len += 2;
             }
+
+            // Additionally, include any aliases that this option may have. Each
+            // alias is printed inline after the option name and preceded by ', '.
+            list<directives...>::each([&]<typename dir> {
+                if constexpr (is_alias<dir>) {
+                    if constexpr (dir::aliased == opt::name) {
+                        len += dir::name.size() + 2;
+                    }
+                }
+            });
+
+            max_len = std::max(max_len, len);
         });
 
         // Append an argument.
@@ -1154,6 +1208,16 @@ private:
             if constexpr (is_positional_v<opt>) msg += "<";
             msg += str(opt::name.arr, opt::name.len);
             if constexpr (is_positional_v<opt>) msg += ">";
+
+            // Append aliases.
+            list<directives...>::each([&]<typename dir> {
+                if constexpr (is_alias<dir>) {
+                    if constexpr (dir::aliased == opt::name) {
+                        msg += ", ";
+                        msg += dir::name.sv();
+                    }
+                }
+            });
 
             // Append type.
             if constexpr (should_print_argument_type<opt>) {
@@ -1271,15 +1335,15 @@ private:
     /// Both --option value and --option=value are valid ways of supplying a
     /// value. We test for both of them.
     template <typename opt>
-    bool handle_non_positional_with_arg(std::string_view opt_str) {
-        if (not opt_str.starts_with(opt::name.sv())) return false;
+    bool handle_non_positional_with_arg(str name_or_alias, std::string_view opt_str) {
+        if (not opt_str.starts_with(name_or_alias)) return false;
 
         // --option=value or short opt.
-        if (opt_str.size() > opt::name.size()) {
+        if (opt_str.size() > name_or_alias.size()) {
             // Parse the rest of the option as the value if we have a '=' or if this is a short option.
-            if (opt_str[opt::name.size()] == '=' or is_short_option<opt>) {
+            if (opt_str[name_or_alias.size()] == '=' or is_short_option<opt>) {
                 // Otherwise, parse the value.
-                auto opt_start_offs = opt::name.size() + (opt_str[opt::name.size()] == '=');
+                auto opt_start_offs = name_or_alias.size() + (opt_str[name_or_alias.size()] == '=');
                 auto opt_val = opt_str.substr(opt_start_offs);
                 dispatch_option_with_arg<opt>(opt_val);
                 return true;
@@ -1314,16 +1378,16 @@ private:
     }
 
     template <typename opt>
-    bool handle_flag(str opt_str) {
+    bool handle_flag(str name_or_alias, str opt_str) {
         // Flag w/o argument.
-        if (opt_str == opt::name.sv()) {
+        if (opt_str == name_or_alias) {
             set_found<opt>();
             return true;
         }
 
         // Make sure we have '--name=', and not just some other option that
         // happens to share a prefix with this flag.
-        if (not opt_str.consume(opt::name) or not opt_str.consume('=')) return false;
+        if (not opt_str.consume(name_or_alias) or not opt_str.consume('=')) return false;
 
         // Ok, the user passed an argument to this flag.
         dispatch_option_with_arg<opt>(opt_str);
@@ -1331,10 +1395,10 @@ private:
     }
 
     template <typename opt>
-    bool handle_non_positional(std::string_view opt_str) {
+    bool handle_non_positional_without_arg(str name_or_alias, std::string_view opt_str) {
         // Check if the name of this flag matches the entire option string that
         // we encountered. If we’re just a prefix, then we don’t handle this.
-        if (opt_str != opt::name.sv()) return false;
+        if (opt_str != name_or_alias) return false;
 
         // Mark the option as found.
         set_found<opt>();
@@ -1381,21 +1445,37 @@ private:
         return true;
     }
 
+    template <typename opt>
+    bool try_non_positional(str name_or_alias, std::string_view str) {
+        if constexpr (is_flag<opt>) return this->handle_flag<opt>(name_or_alias, str);
+        else if constexpr (not has_argument<opt>) return this->handle_non_positional_without_arg<opt>(name_or_alias, str);
+        else return this->handle_non_positional_with_arg<opt>(name_or_alias, str);
+    }
+
+    /// Try to see if this is an alias.
+    bool try_alias(std::string_view opt_str) {
+        return list<directives...>::any([&]<typename dir>{
+            if constexpr (is_alias<dir>) {
+                return try_non_positional<opt_by_name<dir::aliased>>(dir::name, opt_str);
+            } else {
+                return false;
+            }
+        });
+    }
+
     /// Invoke handle_regular_impl on every option until one returns true.
-    bool handle_non_positional(std::string_view opt_str) {
+    bool try_non_positional(std::string_view opt_str) {
         const auto handle = [this]<typename opt>(std::string_view str) {
             // `this->` is to silence a warning.
             if constexpr (is_positional_v<opt>) return false;
-            else if constexpr (is_flag<opt>) return this->handle_flag<opt>(str);
-            else if constexpr (not has_argument<opt>) return this->handle_non_positional<opt>(str);
-            else return this->handle_non_positional_with_arg<opt>(str);
+            else return try_non_positional<opt>(opt::name, str);
         };
 
         return (handle.template operator()<opts>(opt_str) or ...);
     }
 
     /// Invoke handle_positional_impl on every option until one returns true.
-    bool handle_positional(std::string_view opt_str) {
+    bool try_positional(std::string_view opt_str) {
         const auto handle = [this]<typename opt>(std::string_view str) {
             // `this->` is to silence a warning.
             if constexpr (is_positional_v<opt>) return this->handle_positional_impl<opt>(str);
@@ -1424,8 +1504,11 @@ private:
             }
 
             // Attempt to handle the option.
-            if (not handle_non_positional(opt_str) and not handle_positional(opt_str))
-                handle_error("Unrecognized option: '{}'", opt_str);
+            if (
+                not try_non_positional(opt_str) and
+                not try_alias(opt_str) and
+                not try_positional(opt_str)
+            ) handle_error("Unrecognized option: '{}'", opt_str);
 
             // Stop parsing if there was an error.
             if (has_error) return;
@@ -1670,13 +1753,21 @@ struct subcommand : option<name, description, clopts<options...>> {
 };
 
 /// Stop parsing when this option is encountered.
-template <detail::static_string stop_at = "--">
+template <static_string stop_at = "--">
 struct stop_parsing : option<stop_at, "Stop parsing command-line arguments", detail::special_tag> {
     static constexpr bool is_stop_parsing = true;
 };
 
+/// An option alias.
+template <static_string new_name, static_string aliased_option>
+struct alias : detail::directive {
+    static constexpr bool is_alias = true;
+    static constexpr decltype(new_name) name = new_name;
+    static constexpr decltype(aliased_option) aliased = aliased_option;
+};
+
 /// Mark that of a set of options, only one can be specified.
-template <detail::static_string ...opts>
+template <static_string ...opts>
 struct mutually_exclusive : detail::directive {
     static_assert(sizeof...(opts) > 1, "mutually_exclusive<> must have at least 2 arguments");
     static constexpr std::array<str, sizeof...(opts)> options{str(opts.sv())...};
