@@ -1621,19 +1621,8 @@ template <
     static_string _name,
     static_string _description = "",
     typename _type = std::string,
-    bool required = false,
-    bool overridable = false,
-    bool hidden = false>
-struct short_option : internal::opt_impl<internal::opt_kind::short_option, _name, _description, _type, {
-    .required = required,
-    .overridable = overridable,
-    .hidden = hidden
-}> {
-    static constexpr decltype(_name) name = _name;
-    static constexpr decltype(_description) description = _description;
-
-    constexpr short_option() = delete;
-};
+    opt_props props = {}>
+struct short_option : internal::opt_impl<internal::opt_kind::short_option, _name, _description, _type, props> {};
 
 namespace experimental {
 template <
@@ -1643,7 +1632,7 @@ template <
     bool required = false,
     bool overridable = false>
 using short_option [[deprecated("Use short_option instead of experimental::short_option")]] =
-    short_option<_name, _description, _type, required, overridable>;
+    short_option<_name, _description, _type, {.required = required, .overridable = overridable}>;
 } // namespace experimental
 
 /// A positional option.
