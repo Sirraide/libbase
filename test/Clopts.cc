@@ -704,8 +704,8 @@ Options:
     --str-values=<string>  Description of parameter --str-values
 
 Supported option values:
-    --num-values: 1, 2, 3, 4, 5
-    --str-values: foo, bar, baz
+    --num-values:          1, 2, 3, 4, 5
+    --str-values:          foo, bar, baz
 )help";
 
     CHECK(options::help() == expected);
@@ -988,7 +988,7 @@ Options:
     --ref=<f64>       Description of reference parameter
 
 Supported option values:
-    --int-vals: 1, 2, 3, 4, 5
+    --int-vals:       1, 2, 3, 4, 5
 )help";
 
     CHECK(options::help() == expected);
@@ -1067,18 +1067,18 @@ Options:
     --help        Print this help information
 
 Supported option values:
-    c:   1, 2
-    C:   1, 2
-    -c:  1, 2
-    -C:  1, 2
-    --c: 1, 2
-    --C: 1, 2
-    d:   1, 2
-    D:   1, 2
-    -d:  1, 2
-    -D:  1, 2
-    --D: 1, 2
-    --d: 1, 2
+    c:            1, 2
+    C:            1, 2
+    -c:           1, 2
+    -C:           1, 2
+    --c:          1, 2
+    --C:          1, 2
+    d:            1, 2
+    D:            1, 2
+    -d:           1, 2
+    -D:           1, 2
+    --D:          1, 2
+    --d:          1, 2
 )help";
 
     CHECK(options::help() == expected);
@@ -1464,8 +1464,8 @@ Options:
     --str-values=<string>         Description of parameter --str-values
 
 Supported option values:
-    --num-values: 1, 2, 3, 4, 5
-    --str-values: foo, bar, baz
+    --num-values:                 1, 2, 3, 4, 5
+    --str-values:                 foo, bar, baz
 )help";
 
     CHECK(options::help() == expected);
