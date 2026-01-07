@@ -63,6 +63,30 @@ TEST_CASE("c32::category") {
     CHECK(Chars[10].category() == CharCategory::Unassigned);
 }
 
+TEST_CASE("c32::is_xid_continue") {
+    CHECK(c32(U'x').is_xid_continue());
+    CHECK(c32(U'_').is_xid_continue());
+    CHECK(c32(U'1').is_xid_continue());
+    CHECK(c32(U'5').is_xid_continue());
+    CHECK(c32(U'δ').is_xid_continue());
+    CHECK(c32(U'þ').is_xid_continue());
+    CHECK(c32(U'Ε').is_xid_continue());
+    CHECK(not c32(U',').is_xid_continue());
+    CHECK(not c32(U'&').is_xid_continue());
+}
+
+TEST_CASE("c32::is_xid_start") {
+    CHECK(c32(U'x').is_xid_start());
+    CHECK(c32(U'δ').is_xid_start());
+    CHECK(c32(U'þ').is_xid_start());
+    CHECK(c32(U'Ε').is_xid_start());
+    CHECK(not c32(U'_').is_xid_start());
+    CHECK(not c32(U'1').is_xid_start());
+    CHECK(not c32(U'5').is_xid_start());
+    CHECK(not c32(U',').is_xid_start());
+    CHECK(not c32(U'&').is_xid_start());
+}
+
 TEST_CASE("c32::name") {
     CHECK(Chars[0].name().error() == "Codepoint U+0000 has no name");
     CHECK(Chars[1].name().error() == "Codepoint U+000A has no name");

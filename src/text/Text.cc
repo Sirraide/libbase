@@ -93,6 +93,14 @@ auto c32::category() const noexcept -> CharCategory {
     }
 }
 
+bool c32::is_xid_continue() const noexcept {
+    return u_hasBinaryProperty(UChar32(value), UCHAR_XID_CONTINUE);
+}
+
+bool c32::is_xid_start() const noexcept {
+    return u_hasBinaryProperty(UChar32(value), UCHAR_XID_START);
+}
+
 auto c32::name() const noexcept -> Result<std::string> {
     UErrorCode ec{U_ZERO_ERROR};
     std::array<char, 1'024> char_name{};

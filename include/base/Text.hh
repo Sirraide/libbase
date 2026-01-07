@@ -66,6 +66,12 @@ struct c32 {
     /// Get the category of a character.
     [[nodiscard]] auto category() const noexcept -> CharCategory;
 
+    /// Check if this is an XID_Continue character.
+    [[nodiscard]] bool is_xid_continue() const noexcept;
+
+    /// Check if this is an XID_Start character.
+    [[nodiscard]] bool is_xid_start() const noexcept;
+
     /// Get the name of a character.
     [[nodiscard]] auto name() const noexcept -> Result<std::string>;
 
