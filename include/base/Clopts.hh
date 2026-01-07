@@ -54,18 +54,13 @@ struct opt_props {
     bool overridable = false;
     bool hidden = false;
     bool multiple = false;
+    bool default_value = false; ///< Only valid for flags.
 
     constexpr auto with_multiple() const -> opt_props {
         opt_props copy = *this;
         copy.multiple = true;
         return copy;
     }
-};
-
-/// Properties of flags.
-struct flag_props {
-    bool hidden = false;
-    bool default_value = false;
 };
 
 namespace internal {
@@ -211,7 +206,7 @@ template <typename opt>
 concept should_print_argument_type = [] {
     if constexpr (not has_argument<opt>) return false;
     else if constexpr (not is_flag<opt>) return true;
-    else return opt::default_value;
+    else return opt::properties.default_value;
 }();
 
 /// Helper for static asserts.
@@ -920,7 +915,7 @@ public:
             // Initialise flags to their default values.
             list<opts...>::each([&]<typename opt>{
                 if constexpr (is_flag<opt>) {
-                    if constexpr (opt::default_value) {
+                    if constexpr (opt::properties.default_value) {
                         opts_found[optindex<opt::name>()] = true;
                     }
                 }
@@ -1176,7 +1171,7 @@ private:
             // If this is a flag w/ default value 'true', indicate that here.
             auto desc = std::string(str(opt::description.arr, opt::description.len));
             if constexpr (is_flag<opt>) {
-                if constexpr (opt::default_value) {
+                if constexpr (opt::properties.default_value) {
                     desc += " (default: true)";
                 }
             }
@@ -1661,16 +1656,14 @@ struct func : func_impl<
 template <
     static_string name,
     static_string description = "",
-    flag_props props = {}>
+    opt_props props = {}>
 struct flag : internal::opt_impl<
     internal::opt_kind::option,
     name,
     description,
     void,
-    {.hidden = props.hidden}
-> {
-    static constexpr bool default_value = props.default_value;
-};
+    props
+> {};
 
 /// The help option.
 template <auto help_cb = internal::default_help_handler>
