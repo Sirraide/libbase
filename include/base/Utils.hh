@@ -69,7 +69,7 @@ template <typename... Types>
 Overloaded(Types...) -> Overloaded<Types...>;
 
 /// Libc++ supports zip but not enumerate, so use this instead.
-auto enumerate(auto&& range) {
+constexpr auto enumerate(auto&& range) {
 #ifdef __cpp_lib_ranges_enumerate
     return vws::enumerate(std::forward<decltype(range)>(range));
 #else

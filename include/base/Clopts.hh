@@ -1735,8 +1735,8 @@ struct mutually_exclusive : internal::directive<internal::dir_kind::mutually_exc
 
 private:
     static consteval bool validate() {
-        for (auto [i, o1] : vws::enumerate(options))
-            for (auto [j, o2] : vws::enumerate(options))
+        for (auto [i, o1] : utils::enumerate(options))
+            for (auto [j, o2] : utils::enumerate(options))
                 if (i != j and o1 == o2)
                     return false;
         return true;
