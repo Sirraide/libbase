@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(libbase VERSION 0.1.0 LANGUAGES CXX)
+project(libbase VERSION 0.1.0 LANGUAGES C CXX)
 
 ## ============================================================================
 ##  Global CMake Variables.
@@ -159,6 +159,7 @@ option(LIBBASE_ENABLE_ZSTD "Enable ZSTD support" ON)
 option(LIBBASE_USE_LIBASSERT "Use libassert" ON)
 option(LIBBASE_ENABLE_UNICODE_SUPPORT "Enable Unicode support" ON)
 option(LIBBASE_LLVM_BINDINGS "Enable LLVM bindings" OFF)
+option(LIBBASE_ENABLE_SQLITE "Enable SQLite bindings" OFF)
 
 if (LIBBASE_LITE)
     set(LIBBASE_ENABLE_PCRE2 OFF)
@@ -169,6 +170,29 @@ endif()
 
 if (LIBBASE_LLVM_BINDINGS)
     target_compile_definitions(libbase PUBLIC -DLIBBASE_ENABLE_LLVM_BINDINGS=1)
+endif()
+
+if (LIBBASE_ENABLE_SQLITE)
+    target_compile_definitions(libbase PUBLIC -DLIBBASE_ENABLE_SQLITE=1)
+    if (NOT LIBBASE_SQLITE_SOURCES)
+        message(
+            FATAL_ERROR
+            "When enabling LIBBASE_ENABLE_SQLITE, please set LIBBASE_SQLITE_SOURCES to the directory containing sqlite3.c and sqlite3.h"
+        )
+    endif()
+    if (NOT EXISTS "${LIBBASE_SQLITE_SOURCES}/sqlite3.h")
+        message(FATAL_ERROR "LIBBASE_SQLITE_SOURCES directory does not contain sqlite3.h")
+    endif()
+    if (NOT EXISTS "${LIBBASE_SQLITE_SOURCES}/sqlite3.c")
+        message(FATAL_ERROR "LIBBASE_SQLITE_SOURCES directory does not contain sqlite3.c")
+    endif()
+    target_include_directories(libbase PRIVATE "${LIBBASE_SQLITE_SOURCES}")
+    add_library(_libbase_sqlite3 STATIC "${LIBBASE_SQLITE_SOURCES}/sqlite3.c")
+    target_link_libraries(libbase PUBLIC _libbase_sqlite3)
+    target_compile_options(_libbase_sqlite3 PRIVATE
+        $<$<CONFIG:DEBUG>:-O0 -g3 -ggdb3>
+        $<$<CONFIG:RELEASE>:-O3 -march=native>
+    )
 endif()
 
 ## ============================================================================

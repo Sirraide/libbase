@@ -75,6 +75,11 @@ public:
     auto operator*() = delete;
     auto operator->() = delete;
 
+    /// Throw an error if this doesn’t store a value.
+    void check() {
+        if (not this->has_value()) utils::ThrowOrAbort(this->error());
+    }
+
     /// Get the value or throw the error.
     template <typename Self>
     decltype(auto) value(
@@ -92,9 +97,7 @@ public:
         utils::ThrowOrAbort(this->error());
     }
 
-    void value() requires std::is_void_v<T> {
-        if (not this->has_value()) utils::ThrowOrAbort(this->error());
-    }
+    void value() requires std::is_void_v<T> { check(); }
 };
 
 /// Create an error message.
