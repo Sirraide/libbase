@@ -1364,6 +1364,49 @@ public:
 
     ///@}
 
+    /// Trim leading indentation.
+    ///
+    /// Specifically, this determines the minimum indent width of each line
+    /// in the input (ignoring empty lines) and removes that much indentation
+    /// from every line.
+    ///
+    /// \see operator""_t
+    [[nodiscard]] constexpr auto
+    trim_indent() const -> string_type {
+        string_type out;
+        auto s = auto{*this};
+
+        // Remove trailing null.
+        if (s.ends_with(char_type('\0'))) s.drop_back();
+
+        // Trim the string. Don’t trim_front() as that would cause us
+        // to calculate the leading indentation incorrectly (because the
+        // first line would no longer be indented.
+        s.trim_back();
+
+        // Determine the minimum leading indentation.
+        usz indent = 1000;
+        for (auto l : s.lines()) {
+            if (l.empty()) continue;
+            indent = std::min(indent, l.take_while(' ').size());
+        }
+
+        // There is no indentation.
+        if (indent == 0) return string_type(s.text());
+
+        // Remove it from each line.
+        string_type indentation(indent, ' ');
+        bool first = true;
+        for (auto l : s.lines()) {
+            if (first) first = false;
+            else out += char_type('\n');
+            (void) l.consume(indentation);
+            out += l.text();
+        }
+
+        return out;
+    }
+
     /// Convert this to a string, copying the underlying data.
     [[nodiscard]] constexpr auto
     string() const -> string_type { return string_type(_m_text); }
@@ -1483,6 +1526,32 @@ using str = basic_str<char>;
 using str8 = basic_str<char8_t>;
 using str16 = basic_str<char16_t>;
 using str32 = basic_str<char32_t>;
+
+/// Operator that trims leading indentation and leading/trailing
+/// whitespace from a string.
+///
+/// This is primarily intended to be used with raw strings, e.g.
+/// \code
+///     static constexpr std::string_view s = R"html(
+///         <div>
+///             <p>Some text</p>
+///         </div>
+///     )html"_t;
+/// \endcode
+///
+/// \see str::trim_indent()
+template <utils::static_string s>
+constexpr auto operator""_t() -> std::string_view {
+    static constexpr usz size = str(str(s.sv()).trim_indent()).trim().size();
+    static constexpr auto res = [] {
+        std::array<char, size> arr;
+        auto dedented = str(s.sv()).trim_indent();
+        auto trimmed = str(dedented).trim();
+        std::copy(trimmed.begin(), trimmed.end(), arr.begin());
+        return arr;
+    }();
+    return std::string_view(res.data(), res.size());
+}
 } // namespace base
 
 template <>

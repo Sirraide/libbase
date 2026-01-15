@@ -1192,6 +1192,45 @@ TEST_CASE("str::take_back_while_any") {
     CHECK(str(s2).drop_back_while_any("") == "aaabbbccc");
 }
 
+TEST_CASE("str::trim_indent()") {
+    CHECK(str("").trim_indent() == "");
+    CHECK(str("123").trim_indent() == "123");
+    CHECK(str("  123").trim_indent() == "123");
+    CHECK(str("  123\n456").trim_indent() == "  123\n456");
+    CHECK(str("  123\n 456").trim_indent() == " 123\n456");
+    CHECK(str("  123\n  456").trim_indent() == "123\n456");
+    CHECK(str("  123\n  789\n  456").trim_indent() == "123\n789\n456");
+    CHECK(str("  123\n   789\n  456").trim_indent() == "123\n 789\n456");
+    CHECK(str("   123\n   789\n  456").trim_indent() == " 123\n 789\n456");
+    CHECK(str("   123\n   789\n   456").trim_indent() == "123\n789\n456");
+    CHECK(str("   123\n\n   789\n   456").trim_indent() == "123\n\n789\n456");
+    CHECK(str("   123\n\n 789\n   456").trim_indent() == "  123\n\n789\n  456");
+
+    // _t also trims leading/trailing whitespace.
+    CHECK(""_t == "");
+    CHECK("123"_t == "123");
+    CHECK("  123"_t == "123");
+    CHECK("  123\n456"_t == "123\n456");
+    CHECK("  123\n 456"_t == "123\n456");
+    CHECK("  123\n  456"_t == "123\n456");
+    CHECK("  123\n  456\n"_t == "123\n456");
+    CHECK("   123\n  456\n "_t == "123\n456");
+    CHECK("  123\n  789\n  456"_t == "123\n789\n456");
+    CHECK("  123\n   789\n  456"_t == "123\n 789\n456");
+    CHECK("   123\n   789\n  456"_t == "123\n 789\n456");
+    CHECK("   123\n   789\n   456"_t == "123\n789\n456");
+    CHECK("   123\n\n   789\n   456"_t == "123\n\n789\n456");
+    CHECK("   123\n\n 789\n   456"_t == "123\n\n789\n  456");
+
+    // Documentation example.
+    static constexpr std::string_view s = R"html(
+        <div>
+            <p>Some text</p>
+        </div>
+    )html"_t;
+    CHECK(s == "<div>\n    <p>Some text</p>\n</div>");
+}
+
 TEST_CASE("str::string()") {
     CHECK(str("1234").string() == "1234");
     CHECK(
