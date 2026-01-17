@@ -76,7 +76,7 @@ auto Database::bind(Query& query, BlobRef val, u32 param) -> Result<> {
         SQLITE_TRANSIENT
     );
 
-    if (code != SQLITE_OK) return Error("Failed to bind parameter: {}", sqlite3_errmsg(ptr()));
+    if (code != SQLITE_OK) return Error("Failed to bind parameter: {}", sqlite3_errstr(code));
     return {};
 }
 
@@ -90,21 +90,21 @@ auto Database::bind(Query& query, std::string_view val, u32 param) -> Result<> {
         SQLITE_UTF8
     );
 
-    if (code != SQLITE_OK) return Error("Failed to bind parameter: {}", sqlite3_errmsg(ptr()));
+    if (code != SQLITE_OK) return Error("Failed to bind parameter: {}", sqlite3_errstr(code));
     return {};
 }
 
 auto Database::bind(Query& query, i64 val, u32 param) -> Result<> {
     int code = sqlite3_bind_int64(query.ptr(), int(param), sqlite_int64(val));
-    if (code != SQLITE_OK) return Error("Failed to bind parameter: {}", sqlite3_errmsg(ptr()));
+    if (code != SQLITE_OK) return Error("Failed to bind parameter: {}", sqlite3_errstr(code));
     return {};
 }
 
 auto Database::exec_impl(Query& query) -> Result<bool> {
     switch (int code = sqlite3_step(query.ptr())) {
-        default: return Error("SQL error: sqlite3_step() returned unexpected code {}. Message: {}", code, sqlite3_errmsg(ptr()));
-        case SQLITE_MISUSE: return Error("SQL error: {}. This is a bug in libbase.", sqlite3_errmsg(ptr()));
-        case SQLITE_ERROR: return Error("SQL error: {}", sqlite3_errmsg(ptr()));
+        default: return Error("SQL error: sqlite3_step() returned unexpected code {}. Message: {}", code, sqlite3_errstr(code));
+        case SQLITE_MISUSE: return Error("SQL error: {}. This is a bug in libbase.", sqlite3_errstr(code));
+        case SQLITE_ERROR: return Error("SQL error: {}", sqlite3_errstr(code));
         case SQLITE_BUSY: return Error("SQL error: Database is busy; try again later");
         case SQLITE_ROW: return true;
         case SQLITE_DONE: return false;
@@ -148,7 +148,7 @@ auto Database::prepare_impl(std::string_view query_str) -> Result<Query> {
 
     if (code != SQLITE_OK) return Error(
         "Failed to compile statement: {}. Statement was:\n{}",
-        sqlite3_errmsg(ptr()),
+        sqlite3_errstr(code),
         query_str
     );
 
