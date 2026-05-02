@@ -151,6 +151,36 @@ TEST_CASE("Align::as_bytes") {
     CHECK(Size::Bits(9).as_bytes().bytes() == 2);
 }
 
+TEST_CASE("Size::is_byte_aligned()") {
+    CHECK(not Size::Bits(1).is_byte_aligned());
+    CHECK(not Size::Bits(2).is_byte_aligned());
+    CHECK(not Size::Bits(3).is_byte_aligned());
+    CHECK(not Size::Bits(7).is_byte_aligned());
+    CHECK(not Size::Bits(9).is_byte_aligned());
+    CHECK(not Size::Bits(15).is_byte_aligned());
+    CHECK(not Size::Bits(17).is_byte_aligned());
+    CHECK(not Size::Bits(63).is_byte_aligned());
+    CHECK(not Size::Bits(65).is_byte_aligned());
+
+    CHECK(Size::Bits(1).as_bytes().is_byte_aligned());
+    CHECK(Size::Bits(2).as_bytes().is_byte_aligned());
+    CHECK(Size::Bits(3).as_bytes().is_byte_aligned());
+    CHECK(Size::Bits(7).as_bytes().is_byte_aligned());
+    CHECK(Size::Bits(9).as_bytes().is_byte_aligned());
+    CHECK(Size::Bits(15).as_bytes().is_byte_aligned());
+    CHECK(Size::Bits(17).as_bytes().is_byte_aligned());
+    CHECK(Size::Bits(63).as_bytes().is_byte_aligned());
+    CHECK(Size::Bits(65).as_bytes().is_byte_aligned());
+
+    CHECK(Size::Bits(0).is_byte_aligned());
+    CHECK(Size::Bits(8).is_byte_aligned());
+    CHECK(Size::Bits(16).is_byte_aligned());
+    CHECK(Size::Bits(24).is_byte_aligned());
+    CHECK(Size::Bits(32).is_byte_aligned());
+    CHECK(Size::Bits(64).is_byte_aligned());
+    CHECK(Size::Bits(1024).is_byte_aligned());
+}
+
 TEST_CASE("Size::is_power_of_2()") {
     CHECK(not Size::Bits(0).is_power_of_2());
     CHECK(Size::Bits(1).is_power_of_2());

@@ -141,6 +141,11 @@ public:
         return Align::To(raw, BitsPerByte) / BitsPerByte;
     }
 
+    /// Whether this size is a multiple of the byte size.
+    [[nodiscard]] constexpr bool is_byte_aligned() const {
+        return raw % BitsPerByte == 0;
+    }
+
     /// Check if the bitwidth of this size is a power of 2.
     [[nodiscard]] constexpr bool is_power_of_2() const {
         return std::has_single_bit(raw);
