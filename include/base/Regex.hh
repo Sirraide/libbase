@@ -17,7 +17,7 @@ enum struct regex_flags : u64 {
     anchored = u64(1) << 31 // Match only at the start of the input.
 };
 
-LIBBASE_DEFINE_FLAG_ENUM(regex_flags);
+LIBBASE_DEFINE_FLAG_ENUM(regex_flags, regex_flags_inv);
 
 struct regex_match {
     usz start{};

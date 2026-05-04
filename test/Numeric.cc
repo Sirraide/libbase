@@ -164,3 +164,94 @@ TEST_CASE("Parse<f64>") {
     CHECK(Parse<f64>("-inf").value() == -L<f64>::infinity());
     CHECK(std::isnan(Parse<f64>("nan").value()));
 }
+
+namespace {
+enum class Enum {
+    A = 1,
+    B = 2,
+    C = 4,
+    D = 8,
+};
+
+LIBBASE_DEFINE_FLAG_ENUM(Enum);
+}
+
+using enum Enum;
+
+TEST_CASE("FlagEnum::operator~") {
+    CHECK(~A == EnumInv(~std::to_underlying(A)));
+    CHECK(~B == EnumInv(~std::to_underlying(B)));
+    CHECK(~C == EnumInv(~std::to_underlying(C)));
+    CHECK(~D == EnumInv(~std::to_underlying(D)));
+
+    CHECK(~~A == A);
+    CHECK(~~B == B);
+    CHECK(~~C == C);
+    CHECK(~~D == D);
+}
+
+TEST_CASE("FlagEnum::operator&(Enum, Enum)") {
+    CHECK(A & A);
+    CHECK(B & B);
+    CHECK(C & C);
+    CHECK(D & D);
+    CHECK((B | A) & A);
+    CHECK((B | A) & B);
+    CHECK((A | B) & B);
+    CHECK((A | B) & A);
+    CHECK((A | B | C) & A);
+    CHECK((A | B | C) & B);
+    CHECK((A | B | C) & C);
+
+    CHECK_FALSE(A & B);
+    CHECK_FALSE(B & A);
+    CHECK_FALSE(A & C);
+    CHECK_FALSE(D & C);
+    CHECK_FALSE(A & D);
+    CHECK_FALSE(B & C);
+    CHECK_FALSE(B & D);
+    CHECK_FALSE((A | B) & C);
+    CHECK_FALSE((A | B) & D);
+    CHECK_FALSE((A | B | C) & D);
+}
+
+TEST_CASE("FlagEnum::operator&=/|=(Enum, Enum)") {
+    Enum x = A;
+    x |= B;
+    CHECK(x == (A | B));
+    x &= ~B;
+    CHECK(x == A);
+    x |= C;
+    x |= D;
+    CHECK(x == (A | C | D));
+    x &= ~(C | D);
+    CHECK(x == A);
+}
+
+TEST_CASE("FlagEnum::operator&(Enum, Inv)") {
+    CHECK(((A | B) & ~A) == B);
+    CHECK(((A | B) & ~B) == A);
+    CHECK(((A | B | C) & ~C) == (A | B));
+    CHECK(((A | B | C) & ~B) == (A | C));
+    CHECK(((A | B | C) & ~A) == (B | C));
+    CHECK((A & ~A) == Enum(0));
+    CHECK((B & ~B) == Enum(0));
+    CHECK((C & ~C) == Enum(0));
+    CHECK((D & ~D) == Enum(0));
+    CHECK((A & ~B) == A);
+    CHECK((A & ~C) == A);
+    CHECK((A & ~D) == A);
+    CHECK(((A | B) & ~C) == (A | B));
+    CHECK(((A | B | C) & ~D) == (A | B | C));
+    CHECK(((A | B | C) & ~(B | C)) == A);
+    CHECK(((A | B) & ~(C | D)) == (A | B));
+}
+
+TEST_CASE("FlagEnum::operator|") {
+    CHECK((A | B) == Enum(std::to_underlying(A) | std::to_underlying(B)));
+    CHECK((A | C) == Enum(std::to_underlying(A) | std::to_underlying(C)));
+    CHECK((A | B | C) == Enum(std::to_underlying(A) | std::to_underlying(B) | std::to_underlying(C)));
+
+    CHECK((A | B) == (B | A));
+    CHECK((A | B | C) == (C | B | A));
+}

@@ -7,10 +7,28 @@
 #include <utility>
 #include <bit>
 
-#define LIBBASE_DEFINE_FLAG_ENUM(e)                                           \
-    constexpr auto operator|(e a, e b) noexcept -> e { return e(+a | +b); }   \
-    constexpr auto operator|=(e& a, e b) noexcept -> e& { return a = a | b; } \
-    constexpr bool operator&(e a, e b) noexcept { return (+a & +b) != 0; }
+#define LIBBASE_DEFINE_FLAG_ENUM(Enum, ...) LIBBASE_DEFINE_FLAG_ENUM_IMPL( \
+    Enum,                                                                  \
+    LIBBASE_VA_FIRST(__VA_ARGS__ __VA_OPT__(,) Enum##Inv)                  \
+)
+
+#define LIBBASE_DEFINE_FLAG_ENUM_IMPL(Enum, Inv)                                                      \
+    enum class Inv : std::underlying_type_t<Enum> {};                                                 \
+    constexpr Inv operator~(Enum _val1) noexcept { return Inv(~+_val1); }                             \
+    constexpr Enum operator~(Inv _val1) noexcept { return Enum(~+_val1); }                            \
+    constexpr Enum operator&(Enum _val1, Inv _val2) noexcept { return Enum(+_val1 & +_val2); }        \
+    constexpr Enum& operator&=(Enum& _val1, Inv _val2) noexcept {                                     \
+        _val1 = _val1 & _val2;                                                                        \
+        return _val1;                                                                                 \
+    }                                                                                                 \
+                                                                                                      \
+    constexpr bool operator&(Enum _val1, Enum _val2) noexcept { return (+_val1 & +_val2) == +_val2; } \
+    constexpr Enum operator|(Enum _val1, Enum _val2) noexcept { return Enum(+_val1 | +_val2); }       \
+    constexpr Inv operator|(Inv _val1, Inv _val2) = delete ("cannot apply '|' to inverted values");   \
+    constexpr Enum& operator|=(Enum& _val1, Enum _val2) noexcept {                                    \
+        _val1 = _val1 | _val2;                                                                        \
+        return _val1;                                                                                 \
+    }
 
 namespace base {
 /// Convert a value of enumeration type to its underlying type.
