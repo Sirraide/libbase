@@ -662,6 +662,26 @@ struct parser<file<ContentsType, PathType>> {
 template <>
 struct parser<fs::Path> {
     using storage_type = fs::Path;
+    static auto format_error(
+        bool positional,
+        std::string_view name,
+        std::string_view arg,
+        std::string_view err
+    ) -> std::string {
+        // If the file doesn't exist, and this is a positional option, and the
+        // file name starts with '-', instead diagnose this as an unknown option.
+        if (positional and arg.starts_with("-"))
+            return std::format("Unrecognised option '{}'", arg);
+
+        // Otherwise, report the error.
+        return std::format(
+            "Error parsing argument '{}' of option '{}': {}",
+            arg,
+            name,
+            err
+        );
+    }
+
     static auto parse(std::string_view arg) -> Result<fs::Path> {
         if (not File::Exists(arg)) return Error("File '{}' does not exist", arg);
         return fs::Path{arg};
@@ -1307,14 +1327,32 @@ private:
         // Otherwise, parse the argument.
         else {
             auto res = opt::parser::parse(opt_val);
-            if (not res) return handle_error(
-                "Error parsing argument '{}' of option '{}': {}",
-                opt_val,
-                opt::name,
-                res.error()
-            );
-
-            store_option_value<opt>(std::move(res.value()));
+            if (res) store_option_value<opt>(std::move(res.value()));
+            else if constexpr (requires {
+                opt::parser::format_error(
+                    opt::is(opt_kind::positional),
+                    opt::name.sv(),
+                    opt_val,
+                    res.error()
+                );
+            }) {
+                return handle_error(
+                    "{}",
+                    opt::parser::format_error(
+                        opt::is(opt_kind::positional),
+                        opt::name.sv(),
+                        opt_val,
+                        res.error()
+                    )
+                );
+            } else {
+                return handle_error(
+                    "Error parsing argument '{}' of option '{}': {}",
+                    opt_val,
+                    opt::name,
+                    res.error()
+                );
+            }
         }
     }
 
