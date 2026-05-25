@@ -68,6 +68,12 @@ struct Overloaded : Types... {
 template <typename... Types>
 Overloaded(Types...) -> Overloaded<Types...>;
 
+/// Check if terminal colours are available on stderr.
+bool StderrSupportsColours();
+
+/// Check if terminal colours are available on stdout.
+bool StdoutSupportsColours();
+
 /// Libc++ supports zip but not enumerate, so use this instead.
 constexpr auto enumerate(auto&& range) {
 #ifdef __cpp_lib_ranges_enumerate

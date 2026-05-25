@@ -1,13 +1,64 @@
+#include <base/Base.hh>
+#include <base/Text.hh>
+
+// LLVM has a pretty comprehensive function for determining the column width
+// of a character, so use if if available.
+#ifdef LIBBASE_ENABLE_LLVM_BINDINGS_UNICODE
+#    include <llvm/Support/Unicode.h>
+#endif
+
+using namespace base;
+using namespace base::text;
+
+static void StripANSIEscapes(auto s, auto callback) {
+    do {
+        auto text = s.take_until('\033');
+        if (not text.empty()) std::invoke(callback, text);
+        s.drop_until('m');
+        s.drop();
+    } while (not s.empty());
+}
+
+// Define ColumnWidth(UTF-8) to use the LLVM bindings if possible. If they aren’t available,
+// invoke the UTF-32 version instead.
+#if defined(LIBBASE_ENABLE_UNICODE_SUPPORT) || defined(LIBBASE_ENABLE_LLVM_BINDINGS_UNICODE)
+usz text::ColumnWidth(std::string_view text) {
+#   ifdef LIBBASE_ENABLE_LLVM_BINDINGS_UNICODE
+    usz wd = 0;
+    StripANSIEscapes(str(text), [&](std::string_view part) {
+        int res = llvm::sys::unicode::columnWidthUTF8(part);
+        if (res > 0) wd += usz(res);
+    });
+    return wd;
+#   else
+    return ColumnWidth(ToUTF32(text));
+#   endif
+}
+#endif
+
+// Conversely, the 32-bit version delegates to the LLVM version if possible and provides
+// the naive implementation otherwise.
+usz text::ColumnWidth(std::u32string_view text) {
+#if defined(LIBBASE_ENABLE_UNICODE_SUPPORT) && defined(LIBBASE_ENABLE_LLVM_BINDINGS_UNICODE)
+    return ColumnWidth(ToUTF8(text));
+#else
+    usz wd = 0;
+    StripANSIEscapes(str32(text), [&](std::u32string_view part) {
+        for (auto c : part) {
+            if (char32_t(char(c)) == c and IsCntrl(char(c))) continue;
+            if (c == '\t') wd += 4;
+            else wd++;
+        }
+    });
+    return wd;
+#endif
+}
+
 #ifdef LIBBASE_ENABLE_UNICODE_SUPPORT
-#    include <base/Base.hh>
-#    include <base/Text.hh>
 #    include <functional>
 #    include <unicode/translit.h>
 #    include <unicode/uchar.h>
 #    include <unicode/unistr.h>
-
-using namespace base;
-using namespace base::text;
 
 /// ====================================================================
 ///  General Helpers

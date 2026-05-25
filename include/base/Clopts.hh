@@ -460,7 +460,17 @@ struct directive : directive_base {
 // ===========================================================================
 /// Default help handler.
 [[noreturn]] inline void default_help_handler(std::string_view program_name, std::string_view msg) {
-    std::print(stderr, "Usage: {} {}", program_name, msg);
+    bool colour = utils::StderrSupportsColours();
+    std::string_view bold = colour ? "\033[1m" : "";
+    std::string_view reset = colour ? "\033[m" : "";
+    std::print(
+        stderr,
+        "{}Usage:{} {} {}",
+        bold,
+        reset,
+        program_name,
+        msg
+    );
     std::exit(1);
 }
 
@@ -1014,8 +1024,11 @@ private:
     // =======================================================================
     /// Error handler that is used if the user doesn’t provide one.
     bool default_error_handler(std::string&& errmsg) {
+        bool colour = utils::StderrSupportsColours();
+        std::string_view red = "\033[1;31m";
+        std::string_view reset = "\033[m";
         if (not program_name.empty()) std::print(stderr, "{}: ", program_name);
-        std::println(stderr, "{}", errmsg);
+        std::println(stderr, "{}Error: {}{}", red, reset, errmsg);
 
         // Invoke the help option if there is one.
         bool invoked = list<opts...>::any([&]<typename opt> {
@@ -1028,12 +1041,12 @@ private:
         });
 
         // If no help option was found, print the help message.
-        if (not invoked) {
-            std::print(stderr, "Usage: ");
-            if (not program_name.empty()) std::print(stderr, "{} ", program_name);
-            std::print(stderr, "{}", help());
-        }
+        if (not invoked) default_help_handler(
+            program_name,
+            help(colour)
+        );
 
+        // Exit here in case the help handler didn't.
         std::exit(1);
     }
 
@@ -1051,13 +1064,13 @@ private:
         if constexpr (requires { opt::help_callback(sv{}, sv{}, user_data); })
             opt::help_callback(sv{program_name}, sv{}, user_data);
         else if constexpr (requires { opt::help_callback(sv{}, sv{}); })
-            opt::help_callback(sv{program_name}, help_message_raw.sv());
+            opt::help_callback(sv{program_name}, help(utils::StderrSupportsColours()));
 
         // Compatibility for callbacks that don’t take the program name.
         else if constexpr (requires { opt::help_callback(sv{}, user_data); })
-            opt::help_callback(help_message_raw.sv(), user_data);
+            opt::help_callback(help(utils::StderrSupportsColours()), user_data);
         else if constexpr (requires { opt::help_callback(sv{}); })
-            opt::help_callback(help_message_raw.sv());
+            opt::help_callback(help(utils::StderrSupportsColours()));
 
         // Invalid help option callback.
         else static_assert(
@@ -1107,13 +1120,15 @@ private:
     //  Help Message.
     // =======================================================================
     /// Create the help message.
-    static constexpr auto make_help_message() -> std::string { // clang-format off
+    static auto make_help_message(bool colour) -> std::string { // clang-format off
         using positional_unsorted = filter<is_positional_filter, opts...>;
         using positional = sort<get_option_name_for_help_msg_sort, positional_unsorted>;
         using regular = sort<get_option_name_for_help_msg_sort, filter<is_regular_filter, opts...>>;
         using subcommands = sort<get_option_name_for_help_msg_sort, filter<is_subcommand_filter, opts...>>;
         using values_opts = sort<get_option_name_for_help_msg_sort, filter<is_values_filter, opts...>>;
         std::string msg{};
+        std::string_view bold = colour ? "\033[1m" : "";
+        std::string_view reset = colour ? "\033[m" : "";
 
         static constexpr auto TypeName = []<typename opt> {
             if constexpr (utils::is_same<typename opt::declared_type, callback_arg_type, void>) return str("arg");
@@ -1148,16 +1163,20 @@ private:
             std::string name;
 
             // Append name.
+            name += bold;
             if constexpr (opt::is(opt_kind::positional)) name += "<";
             name += str(opt::name.arr, opt::name.len);
             if constexpr (opt::is(opt_kind::positional)) name += ">";
+            name += reset;
 
             // Append aliases.
             list<directives...>::each([&]<typename dir> {
                 if constexpr (dir::is(dir_kind::alias)) {
                     if constexpr (dir::aliased == opt::name) {
                         name += ", ";
+                        name += bold;
                         name += dir::name.sv();
+                        name += reset;
                     }
                 }
             });
@@ -1190,7 +1209,7 @@ private:
                 }
             }
 
-            max_wd = std::max(max_wd, name.size());
+            max_wd = std::max(max_wd, text::TryGetColumnWidth(name).value_or(name.size()));
             fields.emplace_back(std::move(name), std::move(desc));
         };
 
@@ -1202,9 +1221,10 @@ private:
 
         // Format them.
         auto Append = [&](const Option& o) {
+            usz wd = text::TryGetColumnWidth(o.first).value_or(o.first.size());
             msg += "    ";
             msg += o.first;
-            for (usz i = 0; i < max_wd - o.first.size(); i++) msg += " ";
+            for (usz i = 0; i < max_wd - wd; i++) msg += " ";
             msg += "  ";
             msg += o.second;
             msg += '\n';
@@ -1212,30 +1232,40 @@ private:
 
         // Append the descriptions of positional options.
         if (not pos.empty()) {
+            msg += bold;
             msg += "\nArguments:\n";
+            msg += reset;
             rgs::for_each(pos, Append);
         }
 
         // Append subcommands.
         if (not sub.empty()) {
+            msg += bold;
             msg += "\nSubcommands:\n";
+            msg += reset;
             rgs::for_each(sub, Append);
         }
 
         // Append non-positional options.
         if (not reg.empty()) {
+            msg += bold;
             msg += "\nOptions:\n";
+            msg += reset;
             rgs::for_each(reg, Append);
         }
 
         // If we have any values<> types, print their supported values.
         if constexpr (((opts::is_values and not opts::properties.hidden) or ...)) {
+            msg += bold;
             msg += "\nSupported option values:\n";
+            msg += reset;
             values_opts::each([&] <typename opt> {
                 if constexpr (opt::properties.hidden) return;
                 if constexpr (opt::is_values) {
                     msg += "    ";
+                    msg += bold;
                     msg += opt::name.sv();
+                    msg += reset;
                     msg += ':';
                     for (usz i = 0; i < max_wd - opt::name.size(); i++) msg += " ";
                     msg += ' ';
@@ -1249,13 +1279,10 @@ private:
         return msg;
     } // clang-format on
 
-    /// Help message is created at compile time.
-    static constexpr static_string<make_help_message().size() + 1> help_message_raw{make_help_message()};
-
 public:
     /// Get the help message.
-    static consteval auto help() -> std::string_view {
-        return help_message_raw.sv();
+    static auto help(bool colour = false) -> std::string {
+        return make_help_message(colour);
     }
 
 private:

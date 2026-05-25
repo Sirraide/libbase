@@ -241,3 +241,19 @@ TEST_CASE("CCType functions") {
         if (c == std::numeric_limits<u8>::max()) break;
     }
 }
+
+#if defined(LIBBASE_ENABLE_UNICODE_SUPPORT) || defined(LIBBASE_ENABLE_LLVM_BINDINGS_UNICODE)
+TEST_CASE("Text: ColumnWidth(UTF-8)") {
+    CHECK(text::ColumnWidth("") == 0);
+    CHECK(text::ColumnWidth("1234") == 4);
+    CHECK(text::ColumnWidth("\033[33m1234\033[m") == 4);
+    CHECK(text::ColumnWidth("x\033[33m1234\033[my") == 6);
+}
+#endif
+
+TEST_CASE("Text: ColumnWidth(UTF-32)") {
+    CHECK(text::ColumnWidth(U"") == 0);
+    CHECK(text::ColumnWidth(U"1234") == 4);
+    CHECK(text::ColumnWidth(U"\033[33m1234\033[m") == 4);
+    CHECK(text::ColumnWidth(U"x\033[33m1234\033[my") == 6);
+}

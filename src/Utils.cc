@@ -4,6 +4,10 @@
 #include <stdexcept>
 #include <base/StringUtils.hh>
 
+#if !defined(LIBBASE_USE_LIBASSERT) && __has_include(<unistd.h>)
+#   include <unistd.h>
+#endif
+
 auto base::utils::Escape(
     str s,
     bool escape_double_quotes,
@@ -65,6 +69,27 @@ auto base::utils::Indent(str s, u32 width) -> std::string {
         out += l;
     }
     return out;
+}
+
+static bool StreamSupportsColours([[maybe_unused]] int fd) {
+#ifdef LIBBASE_USE_LIBASSERT
+    // If libassert is available, use it to figure this out.
+    return libassert::isatty(fd);
+#elif __has_include(<unistd.h>)
+    // Use isatty() if available.
+    isatty(fd);
+#else
+    // Conservatively assume colours are not available on Windows.
+    return false;
+#endif
+}
+
+bool base::utils::StderrSupportsColours() {
+    return StreamSupportsColours(2);
+}
+
+bool base::utils::StdoutSupportsColours() {
+    return StreamSupportsColours(1);
 }
 
 void base::utils::ThrowOrAbort(std::string_view message, std::source_location loc) {

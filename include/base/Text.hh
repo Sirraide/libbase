@@ -7,7 +7,6 @@
 #include <concepts>
 #include <format>
 #include <functional>
-#include <string>
 
 namespace base::text {
 enum struct NormalisationForm {
@@ -184,6 +183,32 @@ private:
 [[nodiscard]] constexpr bool IsXDigit(char c) noexcept { return IsDigit(c) or (c >= 'a' and c <= 'f') or (c >= 'A' and c <= 'F'); }
 [[nodiscard]] constexpr bool IsBinary(char c) noexcept { return c == '0' or c == '1'; }
 [[nodiscard]] constexpr bool IsOctal(char c) noexcept { return c >= '0' and c <= '7'; }
+
+/// \see ColumnWidth(std::u32string_view)
+usz ColumnWidth(std::string_view text)
+#if !defined(LIBBASE_ENABLE_UNICODE_SUPPORT) && !defined(LIBBASE_ENABLE_LLVM_BINDINGS_UNICODE)
+    = delete(
+        "The ColumnWidth(std::string_view) overload requires ICU or LLVM support to be enabled; "
+        "convert the text to UTF-32 and call ColumnWidth(std::u32string_view) instead"
+    );
+#endif
+;
+
+/// Get the column width if possible.
+///
+/// This function returns std::nullopt iff both LLVM and ICU support are disabled.
+inline std::optional<usz> TryGetColumnWidth(std::string_view text) {
+#if defined(LIBBASE_ENABLE_UNICODE_SUPPORT) || defined(LIBBASE_ENABLE_LLVM_BINDINGS_UNICODE)
+    return ColumnWidth(text);
+#else
+    return std::nullopt;
+#endif
+}
+
+/// Get the column width of text.
+///
+/// This function takes ANSI-escape sequences into account.
+usz ColumnWidth(std::u32string_view text);
 
 #ifdef LIBBASE_ENABLE_UNICODE_SUPPORT
 /// Convert a string to a normalised form.
