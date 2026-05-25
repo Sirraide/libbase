@@ -664,22 +664,18 @@ struct parser<fs::Path> {
     using storage_type = fs::Path;
     static auto format_error(
         bool positional,
-        std::string_view name,
+        std::string_view,
         std::string_view arg,
-        std::string_view err
+        std::string&& err
     ) -> std::string {
         // If the file doesn't exist, and this is a positional option, and the
         // file name starts with '-', instead diagnose this as an unknown option.
         if (positional and arg.starts_with("-"))
             return std::format("Unrecognised option '{}'", arg);
 
-        // Otherwise, report the error.
-        return std::format(
-            "Error parsing argument '{}' of option '{}': {}",
-            arg,
-            name,
-            err
-        );
+        // Otherwise, report the error, but don't print 'error parsing argument'
+        // since there isn't really any parsing happening here.
+        return std::move(err);
     }
 
     static auto parse(std::string_view arg) -> Result<fs::Path> {
@@ -1333,7 +1329,7 @@ private:
                     opt::is(opt_kind::positional),
                     opt::name.sv(),
                     opt_val,
-                    res.error()
+                    std::move(res.error())
                 );
             }) {
                 return handle_error(
@@ -1342,7 +1338,7 @@ private:
                         opt::is(opt_kind::positional),
                         opt::name.sv(),
                         opt_val,
-                        res.error()
+                        std::move(res.error())
                     )
                 );
             } else {
