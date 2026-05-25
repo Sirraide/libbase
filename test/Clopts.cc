@@ -1471,6 +1471,20 @@ Supported option values:
     CHECK(options::help() == expected);
 }
 
+TEST_CASE("Clopts: fs::Path option") {
+    using options = clopts<help<>, positional<"path", "", fs::Path>>;
+
+    {
+        std::array args = { "test", __FILE__};
+        auto opts = options::parse(args.size(), args.data(), error_handler);
+        CHECK(*opts.get<"path">() == fs::Path{__FILE__});
+    }
+
+    {
+        std::array args = { "test", "random_garbage_that_should_not_be_a_valid_file.txt"};
+        CHECK_THROWS(options::parse(args.size(), args.data(), error_handler));
+    }
+}
 
 /// TODO:
 ///  - Finish short_option

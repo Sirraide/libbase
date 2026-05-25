@@ -648,6 +648,20 @@ struct parser<file<ContentsType, PathType>> {
     static constexpr auto type_name() -> str { return "file"; }
 };
 
+/// Parser for a path to an existing file.
+template <>
+struct parser<fs::Path> {
+    using storage_type = fs::Path;
+    static auto parse(std::string_view arg) -> Result<fs::Path> {
+        if (not File::Exists(arg)) return Error("File '{}' does not exist", arg);
+        return fs::Path{arg};
+    }
+
+    static constexpr auto type_name() -> std::string {
+        return "<path>";
+    }
+};
+
 // ===========================================================================
 //  Main Implementation.
 // ===========================================================================
