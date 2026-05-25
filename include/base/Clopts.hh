@@ -458,8 +458,7 @@ struct directive : directive_base {
 // ===========================================================================
 //  Parser Helpers.
 // ===========================================================================
-/// Default help handler.
-[[noreturn]] inline void default_help_handler(std::string_view program_name, std::string_view msg) {
+inline void print_help(std::string_view program_name, std::string_view msg) {
     bool colour = utils::StderrSupportsColours();
     std::string_view bold = colour ? "\033[1m" : "";
     std::string_view reset = colour ? "\033[m" : "";
@@ -471,7 +470,13 @@ struct directive : directive_base {
         program_name,
         msg
     );
-    std::exit(1);
+}
+
+
+/// Default help handler.
+inline void default_help_handler(std::string_view program_name, std::string_view msg) {
+    print_help(program_name, msg);
+    std::exit(0);
 }
 
 // ===========================================================================
@@ -1057,10 +1062,7 @@ private:
         });
 
         // If no help option was found, print the help message.
-        if (not invoked) default_help_handler(
-            program_name,
-            help(colour)
-        );
+        if (not invoked) print_help(program_name, help(colour));
 
         // Exit here in case the help handler didn't.
         std::exit(1);
