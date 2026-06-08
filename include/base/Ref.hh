@@ -24,7 +24,7 @@ protected:
 
     /// Destructor.
 #ifndef NDEBUG
-    ~RefBase() noexcept {
+    ~RefBase() LIBBASE_NOEXCEPT_UNLESS_TESTING {
         DebugAssert(
             ref_count.load(std::memory_order_acquire) == 0,
             "Destructor called with non-zero refcount?"
@@ -43,7 +43,7 @@ public:
 
 private:
     void _retain() noexcept { ref_count.fetch_add(1, std::memory_order_release); }
-    void _release(this const auto& self) noexcept {
+    void _release(this const auto& self) LIBBASE_NOEXCEPT_UNLESS_TESTING {
         auto count = self.ref_count.fetch_sub(1, std::memory_order_acquire) - 1;
         DebugAssert(count >= 0);
         if (count == 0) delete std::addressof(self);
@@ -80,7 +80,7 @@ public:
     Ref(Ref<U> other) noexcept : ptr{std::exchange(other.ptr, nullptr)} {}
 
     /// Destructor.
-    ~Ref() noexcept { release(); }
+    ~Ref() LIBBASE_NOEXCEPT_UNLESS_TESTING { release(); }
 
     /// Assignment.
     Ref& operator=(Ref other) noexcept {

@@ -143,6 +143,20 @@ TEST_CASE("IndexOf()") {
     CHECK(utils::index_of(std::vector{Foo{41}, Foo{42}}, 41, &Foo::x) == 0);
     CHECK(utils::index_of(std::vector{Foo{41}, Foo{42}}, 42, &Foo::x) == 1);
     CHECK(utils::index_of(std::vector{Foo{41}, Foo{42}}, 43, &Foo::x) == std::nullopt);
+
+    static_assert(std::is_same_v<
+        decltype(utils::index_of<u32>(foos, Foo{41})),
+        std::optional<u32>
+    >);
+}
+
+TEST_CASE("IndexOf(): Not representable") {
+    std::vector<int> x(1000);
+    x[500] = 42;
+    CHECK_THROWS_WITH(
+        utils::index_of<u8>(x, 42),
+        ContainsSubstring("changes value (500 to 244)")
+    );
 }
 
 TEST_CASE("join()") {

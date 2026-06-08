@@ -1,3 +1,4 @@
+#include <base/Assert.hh>
 #include <base/Clopts.hh>
 using namespace base::cmd;
 

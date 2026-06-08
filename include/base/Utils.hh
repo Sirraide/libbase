@@ -8,8 +8,8 @@
 #include <format>
 #include <functional>
 #include <ranges>
-#include <source_location>
 #include <string>
+#include <utility>
 #include <variant>
 
 namespace base::utils {
@@ -93,16 +93,42 @@ void erase_unordered(Container& container, Iterator it) {
     }
 }
 
+/// Cast between two integer types but check that this doesn't change the value.
+template <std::integral To, std::integral From>
+[[nodiscard]] auto safe_cast(From val) -> To {
+    if constexpr (not std::is_same_v<To, From>) {
+#ifdef LIBBASE_USE_LIBASSERT
+        DebugAssert(
+            std::in_range<To>(val),
+            "Cast from '{}' to '{}' changes value ({} to {})",
+            libassert::type_name<From>(),
+            libassert::type_name<To>(),
+            val,
+            static_cast<To>(val)
+        );
+#else
+        DebugAssert(
+            std::in_range<To>(val),
+            "Cast changes value ({} to {})",
+            val,
+            static_cast<To>(val)
+        );
+#endif
+    }
+    return static_cast<To>(val);
+}
+
 /// Get the index of an element in a range.
 template <
+    std::integral IndexTy = usz,
     typename Range,
     typename Proj = std::identity,
     typename Value = std::projected_value_t<rgs::iterator_t<Range>, Proj>
 >
-[[nodiscard]] auto index_of(Range&& range, const Value& val, Proj proj = {}) -> std::optional<usz> {
-    auto it = rgs::find(range, val, proj);
+[[nodiscard]] auto index_of(Range&& range, const Value& val, Proj proj = {}) -> std::optional<IndexTy> {
+    auto it = rgs::find(range, val, std::move(proj));
     if (it == rgs::end(range)) return std::nullopt;
-    return usz(rgs::distance(rgs::begin(range), it));
+    return utils::safe_cast<IndexTy>(rgs::distance(rgs::begin(range), it));
 }
 
 /// Splice a value into a container at a specific position.

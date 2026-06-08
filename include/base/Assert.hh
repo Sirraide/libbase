@@ -62,13 +62,14 @@ namespace base::detail {
                 throw std::runtime_error(std::format("" __VA_ARGS__)); \
             }                                                          \
         } while (false)
-#    define LIBBASE_NOEXCEPT_UNLESS_TESTING
+#    define DebugAssert(cond, ...) Assert(cond __VA_OPT__(, __VA_ARGS__))
+#    define LIBBASE_NOEXCEPT_UNLESS_TESTING noexcept(false)
 #else
 #    define Assert(cond, ...)               LIBBASE_ASSERT_IMPL(cond __VA_OPT__(, std::format(__VA_ARGS__)))
+#    define DebugAssert(cond, ...)          LIBBASE_DEBUG_ASSERT_IMPL(cond __VA_OPT__(, std::format(__VA_ARGS__)))
 #    define LIBBASE_NOEXCEPT_UNLESS_TESTING noexcept(true)
 #endif
 
-#define DebugAssert(cond, ...) LIBBASE_DEBUG_ASSERT_IMPL(cond __VA_OPT__(, std::format(__VA_ARGS__)))
 #define Fatal(...)             LIBBASE_FATAL_IMPL(__VA_OPT__(std::format(__VA_ARGS__)))
 #define Unreachable(...)       LIBBASE_UNREACHABLE_IMPL(__VA_OPT__(std::format(__VA_ARGS__)))
 #define Todo(...)              Unreachable("TODO: " __VA_OPT__(": " __VA_ARGS__))
