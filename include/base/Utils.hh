@@ -93,6 +93,18 @@ void erase_unordered(Container& container, Iterator it) {
     }
 }
 
+/// Get the index of an element in a range.
+template <
+    typename Range,
+    typename Proj = std::identity,
+    typename Value = std::projected_value_t<rgs::iterator_t<Range>, Proj>
+>
+[[nodiscard]] auto index_of(Range&& range, const Value& val, Proj proj = {}) -> std::optional<usz> {
+    auto it = rgs::find(range, val, proj);
+    if (it == rgs::end(range)) return std::nullopt;
+    return usz(rgs::distance(rgs::begin(range), it));
+}
+
 /// Splice a value into a container at a specific position.
 ///
 /// This function performs insertion and erasure at the same

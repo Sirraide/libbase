@@ -110,6 +110,41 @@ TEST_CASE("Indent()") {
     CHECK(utils::Indent("\n\n\n", 3) == "\n\n\n");
 }
 
+TEST_CASE("IndexOf()") {
+    std::vector vec{"a"s, "b"s, "c"s};
+    CHECK(utils::index_of(vec, "a"sv) == 0);
+    CHECK(utils::index_of(vec, "b"sv) == 1);
+    CHECK(utils::index_of(vec, "c"sv) == 2);
+    CHECK(utils::index_of(vec, "afaef"sv) == std::nullopt);
+
+    struct Foo {
+        int x;
+        auto operator<=>(const Foo&) const = default;
+    };
+
+    std::vector foos{Foo{41}, Foo{42}, Foo{43}, Foo{44}};
+
+    CHECK(utils::index_of(foos, Foo{41}) == 0);
+    CHECK(utils::index_of(foos, Foo{42}) == 1);
+    CHECK(utils::index_of(foos, Foo{43}) == 2);
+    CHECK(utils::index_of(foos, Foo{44}) == 3);
+    CHECK(utils::index_of(foos, Foo{45}) == std::nullopt);
+
+    CHECK(utils::index_of(foos, 41, &Foo::x) == 0);
+    CHECK(utils::index_of(foos, 42, &Foo::x) == 1);
+    CHECK(utils::index_of(foos, 43, &Foo::x) == 2);
+    CHECK(utils::index_of(foos, 44, &Foo::x) == 3);
+    CHECK(utils::index_of(foos, 45, &Foo::x) == std::nullopt);
+
+    CHECK(utils::index_of(std::vector{Foo{41}, Foo{42}}, 41, &Foo::x) == 0);
+    CHECK(utils::index_of(std::vector{Foo{41}, Foo{42}}, 42, &Foo::x) == 1);
+    CHECK(utils::index_of(std::vector{Foo{41}, Foo{42}}, 43, &Foo::x) == std::nullopt);
+
+    CHECK(utils::index_of(std::vector{Foo{41}, Foo{42}}, 41, &Foo::x) == 0);
+    CHECK(utils::index_of(std::vector{Foo{41}, Foo{42}}, 42, &Foo::x) == 1);
+    CHECK(utils::index_of(std::vector{Foo{41}, Foo{42}}, 43, &Foo::x) == std::nullopt);
+}
+
 TEST_CASE("join()") {
     std::vector vec{"a"s, "b"s, "c"s};
     std::deque deq{"a"sv, "b"sv, "c"sv};
