@@ -920,7 +920,7 @@ public:
     [[nodiscard]] constexpr auto
     split(basic_str delimiter) const noexcept {
         return _m_text
-            | vws::split(delimiter)
+            | vws::split(delimiter.text())
             | vws::transform([](auto r) { return basic_str(text_type(r)); });
     }
 
