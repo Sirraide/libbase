@@ -50,6 +50,22 @@ public:
     SpanImpl(ValueType&& v) : Base{std::addressof(v), 1} {}
     SpanImpl(std::span<ValueType> s) : Base{s} {}
 
+    // Old stdlib versions don't have this initializer_list constructor.
+#ifndef __cpp_lib_span_initializer_list
+#   ifndef __clang__
+#       pragma GCC diagnostic push
+#       pragma GCC diagnostic ignored "-Winit-list-lifetime"
+#   endif
+
+    constexpr SpanImpl(std::initializer_list<ValueType> il)
+    requires (std::is_const_v<ValueType>)
+        : Base{il.begin(), il.size()} {}
+
+#   ifndef __clang__
+#       pragma GCC diagnostic pop
+#   endif
+#endif
+
     // We don’t implement '<=>' to accommodate classes that e.g. only support '==' but not '<'.
 #define COMPARE(ret, op, impl)                                                            \
     [[nodiscard]] ret operator op(const SpanImpl& other) const                      \

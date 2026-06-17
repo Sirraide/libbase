@@ -110,6 +110,7 @@ TEST_CASE("Indent()") {
     CHECK(utils::Indent("\n\n\n", 3) == "\n\n\n");
 }
 
+#ifdef __cpp_lib_algorithm_default_value_type
 TEST_CASE("IndexOf()") {
     std::vector vec{"a"s, "b"s, "c"s};
     CHECK(utils::index_of(vec, "a"sv) == 0);
@@ -158,6 +159,7 @@ TEST_CASE("IndexOf(): Not representable") {
         ContainsSubstring("changes value (500 to 244)")
     );
 }
+#endif
 
 TEST_CASE("join()") {
     std::vector vec{"a"s, "b"s, "c"s};

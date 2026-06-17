@@ -118,6 +118,7 @@ template <std::integral To, std::integral From>
     return static_cast<To>(val);
 }
 
+#ifdef __cpp_lib_algorithm_default_value_type
 /// Get the index of an element in a range.
 template <
     std::integral IndexTy = usz,
@@ -130,6 +131,7 @@ template <
     if (it == rgs::end(range)) return std::nullopt;
     return utils::safe_cast<IndexTy>(rgs::distance(rgs::begin(range), it));
 }
+#endif
 
 /// Splice a value into a container at a specific position.
 ///

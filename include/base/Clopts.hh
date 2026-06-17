@@ -827,15 +827,22 @@ class internal::clopts_impl<
         std::string problem;
         bool has_error = list<directives...>::any([&]<typename dir>{
             if constexpr (dir::is(dir_kind::alias)) {
+                // operator+(std::string, std::string_view) is not available with libstdc++14.
+                auto Concat = [&](const auto& ...args) {
+                    std::string s;
+                    ((s += args), ...);
+                    return s;
+                };
+
                 // Alias already exists.
                 if (auto it = rgs::find(aliases, dir::name.sv(), &Alias::first); it != aliases.end()) {
-                    problem = "Alias '"s + dir::name.sv() + "' already references option '" + it->second + "'";
+                    problem = Concat("Alias '"s, dir::name.sv(), "' already references option '", it->second, "'");
                     return true;
                 }
 
                 // Alias references an option that does not exist.
                 if (not ((opts::name == dir::aliased) or ...)) {
-                    problem = "Option '"s + dir::aliased.sv() + "' referenced by alias '" + dir::name.sv() + "' does not exist";
+                    problem = Concat("Option '"s, dir::aliased.sv(), "' referenced by alias '", dir::name.sv(), "' does not exist");
                     return true;
                 }
 
@@ -845,7 +852,7 @@ class internal::clopts_impl<
                 return list<opts...>::any([&]<typename opt> {
                     if constexpr (opt::name == dir::aliased) {
                         if constexpr (opt::is(opt_kind::positional)) {
-                            problem = "Alias '"s + dir::name.sv() + "' references a positional option: '" + dir::aliased.sv() + "'";
+                            problem = Concat("Alias '"s, dir::name.sv(), "' references a positional option: '", dir::aliased.sv(), "'");
                             return true;
                         }
                     }

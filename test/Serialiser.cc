@@ -533,17 +533,17 @@ TEST_CASE("Serialisation: Reader::set_data()") {
     CHECK(not r.read<int>().has_value());
 
     r.set_data(b2);
-    CHECK(r.read<int>() == 1);
-    CHECK(r.read<int>() == 2);
-    CHECK(r.read<int>() == 3);
-    CHECK(r.read<int>() == 4);
+    CHECK(r.read<int>().value() == 1);
+    CHECK(r.read<int>().value() == 2);
+    CHECK(r.read<int>().value() == 3);
+    CHECK(r.read<int>().value() == 4);
     CHECK(not r.read<int>().has_value());
 
     r.set_data(b2);
-    CHECK(r.read<int>() == 1);
-    CHECK(r.read<int>() == 2);
-    CHECK(r.read<int>() == 3);
-    CHECK(r.read<int>() == 4);
+    CHECK(r.read<int>().value() == 1);
+    CHECK(r.read<int>().value() == 2);
+    CHECK(r.read<int>().value() == 3);
+    CHECK(r.read<int>().value() == 4);
     CHECK(not r.read<int>().has_value());
 }
 
