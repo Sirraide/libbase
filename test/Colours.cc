@@ -86,3 +86,6 @@ TEST_CASE("Underlining") {
     CHECK(Render("%1u1b(abc%)") == "\033[1;31;4:3;58:5:1mabc\033[m"_raw);
 }
 
+TEST_CASE("Grey") {
+    CHECK(Render("%0(abc%)") == "\033[38;5;244mabc\033[m"_raw);
+}

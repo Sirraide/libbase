@@ -9,7 +9,7 @@ using namespace base;
 // ============================================================================
 struct Context {
     struct Style {
-        u8 fg_colour{};        // 0 means unset.
+        char fg_colour{};      // 0 means unset (which is different from '0'!).
         u8 underline_colour{}; // 0 means inherit fg colour.
         bool bold{};
         bool underline{};
@@ -61,10 +61,17 @@ struct Context {
         // into a single directive.
         out += "\033[";
 
+        // Apply a colour.
+        auto Colour = [&](char code) {
+            // '\033[30' looks bad in some terminals, so we use '\033[38;5;244' instead.
+            if (code == '0') out += "38;5;244;";
+            else out += "3"s + code + ";";
+        };
+
         // If the new style subsumes the old one, only include the differences.
         if (subsumes) {
             if (s.bold and not prev.bold) out += "1;";
-            if (s.fg_colour != prev.fg_colour) out += "3" + std::to_string(s.fg_colour) + ";";
+            if (s.fg_colour != prev.fg_colour) Colour(s.fg_colour);
             if (s.underline and not prev.underline) out += "4:3;";
             if (s.underline_colour != prev.underline_colour) out += "58:5:" + std::to_string(s.underline_colour) + ";";
         }
@@ -72,7 +79,7 @@ struct Context {
         // Otherwise, include everything.
         else {
             if (s.bold) out += "1;";
-            if (s.fg_colour) out += "3" + std::to_string(s.fg_colour) + ";";
+            if (s.fg_colour) Colour(s.fg_colour);
             if (s.underline) out += "4:3;";
             if (s.underline_colour) out += "58:5:" + std::to_string(s.underline_colour) + ";";
         }
@@ -97,6 +104,7 @@ struct Context {
                     style.bold = true;
                     break;
 
+                case '0':
                 case '1':
                 case '2':
                 case '3':
@@ -106,7 +114,7 @@ struct Context {
                 case '7':
                 case '8':
                 case '9':
-                    style.fg_colour = u8(c - '0');
+                    style.fg_colour = c;
                     break;
 
                 case 'u':
