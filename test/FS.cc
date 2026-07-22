@@ -40,7 +40,10 @@ TEST_CASE("ExecutablePath") {
 #ifdef LIBBASE_FS_LINUX
     // We can’t exactly check this against itself, so just
     // assert that it works.
-    CHECK(fs::ExecutablePath().value() == LIBBASE_TESTING_BINARY_DIR "/tests");
+    CHECK(
+        canonical(Path(fs::ExecutablePath().value())) ==
+        canonical(Path(LIBBASE_TESTING_BINARY_DIR "/tests"))
+    );
 #else
     // The generic implementation doesn’t support this.
     CHECK(fs::ExecutablePath().error() == "ExecutablePath() is not supported on this platform");
