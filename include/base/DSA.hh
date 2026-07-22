@@ -370,17 +370,20 @@ class base::StringMap : public HashMap<std::string, ValueType, detail::StringHas
 
 public:
     using Base::Base;
-    using Base::operator[];
-    using Base::at;
+    // These two are currently broken with libstdc++16 for some reason, and I
+    // don’t know if this is an STL bug or not.
+    //
+    // using Base::operator[];
+    // using Base::at;
     using Base::get;
     using Base::get_or;
 
     auto operator[](this auto& self, std::string_view sv) -> decltype(auto) {
-        return self[std::string{sv}];
+        return self.Base::operator[](std::string{sv});
     }
 
     auto at(this auto& self, std::string_view sv) -> decltype(auto) {
-        return self.at(std::string{sv});
+        return self.Base::at(std::string{sv});
     }
 
     auto get(this auto& self, std::string_view sv) -> decltype(auto) {

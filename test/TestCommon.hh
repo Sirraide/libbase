@@ -43,14 +43,6 @@ struct Catch::StringMaker<char32_t> {
     }
 };
 
-template <std::formattable<char> T>
-struct Catch::StringMaker<std::optional<T>> {
-    static std::string convert(const std::optional<T>& res) {
-        if (not res.has_value()) return "nullopt";
-        return std::format("some({})", res.value());
-    }
-};
-
 #ifdef LIBBASE_I128_AVAILABLE
 template <>
 struct Catch::StringMaker<base::i128> {
