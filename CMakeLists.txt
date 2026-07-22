@@ -318,7 +318,7 @@ if (LIBBASE_BUILD_TESTS)
     endif()
 
     ## Local test file that I use to experiment w/ things.
-    if (LIBBASE_BUILD_TEST_PROGRAM)
+    if (EXISTS out/test.cc AND LIBBASE_BUILD_TEST_PROGRAM)
         add_executable(test-program out/test.cc)
         target_link_libraries(test-program libbase)
     endif()
