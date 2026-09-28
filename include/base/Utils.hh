@@ -11,6 +11,7 @@
 #include <string>
 #include <utility>
 #include <variant>
+#include <climits>
 
 namespace base::utils {
 /// Check if one or more types are the same, ignoring top-level references
@@ -116,6 +117,18 @@ template <std::integral To, std::integral From>
 #endif
     }
     return static_cast<To>(val);
+}
+
+/// Cast to an unsigned integer and check that the value also fits
+/// in the provided bit width. This is intended to be used in bit
+/// field initialisers.
+template <std::unsigned_integral To, usz Bits, std::integral From>
+[[nodiscard]] auto safe_cast(From v) -> To {
+    static_assert(Bits <= sizeof(To) * CHAR_BIT, "Bit width exceeds size of type");
+    static_assert(Bits != 0, "Bit width cannot be 0");
+    auto val = utils::safe_cast<To>(v);
+    DebugAssert(usz(std::bit_width(val)) <= Bits, "Value {} does not fit in {} bits", val, Bits);
+    return val;
 }
 
 #ifdef __cpp_lib_algorithm_default_value_type

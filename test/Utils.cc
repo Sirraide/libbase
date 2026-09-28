@@ -357,6 +357,56 @@ TEST_CASE("Try") {
     CHECK(DoubleMapErr(101).error() == "value 101 is not even!");
 }
 
+TEST_CASE("safe_cast") {
+    CHECK(utils::safe_cast<u32>(4zu) == 4);
+    CHECK(utils::safe_cast<u16>(4zu) == 4);
+    CHECK(utils::safe_cast<u8>(4zu) == 4);
+    CHECK(utils::safe_cast<i32>(4zu) == 4);
+    CHECK(utils::safe_cast<i16>(4zu) == 4);
+    CHECK(utils::safe_cast<i8>(4zu) == 4);
+
+    CHECK(utils::safe_cast<u32>(4z) == 4);
+    CHECK(utils::safe_cast<u16>(4z) == 4);
+    CHECK(utils::safe_cast<u8>(4z) == 4);
+    CHECK(utils::safe_cast<i32>(4z) == 4);
+    CHECK(utils::safe_cast<i16>(4z) == 4);
+    CHECK(utils::safe_cast<i8>(4z) == 4);
+
+    CHECK_THROWS_WITH(utils::safe_cast<u32>(-1z), ContainsSubstring("changes value"));
+    CHECK_THROWS_WITH(utils::safe_cast<u16>(-1z), ContainsSubstring("changes value"));
+    CHECK_THROWS_WITH(utils::safe_cast<u8>(-1z), ContainsSubstring("changes value"));
+    CHECK(utils::safe_cast<i32>(-1z) == -1);
+    CHECK(utils::safe_cast<i16>(-1z) == -1);
+    CHECK(utils::safe_cast<i8>(-1z) == -1);
+
+    CHECK_THROWS_WITH(utils::safe_cast<u32>(u64(1) << 40), ContainsSubstring("changes value"));
+    CHECK_THROWS_WITH(utils::safe_cast<u16>(u64(1) << 40), ContainsSubstring("changes value"));
+    CHECK_THROWS_WITH(utils::safe_cast<u8>(u64(1) << 40), ContainsSubstring("changes value"));
+    CHECK_THROWS_WITH(utils::safe_cast<i16>(u64(1) << 40), ContainsSubstring("changes value"));
+    CHECK_THROWS_WITH(utils::safe_cast<i32>(u64(1) << 40), ContainsSubstring("changes value"));
+    CHECK_THROWS_WITH(utils::safe_cast<i8>(u64(1) << 40), ContainsSubstring("changes value"));
+
+    CHECK_THROWS_WITH((utils::safe_cast<u32, 1>(10)), ContainsSubstring("does not fit in 1 bits"));
+    CHECK_THROWS_WITH((utils::safe_cast<u32, 2>(10)), ContainsSubstring("does not fit in 2 bits"));
+    CHECK_THROWS_WITH((utils::safe_cast<u32, 3>(10)), ContainsSubstring("does not fit in 3 bits"));
+    CHECK(utils::safe_cast<u32, 4>(10) == 10);
+    CHECK(utils::safe_cast<u32, 5>(10) == 10);
+    CHECK(utils::safe_cast<u32, 12>(10) == 10);
+    CHECK(utils::safe_cast<u32, 32>(10) == 10);
+
+    CHECK_THROWS_WITH((utils::safe_cast<u16, 1>(200)), ContainsSubstring("does not fit in 1 bits"));
+    CHECK_THROWS_WITH((utils::safe_cast<u16, 2>(200)), ContainsSubstring("does not fit in 2 bits"));
+    CHECK_THROWS_WITH((utils::safe_cast<u16, 3>(200)), ContainsSubstring("does not fit in 3 bits"));
+    CHECK_THROWS_WITH((utils::safe_cast<u16, 4>(200)), ContainsSubstring("does not fit in 4 bits"));
+    CHECK_THROWS_WITH((utils::safe_cast<u16, 5>(200)), ContainsSubstring("does not fit in 5 bits"));
+    CHECK_THROWS_WITH((utils::safe_cast<u16, 6>(200)), ContainsSubstring("does not fit in 6 bits"));
+    CHECK_THROWS_WITH((utils::safe_cast<u16, 7>(200)), ContainsSubstring("does not fit in 7 bits"));
+    CHECK(utils::safe_cast<u16, 8>(200) == 200);
+    CHECK(utils::safe_cast<u16, 9>(200) == 200);
+    CHECK(utils::safe_cast<u16, 15>(200) == 200);
+    CHECK(utils::safe_cast<u16, 16>(200) == 200);
+}
+
 #if LIBBASE_PROPERTIES
 struct S {
     std::string _foo, _bar;
